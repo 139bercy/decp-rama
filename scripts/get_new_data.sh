@@ -32,7 +32,7 @@ Nouveau fichier :       $nbMarchesUniqueNew marchés uniques\n
                         $nbNewMarches nouveaux marchés uniques\n"
 
 #generation du fichier du jour dans le fichier temp.json
-python3.7 scripts/python/generateDailyDecp.py $newFile
+python scripts/python/generateDailyDecp.py $newFile
 
 echo "Nombre de marchés dans le fichier des nouveaux marchés :"
 jq '.marches | length' temp.json
