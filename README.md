@@ -28,7 +28,7 @@ La procédure standard est la suivante :
 - [xml2json](https://github.com/Cheedoong/xml2json) pour la conversion de XML vers JSON (binaire Linus amd64 inclus dans `./scripts/bin`)
 - [jq](https://stedolan.github.io/jq/) pour la modification des fichiers JSON (disponible dans les dépôts Ubuntu, version >=1.6 car la 1.5 a un bug qui pose problème dans une conversion des fichiers JSON en XML)
 - [xsltproc](http://xmlsoft.org/XSLT/xsltproc2.html) pour la correction d'anomalies dans certaines sources XML (disponible dans les dépôts Ubuntu)
-- [json2xml](https://github.com/edsu/json2xml) pour la conversion XML vers JSON
+- [json2xml](https://github.com/vinitkumar/json2xml) pour la conversion JSON vers XML, anciennement il s'agissait d'une autre bibliothèque [json2xml](https://github.com/edsu/json2xml) sous Python 2 et non maintenu
 - [libxml2-utils] pour l'outil `xmllint` (disponible dans les dépôts Ubuntu)
 - [wget](https://doc.ubuntu-fr.org/wget)
 - pouvoir exécuter des scripts bash
