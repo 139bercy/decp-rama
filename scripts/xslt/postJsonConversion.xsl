@@ -2,12 +2,17 @@
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:fn="http://www.w3.org/2005/xpath-functions">
 
-    <xsl:template match="/data">
+    <xsl:template match="/all">
         <marches>
             <xsl:apply-templates/>
         </marches>
     </xsl:template>
-    <xsl:template match="marches[./_type/text() = 'Marché']">
+
+    <xsl:template match="marches">
+            <xsl:apply-templates/>
+    </xsl:template>
+
+    <xsl:template match="item[./_type/text() = 'Marché']">
         <marche>
             <xsl:apply-templates/>
             <titulaires>
@@ -19,7 +24,7 @@
         </marche>
     </xsl:template>
 
-    <xsl:template match="marches[./_type/text() = 'Contrat de concession']">
+    <xsl:template match="item[./_type/text() = 'Contrat de concession']">
         <contrat-concession>
             <xsl:apply-templates/>
             <concessionnaires>
@@ -32,6 +37,10 @@
                 <xsl:apply-templates select="modifications" mode="array"/>
             </modifications>
         </contrat-concession>
+    </xsl:template>
+
+    <xsl:template match="item">
+            <xsl:apply-templates select="@* | node()"/>
     </xsl:template>
 
     <xsl:template match="titulaires" mode="array">

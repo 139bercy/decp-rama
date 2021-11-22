@@ -22,7 +22,7 @@ do
   jq --arg startr $start_range --arg endr $end_range '{"marches":.marches[$startr|tonumber:$endr|tonumber]}' $source | \
 
     # JSON to generic XML structure
-    python scripts/makeXMLfromjson.py | \
+    ./scripts/makeXMLfromjson.py | \
 
     # Generic XML structure to DECP XML
     xsltproc scripts/xslt/postJsonConversion.xsl - | \
