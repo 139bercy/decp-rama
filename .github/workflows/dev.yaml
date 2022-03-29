@@ -153,6 +153,7 @@ jobs:
         if: steps.cache-in.outputs.cache-hit == 'true'
         run: |
           erreur=0
+          ls -alh json/
           if [ -f json/decp.json ]
           then
             echo "Fichier json/decp.json présent"
@@ -161,12 +162,12 @@ jobs:
             echo "Fichier json/decp.json introuvable"
             erreur=1
           fi
-          if [ -f decp.ocds.json ]
+          if [ -f json/decp.ocds.json ]
           then
-            echo "Fichier decp.ocds.json présent"
-            ls -alh decp.ocds.json
+            echo "Fichier json/decp.ocds.json présent"
+            ls -alh json/decp.ocds.json
           else
-            echo "Fichier decp.ocds.json introuvable"
+            echo "Fichier json/decp.ocds.json introuvable"
             erreur=1
           fi
           if [ -f xml/decp.xml ]
