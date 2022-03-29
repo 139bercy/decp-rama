@@ -121,13 +121,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-
-      - name: "Préparation"
-        id: cache
-        run: |
-          KEY_CACHE="$(echo $GITHUB_REF_NAME)-$(date '+%Y%m%d')-${{ hashFiles('sources/metadata.json') }}-data-out";
-          echo "::set-output name=KEY::$KEY_CACHE"
-          echo ${#API_KEY}
       
       - name: Récupération des données en cache
         uses: actions/cache@v3.0.0
@@ -137,7 +130,7 @@ jobs:
             json/decp.json
             xml/decp.xml
             results
-          key: ${{ steps.cache.outputs.KEY }}
+          key: ${{ needs.process.outputs.cache-key }}
 
       - name: Publication des données sur data.gouv.fr
         if: steps.cache-in.outputs.cache-hit == 'true'
