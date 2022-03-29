@@ -102,7 +102,7 @@ jobs:
       
       - name: Consolidation des données
         if: steps.cache-in.outputs.cache-hit == 'true'
-        run: | 
+        run: |
           ./process.sh all package only
 
       - name: Regroupement des données
