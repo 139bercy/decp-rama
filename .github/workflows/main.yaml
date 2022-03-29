@@ -3,6 +3,12 @@ on:
   schedule:
     - cron: '0 1 * * 2,4,6'
   workflow_dispatch:
+    inputs:
+      cache-key-suffix:
+        description: Suffixe de clé cache (aucun par défaut)
+        type: string
+        required: true
+        default: ''
 jobs:
   collect:
     name: Collecte des données
@@ -18,7 +24,7 @@ jobs:
       - name: Préparation
         id: cache
         run: |
-          KEY_CACHE="$(echo $GITHUB_REF_NAME)-$(date '+%Y%m%d')-${{ hashFiles('sources/metadata.json') }}-data";
+          KEY_CACHE="$(echo $GITHUB_REF_NAME)-$(date '+%Y%m%d')-${{ hashFiles('sources/metadata.json') }}-data-${{ github.event.inputs.cache-key-suffix }}";
           echo "::set-output name=KEY::$KEY_CACHE"
       
       - name: Test présence de données en cache
@@ -82,7 +88,7 @@ jobs:
         id: cache
         if: steps.cache-in.outputs.cache-hit == 'true'
         run: |
-          echo "::set-output name=KEY::${{ needs.collect.outputs.cache-key }}-out"
+          echo "::set-output name=KEY::${{ needs.collect.outputs.cache-key }}-out-${{ github.event.inputs.cache-key-suffix }}"
 
       - name: Conversions des données
         if: steps.cache-in.outputs.cache-hit == 'true'

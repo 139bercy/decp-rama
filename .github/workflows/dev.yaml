@@ -1,4 +1,4 @@
-name: DECP
+name: Developpement
 on:
   push:
     branches:
@@ -8,6 +8,12 @@ on:
     branches:
       - master
   workflow_dispatch:
+    inputs:
+      cache-key-suffix:
+        description: Suffixe de clé cache (aucun par défaut)
+        type: string
+        required: true
+        default: ''
 jobs:
   collect:
     name: Collecte des données
@@ -23,7 +29,7 @@ jobs:
       - name: Préparation
         id: cache
         run: |
-          KEY_CACHE="$(echo $GITHUB_REF_NAME)-$(date '+%Y%m%d')-${{ hashFiles('sources/metadata.json') }}-data";
+          KEY_CACHE="$(echo $GITHUB_REF_NAME)-$(date '+%Y%m%d')-${{ hashFiles('sources/metadata.json') }}-data-${{ github.event.inputs.cache-key-suffix }}";
           echo "::set-output name=KEY::$KEY_CACHE"
       
       - name: Test présence de données en cache
@@ -87,7 +93,7 @@ jobs:
         id: cache
         if: steps.cache-in.outputs.cache-hit == 'true'
         run: |
-          echo "::set-output name=KEY::${{ needs.collect.outputs.cache-key }}-out"
+          echo "::set-output name=KEY::${{ needs.collect.outputs.cache-key }}-out-${{ github.event.inputs.cache-key-suffix }}"
 
       - name: Conversions des données
         if: steps.cache-in.outputs.cache-hit == 'true'
@@ -140,7 +146,8 @@ jobs:
       - name: Vérification présence fichiers issus du cache
         if: steps.cache-in.outputs.cache-hit == 'true'
         run: |
-          ls -alh json/decp.json
-          ls -alh xml/decp.xml
-          ls -alh results/
+          if [ -f json/decp.json ]; then  ls -alh json/decp.json; fi
+          if [ -f json/decp.json ]; then ls -alh xml/decp.xml; fi
+          if [ -d results ]; then ls -alh results/; fi
 
+          
