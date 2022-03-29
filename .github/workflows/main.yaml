@@ -5,10 +5,10 @@ on:
   workflow_dispatch:
     inputs:
       cache-key-suffix:
-        description: Suffixe de clé cache (aucun par défaut)
+        description: Suffixe clé de cache (0 par défaut)
         type: string
         required: true
-        default: ''
+        default: '0'
 jobs:
   collect:
     name: Collecte des données
@@ -96,6 +96,7 @@ jobs:
         with:
           path: |
             json/decp.json
+            json/decp.ocds.json
             xml/decp.xml
             results
           key: ${{ steps.cache.outputs.KEY }}
@@ -126,6 +127,7 @@ jobs:
         with:
           path: |
             json/decp.json
+            json/decp.ocds.json
             xml/decp.xml
             results
           key: "${{ steps.cache.outputs.KEY }}"
@@ -149,6 +151,7 @@ jobs:
         with:
           path: |
             json/decp.json
+            json/decp.ocds.json
             xml/decp.xml
             results
           key: ${{ needs.process.outputs.cache-key }}
