@@ -93,7 +93,7 @@ jobs:
         id: cache
         if: steps.cache-in.outputs.cache-hit == 'true'
         run: |
-          echo "::set-output name=KEY::${{ needs.collect.outputs.cache-key }}-out-${{ github.event.inputs.cache-key-suffix }}"
+          echo "::set-output name=KEY::${{ needs.collect.outputs.cache-key }}-out"
 
       - name: Conversions des données
         if: steps.cache-in.outputs.cache-hit == 'true'
