@@ -146,8 +146,31 @@ jobs:
       - name: Vérification présence fichiers issus du cache
         if: steps.cache-in.outputs.cache-hit == 'true'
         run: |
-          if [ -f json/decp.json ]; then  ls -alh json/decp.json; fi
-          if [ -f json/decp.json ]; then ls -alh xml/decp.xml; fi
-          if [ -d results ]; then ls -alh results/; fi
+          erreur=0
+          if [ -f json/decp.json ]
+          then
+            echo "Fichier json/decp.json présent"
+            ls -alh json/decp.json
+          else
+            echo "Fichier json/decp.json introuvable"
+            erreur=1
+          fi
+          if [ -f xml/decp.xml ]
+          then
+            echo "Fichier xml/decp.xml présent"
+            ls -alh xml/decp.xml
+          else
+            echo "Fichier xml/decp.xml introuvable"
+            erreur=1
+          fi
+          if [ -d results ]
+          then
+            echo "Répertoire results présent"
+            ls -alh results/
+          else 
+            echo "Répertoire results introuvable"
+            erreur=1
+          fi
+          exit $erreur
 
           
