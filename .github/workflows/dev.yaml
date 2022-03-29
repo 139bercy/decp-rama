@@ -79,7 +79,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Récupération des données en cache
+      - name: Récupération des données provenant du job collect
         uses: actions/cache@v3.0.0
         id: cache-in
         with:
@@ -94,24 +94,39 @@ jobs:
         if: steps.cache-in.outputs.cache-hit == 'true'
         run: |
           echo "::set-output name=KEY::${{ needs.collect.outputs.cache-key }}-out"
+      
+      - name: Test présence de données déjà traitées (en cache)
+        uses: actions/cache@v3.0.0
+        id: cache-out
+        with:
+          path: |
+            json/decp.json
+            xml/decp.xml
+            results
+          key: ${{ steps.cache.outputs.KEY }}
+      
+      - name: Vérification si données déjà traitées
+        if: steps.cache-in.outputs.cache-hit == 'true' && steps.cache-out.outputs.cache-hit == 'true'
+        run: |
+          echo "Données déjà traitées aujourd'hui !"
 
       - name: Conversions des données
-        if: steps.cache-in.outputs.cache-hit == 'true'
+        if: steps.cache-in.outputs.cache-hit == 'true' && steps.cache-out.outputs.cache-hit != 'true'
         run: | 
           ./process.sh all convert only
       
       - name: Consolidation des données
-        if: steps.cache-in.outputs.cache-hit == 'true'
+        if: steps.cache-in.outputs.cache-hit == 'true' && steps.cache-out.outputs.cache-hit != 'true'
         run: |
           ./process.sh all package only
 
       - name: Regroupement des données
-        if: steps.cache-in.outputs.cache-hit == 'true'
+        if: steps.cache-in.outputs.cache-hit == 'true' && steps.cache-out.outputs.cache-hit != 'true'
         run: | 
           ./process.sh all package nothing # traitement final pour regrouper toutes les données
 
       - name: Mise en cache de résultats
-        if: steps.cache-in.outputs.cache-hit == 'true'
+        if: steps.cache-in.outputs.cache-hit == 'true' && steps.cache-out.outputs.cache-hit != 'true'
         uses: actions/cache@v3.0.0
         with:
           path: |
