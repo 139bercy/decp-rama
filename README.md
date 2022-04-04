@@ -2,8 +2,8 @@
 
 > Toutes les données essentielles de la commande publique agrégées et converties
 
-![Main](https://github.com/139bercy/decp-rama/actions/workflows/main.yaml/badge.svg)
-![Main](https://github.com/139bercy/decp-rama/actions/workflows/marches-publics.yaml/badge.svg)
+![DECP](https://github.com/139bercy/decp-rama/actions/workflows/main.yaml/badge.svg)
+![Marches Publics](https://github.com/139bercy/decp-rama/actions/workflows/marches-publics.yaml/badge.svg)
 
 Ce document décrit la manière dont les données essentielles de la commande publique sont consolidées techniquement. Vous trouverez davantage d'information sur les données essentielles de la commande publique sur https://139bercy.github.io/decp-docs/.
 

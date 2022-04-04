@@ -131,7 +131,7 @@ jobs:
           key: "${{ steps.cache.outputs.KEY }}"
   
   publish:
-    name: "Publication des données"
+    name: "Checks publication des données"
     runs-on: ubuntu-latest
     needs: process
     steps:
@@ -188,4 +188,65 @@ jobs:
           fi
           exit $erreur
 
+  collect-marches-publics:
+    name: Collecte des données Marchés Publics
+    environment: decp-aws
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.prepare.outputs.cachekey }}
+      date-debut: ${{ steps.prepare.outputs.dateDebut }}
+      date-fin: ${{ steps.prepare.outputs.dateFin }}
+    container:
+      image: 139bercy/decp-rama
+      env: 
+        LAST_YEAR: ${{ secrets.LAST_YEAR }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Préparation
+        id: prepare
+        run: |
+          KEY_CACHE="$(echo $GITHUB_REF_NAME)-$(date '+%Y%m%d')-${{ hashFiles('decp-aws/get-marches-public.info.sh') }}-data";
+          echo "::set-output name=cachekey::$KEY_CACHE"
           
+          # Prise en compte de l'exécution du schedule annually
+          if [ "$LAST_YEAR" = "true" ]
+          then
+            echo "Calcul des dates..."
+            dateDebut="$(date -d '-1year' +%Y)-01-01"
+            dateFin="$(date -d '-1year' +%Y)-12-31"
+            echo "::set-output name=dateDebut::$dateDebut"
+            echo "::set-output name=dateFin::$dateFin"
+          fi
+      
+      - name: Test présence de données en cache
+        uses: actions/cache@v3.0.0
+        id: cache-in
+        with:
+          path: |
+            sources/
+          key: ${{ steps.prepare.outputs.cachekey }}
+      
+      - name: Vérification des données en cache
+        if: steps.cache-in.outputs.cache-hit == 'true'
+        run: |
+          echo "Données déjà traitées aujourd'hui !"
+      
+      - name: Récupération des données
+        if: steps.cache-in.outputs.cache-hit != 'true'
+        env:
+          dateDebut: ${{ steps.prepare.outputs.dateDebut }}
+          dateFin: ${{ steps.prepare.outputs.dateFin }}
+        run: |
+          mkdir -p sources/aws-marchespublics
+          cd sources/aws-marchespublics
+          ../../decp-aws/get-marches-public.info.sh
+          
+      - name: Mise en cache de données
+        if: steps.cache-in.outputs.cache-hit != 'true'
+        uses: actions/cache@v3.0.0
+        with:
+          path: |
+            sources/
+          key: ${{ steps.prepare.outputs.cachekey }}
