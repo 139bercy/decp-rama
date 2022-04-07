@@ -16,7 +16,7 @@ def walk(f):
 
 .marches[].montant |= if type == "string" then tonumber else . end |
 .marches[].valeurGlobale |= if type == "string" then tonumber else . end |
-.marches[].dureeMois |= if type == "string" then tonumber | ceil(.) else ceil(.) end |
+.marches[].dureeMois |= if (type == "string" and length > 0) then tonumber | ceil(.) elif (type == "number") then ceil(.) else 1 end |
 .marches[].lieuExecution.code |= if type == "number" then tostring else . end |
 .marches[].lieuExecution.nom |= if type == "number" then tostring else . end |
 .marches[].id |= if type == "number" then tostring else . end |
