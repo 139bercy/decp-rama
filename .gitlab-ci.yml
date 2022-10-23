@@ -1,0 +1,137 @@
+stages:
+  - get
+  - process
+  - publish
+
+default:
+  image: 139bercy/decp-rama
+  # before_script:
+  #   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+  #   - git config --global user.name "Gitlab CI/CD"
+  #   - git config --global user.email dev@listo.pro
+  #   - '[[ -z ${CI_COMMIT_TAG} && "$(git rev-parse origin/$CI_COMMIT_REF_NAME)" != "$CI_COMMIT_SHA" ]] && curl --header "PRIVATE-TOKEN: ${GITLAB_PERSONAL_ACCESS_TOKEN}" -X POST https://gitlab.com/api/v4/projects/$CI_PROJECT_ID/pipelines/$CI_PIPELINE_ID/cancel'
+
+variables:
+  # usage du cache de master
+  CACHE_FALLBACK_KEY: data-master
+# .default_rules:
+
+# build-image:
+
+get-data-daily:
+  stage: get
+  interruptible: true
+  script:
+    #  suppression des données du cache pour reconstruire celui-ci de zéro
+    - rm -rf json/* xml/* || mkdir -p json xml || true
+    # suppression de tous les fichiers dans sources sauf metadata.json
+    - rm -rf $(find sources/. -name "*" ! -name "metadata.json") || true
+    - ./process.sh all get only
+  artifacts:
+    paths:
+      - "json/"
+      - "xml/"
+      - "sources/"
+    expire_in: 3 hours
+  cache:
+    key: data-$CI_COMMIT_REF_SLUG
+    paths:
+      - "json/"
+      - "xml/"
+      - "sources/"
+  rules:
+    # exécution sur les schedules
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $GET_DATA
+    # exécution si le message de commit contient [get-data-daily]
+    - if: $CI_COMMIT_MESSAGE =~ /.*\[get-data-daily\].*/
+    # exécution si les fichiers suivants sont modifiés et que ce n'est pas la branche master
+    - if: $CI_COMMIT_REF_NAME != "master"
+      changes:
+        - sources/metadata.json
+        - scripts/sources/
+
+process-data:
+  stage: process
+  interruptible: true
+  script:
+    - ./process.sh all fix only
+    - ./process.sh all convert only
+    - ./process.sh all package only
+    - ./process.sh all package nothing # traitement final pour regrouper toutes les données
+  artifacts:
+    paths:
+      # - "results/decp_previous.json"
+      - "json/decp.json"
+      - "xml/decp.xml"
+      - "results/"
+      # - "decp_*.json"
+      # - "decp_*.xml"
+      - "json/decp.ocds.json"
+    expire_in: 3 hours
+  cache:
+    key: data-$CI_COMMIT_REF_SLUG
+    paths:
+      - "json/"
+      - "xml/"
+      - "sources/"
+  rules:
+    # exécution sur les branches autres que master
+    - if: $CI_COMMIT_REF_NAME != "master"
+    # exécution si le message de commit contient [process-data]
+    - if: $CI_COMMIT_MESSAGE =~ /.*\[process-data\].*/
+
+process-data-schedule:
+  extends:
+    - process-data
+  rules:
+  # exécution sur les schedules
+  - if: $CI_PIPELINE_SOURCE == "schedule" && $PROCESS_DATA
+
+publish-data:
+  stage: process
+  interruptible: false
+  script:
+    # - ./publish-decp.sh
+    - echo "publish-data"
+  rules:
+    # exécution sur les schedules
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $PUBLISH_DATA
+    # exécution si le message de commit contient [publish]
+    - if: $CI_COMMIT_MESSAGE =~ /.*\[publish\].*/
+  needs:
+    - pipeline: $PARENT_PIPELINE_ID
+      job: process-data
+
+get-data-aws:
+  stage: get
+  interruptible: true
+  script:
+    - mkdir -p sources/aws-marchespublics
+    - cd sources/aws-marchespublics
+    - ../../decp-aws/get-marches-public.info.sh
+  artifacts:
+    paths:
+      - "sources/"
+    expire_in: 3 hours
+  rules:
+    # exécution sur les schedules
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $GET_DATA_AWS
+    # exécution si le message de commit contient [get-data-aws]
+    - if: $CI_COMMIT_MESSAGE =~ /.*\[get-data-aws\].*/
+
+publish-data-aws:
+  stage: publish
+  interruptible: false
+  script:
+    - mkdir -p sources/aws-marchespublics
+    - cd sources/aws-marchespublics
+    # - ../../decp-aws/publish-marches-public.info.sh
+    - echo "publish-data-aws"
+  rules:
+    # exécution sur les schedules
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $PUBLISH_DATA_AWS
+    # exécution si le message de commit contient [publish-data-aws]
+    - if: $CI_COMMIT_MESSAGE =~ /.*\[publish-data-aws\].*/
+  needs:
+    - pipeline: $PARENT_PIPELINE_ID
+      job: get-data-aws
