@@ -1,0 +1,26 @@
+{
+  "marches": {
+    "marche": [
+      {
+        "id": "TEST2022",
+        "acheteur": {
+          "id": "21750001630066"
+        },
+        "marcheInnovant": "oui",
+        "offresRecues": null ,
+        "attributionAvance": "1",
+        "sousTraitanceDeclaree": true
+      },
+      {
+        "id": "TEST2021",
+        "acheteur": {
+          "id": null
+        },
+        "marcheInnovant": "non",
+        "offresRecues": 4 ,
+        "attributionAvance": "0",
+        "sousTraitanceDeclaree": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+stages:
+  - package
+  - deploy
+
+variables:
+  AXYUS_REGISTRY_PROJECT: "$AXYUS_REGISTRY/decp"
+
+docker-build:
+  stage: package
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  variables:
+    IMAGE_LABELS: >
+      --label org.opencontainers.image.created=$CI_JOB_STARTED_AT
+      --label org.opencontainers.image.vendor=$CI_SERVER_URL/$GITLAB_USER_LOGIN
+      --label org.opencontainers.image.authors=$CI_SERVER_URL/$GITLAB_USER_LOGIN
+      --label org.opencontainers.image.revision=$CI_COMMIT_SHA
+      --label org.opencontainers.image.source=$CI_PROJECT_URL
+      --label org.opencontainers.image.documentation=$CI_PROJECT_URL
+      --label org.opencontainers.image.licenses=$CI_PROJECT_URL
+      --label org.opencontainers.image.url=$CI_PROJECT_URL
+      --label com.gitlab.ci.user=$CI_SERVER_URL/$GITLAB_USER_LOGIN
+      --label com.gitlab.ci.email=$GITLAB_USER_EMAIL
+      --label com.gitlab.ci.tagorbranch=$CI_COMMIT_REF_NAME
+      --label com.gitlab.ci.pipelineurl=$CI_PIPELINE_URL
+      --label com.gitlab.ci.commiturl=$CI_PROJECT_URL/commit/$CI_COMMIT_SHA
+  script:
+    - DOCKER_TAG=${CI_COMMIT_TAG:-$CI_COMMIT_SHA}
+    - mkdir -p /kaniko/.docker
+    - |
+        cat <<EOF > /kaniko/.docker/config.json
+        {
+          "auths": {
+            "$AXYUS_REGISTRY": {
+              "username": "$AXYUS_REGISTRY_USER",
+              "password": "$AXYUS_REGISTRY_PASSWORD"
+            }
+          }
+        }
+        EOF
+    - >
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --destination "${AXYUS_REGISTRY_PROJECT}/decp-rama:${DOCKER_TAG}"
+      ${IMAGE_LABELS}
+    - >
+
+.deploy-argocd:
+  stage: deploy
+  when: manual
+  allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  image: curlimages/curl
+  script:
+    - DOCKER_TAG=${CI_COMMIT_TAG:-$CI_COMMIT_SHA}
+    - curl --request POST --fail --form token=$HELM_PIPELINE_TRIGGER_TOKEN --form ref=main --form variables[VERSION_NUMERO_RAMA]="$DOCKER_TAG" --form variables[ENV]="$TARGET_ENV" "$HELM_PIPELINE_PROJECT_URL"
+  environment:
+    name: scaleway-${TARGET_ENV}
+    url: ${TARGET_ENV_URL}
+
+deploy-int:
+  variables:
+    TARGET_ENV: int
+  extends: .deploy-argocd

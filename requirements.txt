@@ -1,0 +1,13 @@
+ pandas
+ datetime
+ wget
+ xmltodict
+ regex
+ pytest-shutil
+ dict2xml
+ saagieapi
+ boto3
+ jsonschema
+ lxml
+ xmlschema
+tqdm
