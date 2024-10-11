@@ -1,3 +1,4 @@
+from __future__ import annotations
 import linecache
 from xml.etree import ElementTree
 import wget
@@ -11,6 +12,7 @@ from dateutil.parser import parse
 from lxml import etree
 from datetime import datetime
 import pandas as pd
+import numpy as np
 import xmltodict
 import dict2xml
 import re
@@ -47,6 +49,7 @@ class SourceProcess:
         self.source = self.metadata[self.key]["code"]
         self.format = self.metadata[self.key]["format"]
         self.url_source = self.metadata[self.key]["url_source"]
+        self.validate = self.metadata[self.key]["validate"]
         self.df = pd.DataFrame()
         self.title = []
         # Lavage des dossiers de la source
@@ -251,10 +254,11 @@ class SourceProcess:
             if self.format == 'xml':
                 try:
                     with open(f"sources/{self.source}/{self.title[i]}", encoding='utf-8') as xml_file:
-                        dico = xmltodict.parse(xml_file.read(), dict_constructor=dict, \
-                                               force_list=('marche','titulaires', 'modifications', 'actesSousTraitance',
-                                               'modificationsActesSousTraitance', 'typePrix','considerationEnvironnementale',
-                                               'modaliteExecution'))
+                        #dico = xmltodict.parse(xml_file.read(), dict_constructor=dict, \
+                        #                       force_list=('marche','titulaires', 'modifications', 'actesSousTraitance',
+                        #                       'modificationsActesSousTraitance', 'typePrix','considerationEnvironnementale',
+                        #                       'modaliteExecution'))
+                        dico = xmltodict.parse(xml_file.read())
                 except Exception as err:
                     logging.error(f"Exception lors du chargement du fichier xml {self.title[i]} - {err}")
 
@@ -268,7 +272,7 @@ class SourceProcess:
                 self.tri_format(dico['marches'], self.title[i])    #On obtient 2 fichiers qui sont mis jour à chaque tour de boucle
             except Exception as err:
                 logging.error("clean: Balise 'marches' inexistante")
-            
+
         logging.info("Fin du tri")
         logging.info("Nettoyage OK")
 
@@ -298,24 +302,21 @@ class SourceProcess:
                 self.dico_2022_marche.append(dico['marche'][n])
                 dico_test = {'marches': {'marche': self.dico_2022_marche,'contrat-concession': self.dico_2022_concession}}
 
-                if not self.check(dico_test, None):
+                if self.validate and not self.check(dico_test, file_name):
                     self.dico_2022_marche.remove(dico['marche'][n])
                     dico_ignored_marche.append(dico['marche'][n])
                 n+=1
-
 
         if 'contrat-concession' in dico:
             while m < len(dico['contrat-concession']) :
                 self.dico_2022_concession.append(dico['contrat-concession'][m])
                 dico_test = {'marches': {'marche': self.dico_2022_marche,'contrat-concession': self.dico_2022_concession}}
 
-
-                if not self.check(dico_test, None):
+                if self.validate and not self.check(dico_test, file_name):
                     self.dico_2022_concession.remove(dico['contrat-concession'][m])
                     dico_ignored_concession.append(dico['contrat-concession'][m])
                 m+=1
            
-
         # Structure du nouveau fichier JSON, création des dictionnaires valides et invalides
         jsonfile = {'marches': {'marche':  dico_ignored_marche, 'contrat-concession': dico_ignored_concession}}
 
@@ -323,8 +324,12 @@ class SourceProcess:
         with open(f'bad_results/{self.source}/mauvais_marches_{self.source}.json', "w", encoding='utf8') as new_f2:
             json.dump(jsonfile, new_f2, ensure_ascii=False, indent=4)
 
+        if not self.validate:
+            logging.info("Validation de la source non requise")
+
         logging.info(f"Nombre de marchés et concessions invalides dans {file_name}: {len(dico_ignored_marche)+len(dico_ignored_concession)} ")
         logging.info(f"Nombre de marchés et de concessions valides dans {file_name}: {len(self.dico_2022_marche)+len (self.dico_2022_concession)} ")
+
 
     def date_norm(self,datestr:str ) -> str:
         """
@@ -712,7 +717,7 @@ class SourceProcess:
         """
             
         def check_dico(dico):
-        #Prend en entrée le dictionnaire du champ "acheteur"
+            #Prend en entrée le dictionnaire du champ "acheteur"
             if dico=={} or dico is None or dico['id']==None:
                 return True
             return False
@@ -722,12 +727,21 @@ class SourceProcess:
             if check_dico(ligne["acheteur"]):
                    ligne["acheteur"] = {"id": ligne["id"] }
             return ligne      
-
         
         logging.info("  ÉTAPE FIX")
         logging.info(f"Début de fix: Ajout source et suppression des doublons de {self.source}")
         # Ajout de source
         self.df = self.df.assign(source=self.source)
+
+        # Pour les flux en exception avec "NC" on duplique les colonnes qui contiendront des NC 
+        # et on converti les "NC" en Nan
+        if not self.validate:
+            self.enlever_NC_colonne(self.df,'offresRecues')
+            self.enlever_NC_colonne(self.df,'marcheInnovant')
+            self.enlever_NC_colonne(self.df,'attributionAvance')
+            self.enlever_NC_colonne(self.df,'sousTraitanceDeclaree')
+            self.enlever_NC_colonne(self.df,'dureeMois')
+            #self.enlever_NC_colonne(self.df,'variationPrix')
 
         # Transformation des acheteurs
         if "acheteur" in self.df.columns:
@@ -906,6 +920,12 @@ class SourceProcess:
         df = self.mark_optional_field(df,"dateSignatureModification")
         df = self.mark_optional_field(df,"datePublicationDonneesModification")
 
+        return df
+
+    def enlever_NC_colonne(self,df: pd.DataFrame,nom_colonne:str) -> pd.DataFrame:
+        df[nom_colonne+'_source'] = df[nom_colonne]
+        df[nom_colonne] = df[nom_colonne].replace("NC",np.nan)
+        
         return df
     
     def comment(self) -> None:

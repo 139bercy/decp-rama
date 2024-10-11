@@ -299,7 +299,7 @@ class GlobalProcess:
         """
         for marche in dico['marches']:
             if 'titulaires' in marche.keys() and marche['titulaires'] is not None and len(
-                    marche['titulaires']) > 0 :
+                    marche['titulaires']) > 0 and type( marche['titulaires'])== list:
                 modifs = []
                 for i in range(len((marche['titulaires']))):
                     if type( marche['titulaires'][i])== dict and 'titulaire' in marche['titulaires'][i].keys():
@@ -309,12 +309,12 @@ class GlobalProcess:
                         else:
                             modifs += [marche['titulaires'][i]['titulaire']]
                 marche['titulaires'] = modifs
-            #elif 'titulaires' in marche.keys() and marche['titulaires'] is not None and len(
-            #        marche['titulaires']) == 0 :
-            #    del marche['titulaires']
-
+            elif 'titulaires' in marche.keys() and marche['titulaires'] is not None and len(
+                    marche['titulaires']) > 0 and type( marche['titulaires'])== dict:
+                marche['titulaires'] = marche['titulaires']['titulaire']
+            
             if 'concessionnaires' in marche.keys() and marche['concessionnaires'] is not None and len(
-                    marche['concessionnaires']) > 0 :
+                    marche['concessionnaires']) > 0 and type( marche['concessionnaires'])== list:
                 modifs = []
                 for i in range(len((marche['concessionnaires']))):
                     if type( marche['concessionnaires'][i])== dict and 'concessionnaire' in marche['concessionnaires'][i].keys():
@@ -324,12 +324,12 @@ class GlobalProcess:
                         else:
                             modifs += [marche['concessionnaires'][i]['concessionnaire']]
                 marche['concessionnaires'] = modifs
-            #elif 'concessionnaires' in marche.keys() and marche['concessionnaires'] is not None and len(
-            #        marche['concessionnaires']) > 0 :
-            #    del marche['concessionnaires']
+            elif 'concessionnaires' in marche.keys() and marche['concessionnaires'] is not None and len(
+                    marche['concessionnaires']) > 0 and type( marche['concessionnaires'])== dict:
+                marche['concessionnaires'] = marche['concessionnaires']['concessionnaire']
 
             if 'donneesExecution' in marche.keys() and marche['donneesExecution'] is not None and len(
-                    marche['donneesExecution']) > 0 :
+                    marche['donneesExecution']) > 0 and type( marche['donneesExecution'])== list:
                 modifs = []
                 for i in range(len((marche['donneesExecution']))):
                     if type(marche['donneesExecution'][i])==dict and 'donneesAnnuelles' in marche['donneesExecution'][i].keys() :
@@ -339,12 +339,12 @@ class GlobalProcess:
                         else:
                             modifs += [marche['donneesExecution'][i]['donneesAnnuelles']]
                 marche['donneesExecution'] = modifs
-            #elif 'donneesExecution' in marche.keys() and marche['donneesExecution'] is not None and len(
-            #        marche['donneesExecution']) == 0 :
-            #    del marche['donneesExecution']
+            elif 'donneesExecution' in marche.keys() and marche['donneesExecution'] is not None and len(
+                    marche['donneesExecution']) > 0 and type( marche['donneesExecution'])== dict:
+                marche['donneesExecution'] = marche['donneesExecution']['donneesAnnuelles']
 
             if 'modifications' in marche.keys() and marche['modifications'] is not None and len(
-                    marche['modifications']) > 0 :
+                    marche['modifications']) > 0 and type( marche['modifications'])== list:
                 modifs = []
                 for i in range(len((marche['modifications']))):
                     if type( marche['modifications'][i])== dict and 'modification' in marche['modifications'][i].keys():
@@ -354,12 +354,12 @@ class GlobalProcess:
                         else:
                             modifs += [marche['modifications'][i]['modification']]
                 marche['modifications'] = modifs
-            #elif 'modifications' in marche.keys() and marche['modifications'] is not None and len(
-            #        marche['modifications']) == 0 :
-            #    del marche['modifications']
+            elif 'modifications' in marche.keys() and marche['modifications'] is not None and len(
+                    marche['modifications']) > 0 and type( marche['modifications'])== list:
+                marche['modifications'] = marche['modifications']['modification']
 
             if 'modificationsActesSousTraitance' in marche.keys() and marche['modificationsActesSousTraitance'] is not None and len(
-                    marche['modificationsActesSousTraitance']) > 0 :
+                    marche['modificationsActesSousTraitance']) > 0 and type( marche['modificationsActesSousTraitance'])== list:
                 modifs = []
                 for i in range(len((marche['modificationsActesSousTraitance']))):
                     if type( marche['modificationsActesSousTraitance'][i])== dict and 'modificationActeSousTraitance' in marche['modificationsActesSousTraitance'][i].keys():
@@ -369,12 +369,12 @@ class GlobalProcess:
                         else:
                             modifs += [marche['modificationsActesSousTraitance'][i]['modificationActeSousTraitance']]
                 marche['modificationsActesSousTraitance'] = modifs
-            #elif 'modificationsActesSousTraitance' in marche.keys() and marche['modificationsActesSousTraitance'] is not None and len(
-            #        marche['modificationsActesSousTraitance']) == 0 :
-            #    del marche['modificationsActesSousTraitance']
+            elif 'modificationsActesSousTraitance' in marche.keys() and marche['modificationsActesSousTraitance'] is not None and len(
+                    marche['modificationsActesSousTraitance']) > 0 and type( marche['modificationsActesSousTraitance'])== list:
+                marche['modificationsActesSousTraitance'] = marche['modificationsActesSousTraitance']['modificationActeSousTraitance']
 
             if 'actesSousTraitance' in marche.keys() and marche['actesSousTraitance'] is not None and len(
-                    marche['actesSousTraitance']) > 0 :
+                    marche['actesSousTraitance']) > 0 and type( marche['actesSousTraitance'])== list:
                 modifs = []
                 for i in range(len((marche['actesSousTraitance']))):
                     if type( marche['actesSousTraitance'][i])== dict and 'acteSousTraitance' in marche['actesSousTraitance'][i].keys():
@@ -384,9 +384,9 @@ class GlobalProcess:
                         else:
                             modifs += [marche['actesSousTraitance'][i]['acteSousTraitance']]
                 marche['actesSousTraitance'] = modifs
-            #elif 'actesSousTraitance' in marche.keys() and marche['actesSousTraitance'] is not None and len(
-            #        marche['actesSousTraitance']) == 0 :
-            #    del marche['actesSousTraitance']
+            elif 'actesSousTraitance' in marche.keys() and marche['actesSousTraitance'] is not None and len(
+                    marche['actesSousTraitance']) > 0 and type( marche['actesSousTraitance'])== list:
+                marche['actesSousTraitance'] = marche['actesSousTraitance']['acteSousTraitance']
 
         return dico
 
