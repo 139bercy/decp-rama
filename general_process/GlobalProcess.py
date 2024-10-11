@@ -709,11 +709,11 @@ class GlobalProcess:
             url_month = f"{api}/datasets/{dataset_id}/upload/"
 
             files = {
-                "file": (f"decp-2022.json", open(f"results/decp-{self.data_format}_data_gouv.json", "rb"))
+                "file": (f"decp-2022.json", open(f"results/decp-{self.data_format}.json", "rb"))
             }
 
             files_month = {
-                "file": (f"decp-{datetime.now().year}-{datetime.now().month}.json", open(f"results/decp-{datetime.now().year}-{datetime.now().month}_data_gouv.json", "rb"))
+                "file": (f"decp-{datetime.now().year}-{datetime.now().month}.json", open(f"results/decp-{datetime.now().year}-{datetime.now().month}.json", "rb"))
             }
 
             response = requests.post(url, headers=headers, files=files)
