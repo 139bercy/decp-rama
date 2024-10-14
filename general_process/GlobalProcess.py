@@ -276,7 +276,7 @@ class GlobalProcess:
                 if dico_mensuel=={}:
                     self.file_dump(path_result_month,dico)
                 else:
-                    dico_global = dico['marches'] + dico_mensuel['marches']['marche']
+                    dico_global = dico['marches'] + dico_mensuel['marches']
                     #On transforme les dictionnaires en dataframes pour les dédoublonner
                     df_global = pd.DataFrame.from_dict(dico_global)
                     df_global = self.dedoublonnage(df_global)
