@@ -741,7 +741,7 @@ class SourceProcess:
             self.enlever_NC_colonne(self.df,'attributionAvance')
             self.enlever_NC_colonne(self.df,'sousTraitanceDeclaree')
             self.enlever_NC_colonne(self.df,'dureeMois')
-            #self.enlever_NC_colonne(self.df,'variationPrix')
+            self.enlever_NC_colonne(self.df,'variationPrix')
 
         # Transformation des acheteurs
         if "acheteur" in self.df.columns:
@@ -923,8 +923,9 @@ class SourceProcess:
         return df
 
     def enlever_NC_colonne(self,df: pd.DataFrame,nom_colonne:str) -> pd.DataFrame:
-        df[nom_colonne+'_source'] = df[nom_colonne]
-        df[nom_colonne] = df[nom_colonne].replace("NC",np.nan)
+        if nom_colonne in df.columns:
+            #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
+            df[nom_colonne] = df[nom_colonne].replace("NC",np.nan)
         
         return df
     

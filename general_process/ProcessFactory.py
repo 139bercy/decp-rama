@@ -23,7 +23,7 @@ class ProcessFactory:
         self.processes = [EmarProcess]
         #self.processes = [SampleJsonProcess]
         #self.processes = [SampleXmlProcess]
-        self.processes = [PesNouveauProcess]
+        self.processes = [EmarProcess,PesNouveauProcess]
         # if data_format=='2022':
         # self.processes = [SampleXmlProcess] # For test ECO
         self.dataframes = []

@@ -2,6 +2,7 @@ from general_process.SourceProcess import SourceProcess
 
 
 import json
+import numpy as np
 
 
 class PesNouveauProcess(SourceProcess):
@@ -19,3 +20,30 @@ class PesNouveauProcess(SourceProcess):
         
     def fix(self):
         super().fix()
+        def trans(x,sub_element:str):
+            """
+            Cette fonction transforme correctement les modifications.
+            """
+            modifs = []
+            if len(x)>0 and isinstance(x,list) and isinstance(x[0],dict):
+                x_ = x[0][sub_element]
+                if isinstance(x_,list): # Certains format sont des listes d'un élement. Format rare mais qui casse tout.
+                    # deleted x_ = x_[0].copy()
+                    modifs.clear()
+                    for i in range(0,len(x_)):
+                        modifs.append({sub_element: x_[i]})
+                    x = [{sub_element: modifs}]
+                elif isinstance(x_,dict):
+                    x = [{sub_element: { sub_element: x_}}]
+            return x
+        # On enlève les OrderedDict et on se ramène au format souhaité
+        self.df['titulaires'] = self.df['titulaires'].apply(
+            lambda x: x if x is None or type(x) == list else [x])
+        self.df['titulaires'] = self.df["titulaires"].apply(trans,sub_element='titulaire')
+
+        self.df['modifications'] = self.df['modifications'].apply(
+            lambda x: x if x is None else json.loads(json.dumps(x)))
+        self.df['modifications'] = self.df['modifications'].apply(
+            lambda x: x if type(x) == list else [] if x is None else [x])
+        self.df['modifications'] = self.df["modifications"].apply(trans,sub_element='modification')
+        
