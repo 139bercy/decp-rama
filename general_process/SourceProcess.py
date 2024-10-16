@@ -733,15 +733,17 @@ class SourceProcess:
         # Ajout de source
         self.df = self.df.assign(source=self.source)
 
-        # Pour les flux en exception avec "NC" on duplique les colonnes qui contiendront des NC 
+        # Pour les flux en exception avec "NC" ## OBSOLETE on duplique les colonnes qui contiendront des NC 
         # et on converti les "NC" en Nan
         if not self.validate:
-            self.enlever_NC_colonne(self.df,'offresRecues')
-            self.enlever_NC_colonne(self.df,'marcheInnovant')
-            self.enlever_NC_colonne(self.df,'attributionAvance')
-            self.enlever_NC_colonne(self.df,'sousTraitanceDeclaree')
-            self.enlever_NC_colonne(self.df,'dureeMois')
-            self.enlever_NC_colonne(self.df,'variationPrix')
+            self.enlever_nc_colonne(self.df,'offresRecues')
+            self.enlever_nc_colonne(self.df,'marcheInnovant')
+            self.enlever_nc_colonne(self.df,'attributionAvance')
+            self.enlever_nc_colonne(self.df,'sousTraitanceDeclaree')
+            self.enlever_nc_colonne(self.df,'dureeMois')
+            self.enlever_nc_colonne(self.df,'variationPrix')
+            self.enlever_nc_colonne_(self.df,'dureeMois','actesSousTraitance','acteSousTraitance')
+            self.enlever_nc_colonne_(self.df,'variationPrix','actesSousTraitance','acteSousTraitance')
 
         # Transformation des acheteurs
         if "acheteur" in self.df.columns:
@@ -922,10 +924,27 @@ class SourceProcess:
 
         return df
 
-    def enlever_NC_colonne(self,df: pd.DataFrame,nom_colonne:str) -> pd.DataFrame:
+    def enlever_nc_colonne(self,df: pd.DataFrame,nom_colonne:str) -> pd.DataFrame:
         if nom_colonne in df.columns:
             #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
             df[nom_colonne] = df[nom_colonne].replace("NC",np.nan)
+        
+        return df
+    
+
+    def enlever_nc_colonne_(self,df: pd.DataFrame,nom_colonne:str,nom_noeud:str,nom_element:str) -> pd.DataFrame:
+        def replace_nc (content,noeud:str,sous_element:str,colonne:str):
+            if isinstance(content,dict) and sous_element in content:
+                if isinstance(content[sous_element],list):
+                    for element in content[sous_element]:
+                        if colonne in element and element[colonne] == "NC":
+                            element[colonne]= np.nan
+                elif isinstance(content[sous_element],dict):
+                    if colonne in content[sous_element] and content[sous_element][colonne] == "NC":
+                        content[sous_element][colonne]= np.nan
+        if nom_noeud in df.columns:
+            #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
+            df[nom_noeud] = df[nom_noeud].apply(replace_nc,noeud=nom_noeud,sous_element=nom_element,colonne=nom_colonne)
         
         return df
     
