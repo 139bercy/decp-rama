@@ -4,8 +4,8 @@ __pycache__/
 *$py.class
 .idea/
 # Results and sources
- results
- sources
+results
+sources
 
 # C extensions
 *.so

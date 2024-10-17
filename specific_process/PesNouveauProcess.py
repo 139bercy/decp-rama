@@ -20,6 +20,17 @@ class PesNouveauProcess(SourceProcess):
         
     def fix(self):
         super().fix()
+    
+        def normalize_list(node,element_name:str):
+            lst = []
+            if element_name in node and isinstance(node[element_name],list): 
+                lst.clear()
+                for i in range(0,len(node[element_name])):
+                    lst.append({element_name: node[element_name][i]})
+            elif isinstance(node,dict):
+                lst = [node]
+            return lst
+
         def trans(x,sub_element:str):
             """
             Cette fonction transforme correctement les modifications.
@@ -31,9 +42,13 @@ class PesNouveauProcess(SourceProcess):
                     # deleted x_ = x_[0].copy()
                     modifs.clear()
                     for i in range(0,len(x_)):
+                        if 'modification' == sub_element and 'titulaires' in x_[i] and not isinstance(x_[i]['titulaires'],list): 
+                            x_[i]['titulaires'] = normalize_list(x_[i]['titulaires'],'titulaire')
                         modifs.append({sub_element: x_[i]})
                     x = [{sub_element: modifs}]
                 elif isinstance(x_,dict):
+                    if 'modification' == sub_element and 'titulaires' in x_ and not isinstance(x_['titulaires'],list): 
+                        x_['titulaires'] = normalize_list(x_['titulaires'],'titulaire')
                     x = [{sub_element: { sub_element: x_}}]
             return x
         # On enlève les OrderedDict et on se ramène au format souhaité

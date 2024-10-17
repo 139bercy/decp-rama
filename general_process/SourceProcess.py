@@ -310,7 +310,7 @@ class SourceProcess:
         if 'contrat-concession' in dico:
             while m < len(dico['contrat-concession']) :
                 self.dico_2022_concession.append(dico['contrat-concession'][m])
-                dico_test = {'marches': {'marche': self.dico_2022_marche,'contrat-concession': self.dico_2022_concession}}
+                dico_test = {'marches': {'contrat-concession': self.dico_2022_marche,'contrat-concession': self.dico_2022_concession}}
 
                 if self.validate and not self.check(dico_test, file_name):
                     self.dico_2022_concession.remove(dico['contrat-concession'][m])

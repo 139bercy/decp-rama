@@ -420,7 +420,7 @@ class GlobalProcess:
             dico={}
         return dico
     
-    def file_dump(self,path: str,dico: dict) -> None:
+    def file_dump(self,path: str,dico: dict, is_for_data_gouv=False) -> None:
         """
         La fonction file_dump permet d'écrire un dictionnaire dans un fichier JSON.
         Elle permet de plus d'afficher la taille du fichier traité.
@@ -430,35 +430,25 @@ class GlobalProcess:
             path: chemin du fichier d'où l'on récupère les données
             dico: dictionnaire contenant les données qui vont être écrite dans le fichier  
         """
+        if is_for_data_gouv:
+            dico = self.dico_purge(dico)
+            if not self.dico_exists_marche_in_marches(dico):
+                dico = {
+                    'marches': {
+                        'marche': dico.get('marches', [])
+                    }
+                }
+        
         try:
             with open(path, 'w', encoding="utf-8") as f:
                 json.dump(dico, f, indent=2, ensure_ascii=False)
-            self.dump_for_data_gouv(path,dico)
+            
+            if not is_for_data_gouv:
+                self.file_dump(path.replace(".json","_data_gouv.json"),dico,True)
         except Exception as err:
-            logging.error(f"Exception lors du chargement du fichier json {path} - {err}")
+            logging.error(f"Exception lors de l'ecriture du fichier json {path} - {err}")
         json_size = os.path.getsize(path)
         logging.info(f"Taille de {path} : {json_size}")
-
-    def dump_for_data_gouv(self,path:str,dico:dict):
-        # Le fichier aura le suffixe data_gouv pour l'export sur le site data.gouv.fr 
-        copypath = path.replace(".json","_data_gouv.json")
-        # On adapte le contenu du json au format du schema
-        dico = self.dico_purge(dico)
-        if not self.dico_exists_marche_in_marches(dico):
-            dico = {
-                'marches': {
-                    'marche': dico.get('marches', [])
-                }
-            }
-        try:
-            with open(copypath, 'w', encoding="utf-8") as f:
-                json.dump(dico, f, indent=2, ensure_ascii=False)
-            self.json_validation(copypath,dico)
-        except Exception as err:
-            logging.error(f"Exception lors du chargement du fichier json {copypath} - {err}")
-        json_size = os.path.getsize(copypath)
-        logging.info(f"Taille de {copypath} : {json_size}")
-
     
     def dico_purge(self,dico:dict) -> dict: 
         """
@@ -567,13 +557,10 @@ class GlobalProcess:
         return False
 
     def normalize_list_node(self, marche, parent_node, child_node):
-#        marche[parent_node] = [{
-#            parent_node: marche.get(parent_node, [])
-#        }]
         if parent_node in marche.keys() and marche[parent_node] is not None and len(
-            marche[parent_node]) > 0 :
+            marche[parent_node]) > 0 and isinstance( marche[parent_node],list):
             for i in range(len((marche[parent_node]))):
-                if type( marche[parent_node][i])== dict and not child_node in marche[parent_node][i].keys():
+                if isinstance( marche[parent_node][i],dict) and child_node not in marche[parent_node][i].keys():
                     #On affecte au champ parent_node, le champ child_node
                     marche[parent_node][i] = { child_node: marche[parent_node][i] }
 
