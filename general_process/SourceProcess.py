@@ -750,7 +750,7 @@ class SourceProcess:
             
         def check_dico(dico):
             #Prend en entrée le dictionnaire du champ "acheteur"
-            if dico=={} or dico is None or dico['id']==None:
+            if not dico is np.nan and dico=={} or dico is None or dico['id']==None:
                 return True
             return False
         
@@ -970,10 +970,10 @@ class SourceProcess:
                 if isinstance(content[sous_element],list):
                     for element in content[sous_element]:
                         if colonne in element and element[colonne] == "NC":
-                            element[colonne]= np.nan
+                            element[colonne]= pd.NA
                 elif isinstance(content[sous_element],dict):
                     if colonne in content[sous_element] and content[sous_element][colonne] == "NC":
-                        content[sous_element][colonne]= np.nan
+                        content[sous_element][colonne]= PD.NA
         if nom_noeud in df.columns:
             #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
             df[nom_noeud] = df[nom_noeud].apply(replace_nc,noeud=nom_noeud,sous_element=nom_element,colonne=nom_colonne)
