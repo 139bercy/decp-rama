@@ -246,6 +246,24 @@ class SourceProcess:
         Grâce à la fonction tri_format, un tri est effectué sur ces
         dictionnaires pour séparer les bons marchés, des mauvais.
         """
+        def normalize_list(node,element_name:str,field_name1=None,field_name2=None):
+            lst = []
+            if element_name in node and isinstance(node[element_name],list): 
+                lst.clear()
+                for i in range(0,len(node[element_name])):
+                    if not field_name1 is None and field_name1 in node[element_name][i]:
+                        node[element_name][i][field_name1] = int(node[element_name][i][field_name1])
+                    if not field_name2 is None and field_name2 in node[element_name][i]:
+                        node[element_name][i][field_name2] = float(node[element_name][i][field_name2])
+                    lst.append({element_name: node[element_name][i]})
+            elif isinstance(node,dict):
+                if not field_name1 is None and element_name in node and field_name1 in node[element_name]:
+                    node[element_name][field_name1] = int(node[element_name][field_name1])
+                if not field_name2 is None and element_name in node and field_name2 in node[element_name]:
+                    node[element_name][field_name2] = float(node[element_name][field_name2])
+                lst = [node]
+            return lst
+        
         logging.info(" ÉTAPE CLEAN")
         logging.info("Début du tri des nouveaux fichiers")
         #Ouverture des fichiers
@@ -272,6 +290,20 @@ class SourceProcess:
                 self.tri_format(dico['marches'], self.title[i])    #On obtient 2 fichiers qui sont mis jour à chaque tour de boucle
             except Exception as err:
                 logging.error("clean: Balise 'marches' inexistante")
+
+        if self.format == 'xml' and 'marches' in dico and 'marche' in dico['marches']:
+            n = 0
+            for n in range(len(dico['marches']['marche'])):
+                if 'modifications' in dico['marches']['marche'][n]:
+                    dico['marches']['marche'][n]['modifications'] = normalize_list(dico['marches']['marche'][n]['modifications'],'modification','id','montant')
+                if 'techniques' in dico['marches']['marche'][n]:
+                    dico['marches']['marche'][n]['techniques'] = normalize_list(dico['marches']['marche'][n]['techniques'],'technique')
+                if 'modalitesExecution' in dico['marches']['marche'][n]:
+                    dico['marches']['marche'][n]['modalitesExecution'] = normalize_list(dico['marches']['marche'][n]['modalitesExecution'],'modaliteExecution')
+                if 'considerationsSociales' in dico['marches']['marche'][n]:
+                    dico['marches']['marche'][n]['considerationsSociales'] = normalize_list(dico['marches']['marche'][n]['considerationsSociales'],'considerationSociale')
+                if 'considerationsEnvironnementales' in dico['marches']['marche'][n]:
+                    dico['marches']['marche'][n]['considerationsEnvironnementales'] = normalize_list(dico['marches']['marche'][n]['considerationsEnvironnementales'],'considerationEnvironnementale')
 
         logging.info("Fin du tri")
         logging.info("Nettoyage OK")
