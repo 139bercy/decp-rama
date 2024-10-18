@@ -973,7 +973,7 @@ class SourceProcess:
                             element[colonne]= pd.NA
                 elif isinstance(content[sous_element],dict):
                     if colonne in content[sous_element] and content[sous_element][colonne] == "NC":
-                        content[sous_element][colonne]= PD.NA
+                        content[sous_element][colonne]= pd.NA
         if nom_noeud in df.columns:
             #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
             df[nom_noeud] = df[nom_noeud].apply(replace_nc,noeud=nom_noeud,sous_element=nom_element,colonne=nom_colonne)
