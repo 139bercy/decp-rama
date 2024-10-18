@@ -1,0 +1,54 @@
+<marches>
+  <marche>
+    <id>20242023F0002600</id>
+    <acheteur>
+      <id>20007067000019</id>
+      <nom>CC DU PAYS DE DOL ET DE LA BAIE DU MONT SAINT-MICHEL </nom>
+    </acheteur>
+    <marcheInnovant>
+    </marcheInnovant>
+    <nature>Marché</nature>
+    <typeContrat>MARCHE_PUBLIC</typeContrat>
+    <objet>PROGRAMME PLURIANNUEL BREIZH BOCAGE -TRAVAUX DE PLANTATIONS  POUR LA PERIODE 2023 A 2026 - Fourniture et livraison du paillage copeaux de bois</objet>
+    <codeCPV>03417000</codeCPV>
+    <procedure>Procédure adaptée</procedure>
+    <lieuExecution>
+      <code>35</code>
+      <typeCode>Code département</typeCode>
+      <nom>(35) Ille-et-Vilaine</nom>
+    </lieuExecution>
+    <dureeMois>36</dureeMois>
+    <dateNotification>2024-01-22</dateNotification>
+    <datePublicationDonnees>2024-01-22</datePublicationDonnees>
+    <montant>73500.0</montant>
+    <formePrix>Révisable</formePrix>
+    <titulaires>
+      <titulaire>
+        <typeIdentifiant>SIRET</typeIdentifiant>
+        <id>50327243700032</id>
+        <denominationSociale>SCIC ENERGIES RENOUVELABLES PAYS DE RANCE</denominationSociale>
+      </titulaire>
+    </titulaires>
+    <uuid>431784D1-8731-42D9-A420-53D53704D9DF</uuid>
+    <techniques>
+    </techniques>
+    <modalitesExecution>
+    </modalitesExecution>
+    <considerationsSociales>
+    </considerationsSociales>
+    <considerationsEnvironnementales>
+    </considerationsEnvironnementales>
+    <origineUE>
+    </origineUE>
+    <origineFrance>
+    </origineFrance>
+    <ccag>
+    </ccag>
+    <offresRecues>
+    </offresRecues>
+    <typesPrix>
+    </typesPrix>
+    <attributionAvance> 
+    </attributionAvance>
+  </marche>
+</marches>

@@ -1,0 +1,134 @@
+{
+  "sample_xml":
+  {
+    "code": "sample_xml",
+    "description": "Données de test",
+    "url_source-VLAD-TEST": "http://127.0.0.1:4242/vlad-xml", 
+    "url_source-DECP-TEST": "http://127.0.0.1:4242/decp-xml", 
+    "url_source": "http://127.0.0.1:8081/documents/marches_avec_modifications.xml",
+    "url_source-DEFAULT": "http://127.0.0.1:4242/data-2022-decp-xml",
+    "format": "xml",
+    "cle_api": [],
+    "url": "",
+    "validate" : true
+  },
+  "sample_json":
+  {
+    "code": "sample_json",
+    "description": "Données de test",
+    "url_source": "http://127.0.0.1:8081/documents/decp-09-08.json",
+    "url_source_DECP": "http://127.0.0.1:4242/decp-json", 
+    "url_source_VLAD": "http://127.0.0.1:4242/vlad-json", 
+    "url_source_DEFAULT": "http://127.0.0.1:4242/data-2022-decp-json",
+    "format": "json",
+    "cle_api": [],
+    "url": "",
+    "validate" : true
+  },
+  "pes":
+  {
+    "code": "data.gouv.fr_pes",
+    "description": "Données des collectivités publiées via le PES Marché",
+    "url_source": "https://files.data.gouv.fr/decp/dgfip-pes-decp.xml",
+    "format": "xml",
+    "cle_api": ["5bd0b6fd8b4c413d0801dc57"],
+    "url": "",
+    "validate" : true
+  },
+  "pes2024":
+  {
+    "code": "data.gouv.fr_pes_2024",
+    "description": "Données des collectivités publiées via le PES Marché",
+    "url_source_OLD": "https://static.data.gouv.fr/resources/donnees-essentielles-de-la-commande-publique-transmises-via-le-pes-marche-depuis-2024/20241010-014720/decp-13000495500139-2024-10-10-01.xml",
+    "url_source" : "https://www.data.gouv.fr/fr/datasets/r/5cbbd08d-1473-4098-b01a-bbc95b2611ef",
+    "format": "xml",
+    "cle_api": ["65cf3c55ec910b5a8e2fc084"],
+    "url": "",
+    "validate" : false
+  },
+  "aws":
+  {
+    "code": "marches-publics.info",
+    "description": "Marchés attribués sur marches-publics.info",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/5cdb1722634f41416ffe90e2/",
+    "format": "json",
+    "cle_api": ["5cdb1722634f41416ffe90e2"],
+    "url": "",
+    "validate" : true
+  },
+  "decp_aws": {
+    "code": "decp_aws",
+    "description" : "Marchés perdus et récupérés par Thibous et Martin",
+    "url_source" : "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/decp_aws/exports/json?lang=fr",
+    "format" :"json",
+    "url" :"",
+    "validate" : true
+  },
+  "aife":
+  {
+    "code": "data.gouv.fr_aife",
+    "description": "Marchés attribués par l'État ou transmis au service DUME de l'AIFE",
+    "url_source": "https://www.data.gouv.fr/fr/organizations/agence-pour-linformatique-financiere-de-letat/",
+    "format": "xml",
+    "cle_api": ["5bd789ee8b4c4155bd9a0770", "5c3d0d6b8b4c41333775f45a", "5cc8be59634f412a53e309e8", "5df410e86f44413a91d34be3"],
+    "url": "",
+    "validate" : true
+  },
+  "emar":
+  {
+    "code": "e-marchespublics",
+    "description": "Marchés attribués sur e-marchespublics.com",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/5c0a7845634f4139b2ee8883",
+    "format": "json",
+    "cle_api": ["5c0a7845634f4139b2ee8883"],
+    "url": "",
+    "validate" : true
+  },
+  "lyon":
+  {
+    "code": "grandlyon",
+    "description": "Marchés du Grand Lyon publiés sur data.grandlyon.com",
+    "url_source": "https://download.data.grandlyon.com/files/grandlyon/citoyennete/marches_publics.xml",
+    "format": "xml",
+    "url": "",
+    "validate" : true
+  },
+  "maxi":
+  {
+    "code": "atexo-maximilien",
+    "description": "Données téléchargées depuis la plateforme marches.maximilien.fr",
+    "url_source": "https://www.data.gouv.fr/datasets/5f4d1921f7e627ef3ae26944",
+    "format": "xml",
+    "cle_api": ["5f4d1921f7e627ef3ae26944"],
+    "url": "",
+    "validate" : true
+  },
+  "bfc":
+  {
+    "code": "ternum-bfc",
+    "description": "Données publiées par le profil d'acheteur Ternum BFC",
+    "url_source": "http://focus-marches.ternum-bfc.fr/xml/",
+    "format": "xml",
+    "url": "",
+    "validate" : true
+  },
+  "mega":
+  {
+    "code": "megalis-bretagne",
+    "description": "Données publiées par le profil d'acheteur Megalis Bretagne",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/5f4f4f8910f4b55843deae51",
+    "format": "xml",
+    "cle_api": ["5f4f4f8910f4b55843deae51"],
+    "url": "",
+    "validate" : true
+  },
+  "bre":
+  {
+    "code": "region-bretagne",
+    "description": "Données publiées par la région bretagne sur son site opendata",
+    "url_source": "https://data.bretagne.bzh/api/v2/catalog/datasets/decp-crb0/exports/json",
+    "format": "json",
+    "url": "",
+    "validate" : true
+  }
+}

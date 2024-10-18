@@ -1,18 +1,27 @@
-FROM python:3.9-slim
-RUN apt-get update && apt-get upgrade -y --no-install-recommends \
-  && apt-get install -y xsltproc libxml2-utils git build-essential curl zip unzip wget python3-venv python3-pip lftp --no-install-recommends \
-  && apt-get clean && rm -rf /var/cache/apt
-WORKDIR /deps
-#RUN git clone https://github.com/edsu/json2xml.git
-RUN git clone https://github.com/Cheedoong/xml2json.git
-RUN git clone https://github.com/OpenDataServices/flatten-tool.git
-RUN wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O jq
-RUN chmod +x jq
-RUN cd xml2json && make
-RUN cd /deps/flatten-tool
-RUN python3 -m venv .ve
-#RUN source .ve/bin/activate
-RUN ["/bin/bash", "-c", "source .ve/bin/activate"]
-RUN pip install json2xml
-#RUN pip3 install -r requirements.txt
-ENV PATH="$PATH:/deps:/deps/xml2json"
+# Étape 1: Image temporaire pour installer les dépendances
+FROM python:3.10.0 as builder
+
+WORKDIR /build
+
+# Copie uniquement le fichier requirements.txt
+COPY requirements.txt .
+
+# Installation des dépendances dans un dossier temporaire
+RUN pip install --no-cache-dir --target=/build/dependencies -r requirements.txt
+
+# Étape 2: Image finale
+FROM python:3.10.0
+
+WORKDIR /app
+
+# Copie des dépendances depuis l'image temporaire
+COPY --from=builder /build/dependencies /app/dependencies
+
+# Copie du reste du projet dans l'image finale
+COPY . /app
+
+# Installation des dépendances du projet
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Démarrer le projet
+CMD [ "python", "app.py" ]
