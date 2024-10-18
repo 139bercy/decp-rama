@@ -695,13 +695,23 @@ class GlobalProcess:
             url = f"{api}/datasets/{dataset_id}/resources/{resource_id_global}/upload/"
             url_month = f"{api}/datasets/{dataset_id}/upload/"
 
-            files = {
-                "file": (f"decp-2022.json", open(f"results/decp-{self.data_format}.json", "rb"))
-            }
+            try:
+                files = {
+                    "file": (f"decp-2022.json", open(f"results/decp-{self.data_format}.json", "rb"))
+                }
+            except Exception as err:
+                files = {
+                    "file": (f"decp-2022.json", None)
+                }
 
-            files_month = {
-                "file": (f"decp-{datetime.now().year}-{datetime.now().month}.json", open(f"results/decp-{datetime.now().year}-{datetime.now().month}.json", "rb"))
-            }
+            try:
+                files_month = {
+                    "file": (f"decp-{datetime.now().year}-{datetime.now().month}.json", open(f"results/decp-{datetime.now().year}-{datetime.now().month}.json", "rb"))
+                }
+            except Exception as err:
+                files_month = {
+                    "file": (f"decp-{datetime.now().year}-{datetime.now().month}.json", None)
+                }
 
             response = requests.post(url, headers=headers, files=files)
             if response.status_code==200:
