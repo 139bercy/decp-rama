@@ -52,13 +52,15 @@ class PesNouveauProcess(SourceProcess):
                     x = [{sub_element: { sub_element: x_}}]
             return x
         # On enlève les OrderedDict et on se ramène au format souhaité
-        self.df['titulaires'] = self.df['titulaires'].apply(
-            lambda x: x if x is None or type(x) == list else [x])
-        self.df['titulaires'] = self.df["titulaires"].apply(trans,sub_element='titulaire')
+        if 'titulaires' in self.df:
+            self.df['titulaires'] = self.df['titulaires'].apply(
+                lambda x: x if x is None or type(x) == list else [x])
+            self.df['titulaires'] = self.df["titulaires"].apply(trans,sub_element='titulaire')
 
-        self.df['modifications'] = self.df['modifications'].apply(
-            lambda x: x if x is None else json.loads(json.dumps(x)))
-        self.df['modifications'] = self.df['modifications'].apply(
-            lambda x: x if type(x) == list else [] if x is None else [x])
-        self.df['modifications'] = self.df["modifications"].apply(trans,sub_element='modification')
+        if 'modifications' in self.df:
+            self.df['modifications'] = self.df['modifications'].apply(
+                lambda x: x if x is None else json.loads(json.dumps(x)))
+            self.df['modifications'] = self.df['modifications'].apply(
+                lambda x: x if type(x) == list else [] if x is None else [x])
+            self.df['modifications'] = self.df["modifications"].apply(trans,sub_element='modification')
         
