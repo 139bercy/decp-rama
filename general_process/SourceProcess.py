@@ -750,7 +750,7 @@ class SourceProcess:
             
         def check_dico(dico):
             #Prend en entrée le dictionnaire du champ "acheteur"
-            if not dico is np.nan and dico=={} or dico is None or dico['id']==None:
+            if not dico is np.nan and (dico=={} or dico is None or dico['id']==None):
                 return True
             return False
         
