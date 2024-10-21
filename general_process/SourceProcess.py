@@ -963,7 +963,6 @@ class SourceProcess:
         
         return df
     
-
     def enlever_nc_colonne_(self,df: pd.DataFrame,nom_colonne:str,nom_noeud:str,nom_element:str) -> pd.DataFrame:
         def replace_nc (content,noeud:str,sous_element:str,colonne:str):
             if isinstance(content,dict) and sous_element in content:

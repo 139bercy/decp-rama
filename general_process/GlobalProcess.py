@@ -460,6 +460,7 @@ class GlobalProcess:
             dico: dictionnaire où on effectue les changements
 
         """
+        dico = dico.copy()
         for marche in dico['marches']:
             if 'source' in marche:
                 del marche["source"]
@@ -495,6 +496,7 @@ class GlobalProcess:
                 del marche['modifications']
             elif not self.is_normalized_list_node(marche,'modifications', 'modification'):
                 self.normalize_list_node(marche,'modifications', 'modification')
+            self.convert_ints(marche,'modifications', 'modification')
 
             if 'modificationsActesSousTraitance' in marche.keys() and marche['modificationsActesSousTraitance'] is not None and len(
                     marche['modificationsActesSousTraitance']) == 0 :
@@ -507,6 +509,36 @@ class GlobalProcess:
                 del marche['actesSousTraitance']
             elif not self.is_normalized_list_node(marche,'actesSousTraitance', 'acteSousTraitance'):
                 self.normalize_list_node(marche,'actesSousTraitance', 'acteSousTraitance')
+          
+            if 'modalitesExecution' in marche.keys() and marche['modalitesExecution'] is not None and len(
+                    marche['modalitesExecution']) == 0 :
+                del marche['modalitesExecution']
+            elif not self.is_normalized_list_node(marche,'modalitesExecution', 'modaliteExecution'):
+                self.normalize_list_node_short(marche,'modalitesExecution', 'modaliteExecution')
+
+            if 'techniques' in marche.keys() and marche['techniques'] is not None and len(
+                    marche['techniques']) == 0 :
+                del marche['techniques']
+            elif not self.is_normalized_list_node(marche,'techniques', 'technique'):
+                self.normalize_list_node_short(marche,'techniques', 'technique')
+
+            if 'typesPrix' in marche.keys() and marche['typesPrix'] is not None and len(
+                    marche['typesPrix']) == 0 :
+                del marche['typesPrix']
+            elif not self.is_normalized_list_node(marche,'typesPrix', 'typePrix'):
+                self.normalize_list_node_short(marche,'typesPrix', 'typePrix')
+                
+            if 'considerationsSociales' in marche.keys() and marche['considerationsSociales'] is not None and len(
+                    marche['considerationsSociales']) == 0 :
+                del marche['considerationsSociales']
+            elif not self.is_normalized_list_node(marche,'considerationsSociales', 'considerationSociale'):
+                self.normalize_list_node_short(marche,'considerationsSociales', 'considerationSociale')
+                
+            if 'considerationsEnvironnementales' in marche.keys() and marche['considerationsEnvironnementales'] is not None and len(
+                    marche['considerationsEnvironnementales']) == 0 :
+                del marche['considerationsEnvironnementales']
+            elif not self.is_normalized_list_node(marche,'considerationsEnvironnementales', 'considerationEnvironnementale'):
+                self.normalize_list_node_short(marche,'considerationsEnvironnementales', 'considerationEnvironnementale')
                 
         return dico
 
@@ -561,8 +593,42 @@ class GlobalProcess:
             marche[parent_node]) > 0 and isinstance( marche[parent_node],list):
             for i in range(len((marche[parent_node]))):
                 if isinstance( marche[parent_node][i],dict) and child_node not in marche[parent_node][i].keys():
-                    #On affecte au champ parent_node, le champ child_node
+        #            if 'id' in marche[parent_node][i]:
+        #                marche[parent_node][i]['id'] = int(marche[parent_node][i]['id'])
+        #            if 'montant' in marche[parent_node][i]:
+        #                marche[parent_node][i]['montant'] = float(marche[parent_node][i]['montant'])
                     marche[parent_node][i] = { child_node: marche[parent_node][i] }
+        #elif parent_node in marche.keys() and isinstance( marche[parent_node],dict):
+        #    if 'id' in marche[parent_node]:
+        #        marche[parent_node]['id'] = int(marche[parent_node]['id'])
+        #    if 'montant' in marche[parent_node]:
+        #        marche[parent_node]['montant'] = float(marche[parent_node]['montant'])
+            #if child_node in marche[parent_node]:
+            #    marche[parent_node] = [marche[parent_node]]
+            #else:
+            #    marche[parent_node] = [{child_node: marche[parent_node]}]
+
+    def normalize_list_node_short(self, marche, parent_node, child_node):
+        if parent_node in marche.keys() and marche[parent_node] is not None and len(
+            marche[parent_node]) > 0 and isinstance( marche[parent_node],list):
+            for i in range(len((marche[parent_node]))):
+                if isinstance( marche[parent_node][i],dict) and child_node not in marche[parent_node][i].keys():
+                    marche[parent_node][i] = { child_node: marche[parent_node][i] }
+        elif parent_node in marche.keys() and isinstance( marche[parent_node],dict):
+            if child_node in marche[parent_node]:
+                marche[parent_node][child_node] = [marche[parent_node][child_node]]
+
+    def convert_ints(self, marche, parent_node, child_node):
+        if parent_node in marche.keys() and marche[parent_node] is not None and len(
+            marche[parent_node]) > 0 and isinstance( marche[parent_node],list):
+            for i in range(len((marche[parent_node]))):
+                if isinstance( marche[parent_node][i],dict) and child_node in marche[parent_node][i].keys():
+                    if 'id' in marche[parent_node][i][child_node]:
+                        marche[parent_node][i][child_node]['id'] = int(marche[parent_node][i][child_node]['id'])
+                    if 'montant' in marche[parent_node][i][child_node]:
+                        marche[parent_node][i][child_node]['montant'] = float(marche[parent_node][i][child_node]['montant'])
+                    if 'dureeMois' in marche[parent_node][i][child_node]:
+                        marche[parent_node][i][child_node]['dureeMois'] = int(marche[parent_node][i][child_node]['dureeMois'])
 
     # Vérifie si le noeud "marche" existe à l'intérieur du moeud "marches" dans le dictionnaire
     def dico_exists_marche_in_marches(self,dico):
