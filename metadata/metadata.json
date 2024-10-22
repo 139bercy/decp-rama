@@ -97,9 +97,9 @@
   {
     "code": "atexo-maximilien",
     "description": "Données téléchargées depuis la plateforme marches.maximilien.fr",
-    "url_source": "https://www.data.gouv.fr/datasets/5f4d1921f7e627ef3ae26944",
-    "format": "xml",
-    "cle_api": ["5f4d1921f7e627ef3ae26944"],
+    "url_source": "https://www.data.gouv.fr/datasets/65e0f07ac8d7ad71f10faffb",
+    "format": "json",
+    "cle_api": ["65e0f07ac8d7ad71f10faffb"],
     "url": "",
     "validate" : true
   },
