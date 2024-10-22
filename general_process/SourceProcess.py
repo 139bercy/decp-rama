@@ -332,7 +332,7 @@ class SourceProcess:
         if 'marche' in dico:
             while n < len(dico['marche']) :
                 self.dico_2022_marche.append(dico['marche'][n])
-                dico_test = {'marches': {'marche': self.dico_2022_marche,'contrat-concession': self.dico_2022_concession}}
+                dico_test = {'marches': {'marche': [dico['marche'][n]], 'contrat-concession': []}}
 
                 if 'nature' in dico['marche'][n] and "march" not in dico['marche'][n]['nature'].lower():
                     print("La nature ne correspond par a un marche")
@@ -347,7 +347,7 @@ class SourceProcess:
         if 'contrat-concession' in dico:
             while m < len(dico['contrat-concession']) :
                 self.dico_2022_concession.append(dico['contrat-concession'][m])
-                dico_test = {'marches': {'marche': self.dico_2022_marche,'contrat-concession': self.dico_2022_concession}}
+                dico_test = {'marches': {'marche': [], 'contrat-concession': [dico['contrat-concession'][m]]}}
 
                 if 'nature' in dico['contrat-concession'][m] and "concession" not in dico['contrat-concession'][m]['nature'].lower():
                     print("La nature ne correspond par a une concession")
