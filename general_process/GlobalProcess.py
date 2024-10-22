@@ -113,6 +113,10 @@ class GlobalProcess:
                 cols_to_drop.append("ReferenceAccordCadre")
             # ReferenceAccordCadre n'a que 6 valeurs non nul sur 650k lignes et en plus cette colonne n'existe pas dans v1.
             self.df = self.df.drop(cols_to_drop, axis=1)
+            if "nature" in self.df.columns:
+                self.df.loc[bool_nan_type, "_type"] = self.df.loc[bool_nan_type,"nature"].apply(lambda x: "Marché" if "march" in x.lower() else "Concession")
+        else:
+            print("_type non defini")
         # S'il y a des Nan dans les modifications, on met une liste vide pour coller au format du v1
         if "modifications" in self.df.columns:
             mask_modifications_nan = self.df.loc[:, "modifications"].isnull()
@@ -462,8 +466,8 @@ class GlobalProcess:
         """
         dico = dico.copy()
         for marche in dico['marches']:
-            if 'source' in marche:
-                del marche["source"]
+            #if 'source' in marche:
+            #    del marche["source"]
             if 'idAccordCadre' in marche and marche['idAccordCadre'] == '':
                 del marche["idAccordCadre"]
             self.force_int('dureeMois',marche)

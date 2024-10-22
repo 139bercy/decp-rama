@@ -289,7 +289,7 @@ class SourceProcess:
             try:
                 self.tri_format(dico['marches'], self.title[i])    #On obtient 2 fichiers qui sont mis jour à chaque tour de boucle
             except Exception as err:
-                logging.error("clean: Balise 'marches' inexistante")
+                logging.error("Exception clean: Balise 'marches' inexistante",err)
 
         if self.format == 'xml' and 'marches' in dico and 'marche' in dico['marches']:
             n = 0
@@ -334,6 +334,11 @@ class SourceProcess:
                 self.dico_2022_marche.append(dico['marche'][n])
                 dico_test = {'marches': {'marche': self.dico_2022_marche,'contrat-concession': self.dico_2022_concession}}
 
+                if 'nature' in dico['marche'][n] and "march" not in dico['marche'][n]['nature'].lower():
+                    print("La nature ne correspond par a un marche")
+                elif 'nature' not in dico['marche'][n]:
+                    print("La nature n'est pas definie")
+
                 if self.validate and not self.check(dico_test, file_name):
                     self.dico_2022_marche.remove(dico['marche'][n])
                     dico_ignored_marche.append(dico['marche'][n])
@@ -342,7 +347,12 @@ class SourceProcess:
         if 'contrat-concession' in dico:
             while m < len(dico['contrat-concession']) :
                 self.dico_2022_concession.append(dico['contrat-concession'][m])
-                dico_test = {'marches': {'contrat-concession': self.dico_2022_marche,'contrat-concession': self.dico_2022_concession}}
+                dico_test = {'marches': {'marche': self.dico_2022_marche,'contrat-concession': self.dico_2022_concession}}
+
+                if 'nature' in dico['contrat-concession'][m] and "concession" not in dico['contrat-concession'][m]['nature'].lower():
+                    print("La nature ne correspond par a une concession")
+                elif 'nature' not in dico['contrat-concession'][m]:
+                    print("La nature n'est pas definie")
 
                 if self.validate and not self.check(dico_test, file_name):
                     self.dico_2022_concession.remove(dico['contrat-concession'][m])
@@ -452,11 +462,12 @@ class SourceProcess:
             default_type_name: il s'agit de l'une des 2 valeurs possibles
 
         """
-        if self.data_format=='2022' and not "_type" in df.columns and (default_type_name or "nature" in df.columns):
+        if self.data_format=='2022' and "_type" not in df.columns and (default_type_name or "nature" in df.columns):
+            #if default_type_name:
             if default_type_name:
                 df['_type'] = default_type_name
             else:
-                df['_type'] = df["nature"].apply(lambda x: "Marché" if x=="Marché" else "Concession")
+                df['_type'] = df["nature"].apply(lambda x: "Marché" if "march" in x.lower() else "Concession")
 
 
     # def convert_prestataire(self):
