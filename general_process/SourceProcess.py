@@ -61,6 +61,8 @@ class SourceProcess:
         # Liste des dictionnaires pour l'étape de nettoyage
         self.dico_2022_marche = []
         self.dico_2022_concession = []
+        self.nb_bad_marches = 0;
+        self.nb_bad_concession = 0;
 
 
     def _clean_metadata_folder(self) -> None:
@@ -359,6 +361,9 @@ class SourceProcess:
                     dico_ignored_concession.append(dico['contrat-concession'][m])
                 m+=1
            
+        self.nb_bad_marches += len(dico_ignored_marche)
+        self.nb_bad_concessions += len(dico_ignored_concession)
+
         # Structure du nouveau fichier JSON, création des dictionnaires valides et invalides
         jsonfile = {'marches': {'marche':  dico_ignored_marche, 'contrat-concession': dico_ignored_concession}}
 
@@ -979,7 +984,7 @@ class SourceProcess:
             if isinstance(content,dict) and sous_element in content:
                 if isinstance(content[sous_element],list):
                     for element in content[sous_element]:
-                        if colonne in element and element[colonne] == "NC":
+                        if colonne in element and not element[colonne] and element[colonne] == "NC":
                             element[colonne]= pd.NA
                 elif isinstance(content[sous_element],dict):
                     if colonne in content[sous_element] and content[sous_element][colonne] == "NC":
@@ -1008,3 +1013,13 @@ class SourceProcess:
 
         self.marche_mark_fields(df_marche)
         self.concession_mark_fields(df_concession)
+
+    def get_statistics (self):
+        return {'source': {
+            'source': self.source, 
+            'bad_marches': self.nb_bad_marches,
+            'bad_concessions': self.nb_bad_concession,
+            'marches': len(self.dico_2022_marche),
+            'concessions': len(self.dico_2022_concession)
+            }
+        }

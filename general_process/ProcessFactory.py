@@ -1,6 +1,8 @@
 from specific_process import * 
 # Source non traitée pour l'instant
 import logging
+import json
+from datetime import datetime
 
 from specific_process.PesNouveauProcess import PesNouveauProcess
 
@@ -20,14 +22,14 @@ class ProcessFactory:
         #self.processes = [MegaProcess]
         #self.processes = [AifeProcess]
         #self.processes = [PesProcess]
-        self.processes = [EmarProcess]
         #self.processes = [SampleJsonProcess]
         #self.processes = [SampleXmlProcess]
-        self.processes = [EmarProcess,PesNouveauProcess]
+        self.processes = [EmarProcess,PesNouveauProcess,MaxiProcess]
         # if data_format=='2022':
         # self.processes = [SampleXmlProcess] # For test ECO
         self.dataframes = []
         self.data_format = data_format
+        self.statistics = []
         # si on lance main avec un process spécifié :
         if process:
             for proc in self.processes:
@@ -54,6 +56,7 @@ class ProcessFactory:
             #if self.data_format=='2022':
             #    p.comment()
             logging.info ("Ajout des données")
+            self.statistics.append(p.get_statistics())
             self.dataframes.append(p.df)
             logging.info(f"----------------Fin du traitement {process.__name__}------------------------------")
             # except Exception as err:
@@ -61,6 +64,7 @@ class ProcessFactory:
                 #     logging.error(f"Erreur de traitement {loaded}  - {err}")
                 # else:
                 #     logging.error(f"Source introuvable - {err}")
+        self.save_statistics()
 
     def run_process(self):
         """Lance un seul processus"""
@@ -71,3 +75,14 @@ class ProcessFactory:
         p.convert()
         p.fix()
         self.dataframes.append(p.df)
+
+    def save_statistics(self):
+        title = 'Nombre de marchés et de concessions en entrées de rama par sources'
+        currentday = f"{datetime.now().year}-{datetime.now().month}-{datetime.now().day}"
+        json_data = {
+            'title': title,
+            'date': currentday,
+            'statistics': self.statistics
+            }
+        with open(f"results/{currentday}-statistics.json", 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, ensure_ascii=False, indent=4)
