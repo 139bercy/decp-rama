@@ -82,7 +82,7 @@ class ProcessFactory:
         json_data = {
             'title': title,
             'date': currentday,
-            'statistics': self.statistics
+            'sources': self.statistics
             }
         with open(f"results/{currentday}-statistics.json", 'w', encoding='utf-8') as f:
             json.dump(json_data, f, ensure_ascii=False, indent=4)
