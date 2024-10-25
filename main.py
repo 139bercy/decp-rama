@@ -23,6 +23,7 @@ def main(data_format:str = 2022):
         p.run_processes()
     gp = GlobalProcess(data_format)
     gp.dataframes = p.dataframes
+    gp.errors = p.errors
     gp.merge_all()
     gp.fix_all()
     #gp.drop_by_date_2024()

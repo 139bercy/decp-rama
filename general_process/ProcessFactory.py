@@ -60,7 +60,7 @@ class ProcessFactory:
             #    p.comment()
             logging.info ("Ajout des données")
             self.statistics.append(p.get_statistics())
-            self.errors.append(p.errors)
+            self.errors = p.errors
             self.dataframes.append(p.df)
             logging.info(f"----------------Fin du traitement {process.__name__}------------------------------")
             # except Exception as err:
