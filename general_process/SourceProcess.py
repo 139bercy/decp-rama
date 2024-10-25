@@ -50,6 +50,7 @@ class SourceProcess:
         self.format = self.metadata[self.key]["format"]
         self.url_source = self.metadata[self.key]["url_source"]
         self.validate = self.metadata[self.key]["validate"]
+        self.convert_nc = self.metadata[self.key]["convert_nc"]
         self.df = pd.DataFrame()
         self.title = []
         # Lavage des dossiers de la source
@@ -62,8 +63,11 @@ class SourceProcess:
         self.dico_2022_marche = []
         self.dico_2022_concession = []
         self.nb_bad_marches = 0;
-        self.nb_bad_concession = 0;
+        self.nb_bad_concessions = 0;
+        self.nb_total_marches = 0;
+        self.nb_total_concessions = 0;
 
+        self.errors = {}
 
     def _clean_metadata_folder(self) -> None:
         """La fonction _clean_metadata_folder permet le nettoyage de /metadata/{self.source}"""
@@ -274,13 +278,27 @@ class SourceProcess:
             if self.format == 'xml':
                 try:
                     with open(f"sources/{self.source}/{self.title[i]}", encoding='utf-8') as xml_file:
-                        #dico = xmltodict.parse(xml_file.read(), dict_constructor=dict, \
-                        #                       force_list=('marche','titulaires', 'modifications', 'actesSousTraitance',
-                        #                       'modificationsActesSousTraitance', 'typePrix','considerationEnvironnementale',
-                        #                       'modaliteExecution'))
-                        dico = xmltodict.parse(xml_file.read())
+                        dico = xmltodict.parse(xml_file.read(), dict_constructor=dict, \
+                                               force_list=('marche','titulaires', 'modifications', 'actesSousTraitance',
+                                               'modificationsActesSousTraitance', 'typePrix','considerationEnvironnementale',
+                                               'modaliteExecution'))
+                        #dico = xmltodict.parse(xml_file.read())
                 except Exception as err:
                     logging.error(f"Exception lors du chargement du fichier xml {self.title[i]} - {err}")
+
+                if self.format == 'UNACTIVATEDxml' and 'marches' in dico and 'marche' in dico['marches']:
+                    n = 0
+                    for n in range(len(dico['marches']['marche'])):
+                        if 'modifications' in dico['marches']['marche'][n]:
+                            dico['marches']['marche'][n]['modifications'] = normalize_list(dico['marches']['marche'][n]['modifications'],'modification','id','montant')
+                        if 'techniques' in dico['marches']['marche'][n]:
+                            dico['marches']['marche'][n]['techniques'] = normalize_list(dico['marches']['marche'][n]['techniques'],'technique')
+                        if 'modalitesExecution' in dico['marches']['marche'][n]:
+                            dico['marches']['marche'][n]['modalitesExecution'] = normalize_list(dico['marches']['marche'][n]['modalitesExecution'],'modaliteExecution')
+                        if 'considerationsSociales' in dico['marches']['marche'][n]:
+                            dico['marches']['marche'][n]['considerationsSociales'] = normalize_list(dico['marches']['marche'][n]['considerationsSociales'],'considerationSociale')
+                        if 'considerationsEnvironnementales' in dico['marches']['marche'][n]:
+                            dico['marches']['marche'][n]['considerationsEnvironnementales'] = normalize_list(dico['marches']['marche'][n]['considerationsEnvironnementales'],'considerationEnvironnementale')
 
             elif self.format == 'json':
                 try:
@@ -292,20 +310,6 @@ class SourceProcess:
                 self.tri_format(dico['marches'], self.title[i])    #On obtient 2 fichiers qui sont mis jour à chaque tour de boucle
             except Exception as err:
                 logging.error("Exception clean: Balise 'marches' inexistante",err)
-
-        if self.format == 'xml' and 'marches' in dico and 'marche' in dico['marches']:
-            n = 0
-            for n in range(len(dico['marches']['marche'])):
-                if 'modifications' in dico['marches']['marche'][n]:
-                    dico['marches']['marche'][n]['modifications'] = normalize_list(dico['marches']['marche'][n]['modifications'],'modification','id','montant')
-                if 'techniques' in dico['marches']['marche'][n]:
-                    dico['marches']['marche'][n]['techniques'] = normalize_list(dico['marches']['marche'][n]['techniques'],'technique')
-                if 'modalitesExecution' in dico['marches']['marche'][n]:
-                    dico['marches']['marche'][n]['modalitesExecution'] = normalize_list(dico['marches']['marche'][n]['modalitesExecution'],'modaliteExecution')
-                if 'considerationsSociales' in dico['marches']['marche'][n]:
-                    dico['marches']['marche'][n]['considerationsSociales'] = normalize_list(dico['marches']['marche'][n]['considerationsSociales'],'considerationSociale')
-                if 'considerationsEnvironnementales' in dico['marches']['marche'][n]:
-                    dico['marches']['marche'][n]['considerationsEnvironnementales'] = normalize_list(dico['marches']['marche'][n]['considerationsEnvironnementales'],'considerationEnvironnementale')
 
         logging.info("Fin du tri")
         logging.info("Nettoyage OK")
@@ -328,7 +332,7 @@ class SourceProcess:
         dico_ignored_marche, dico_ignored_concession = [], []
 
         #Creation des dossiers
-        os.makedirs(f"bad_results", exist_ok=True) 
+        os.makedirs("bad_results", exist_ok=True) 
         os.makedirs(f"bad_results/{self.source}", exist_ok=True)
 
         if 'marche' in dico:
@@ -345,6 +349,8 @@ class SourceProcess:
                     self.dico_2022_marche.remove(dico['marche'][n])
                     dico_ignored_marche.append(dico['marche'][n])
                 n+=1
+        # Mise a jour du nombre de marchés ignorés a    
+        self.nb_bad_marches += len(dico_ignored_marche)
 
         if 'contrat-concession' in dico:
             while m < len(dico['contrat-concession']) :
@@ -361,7 +367,7 @@ class SourceProcess:
                     dico_ignored_concession.append(dico['contrat-concession'][m])
                 m+=1
            
-        self.nb_bad_marches += len(dico_ignored_marche)
+        # Mise a jour du nombre de concessions ignorées  
         self.nb_bad_concessions += len(dico_ignored_concession)
 
         # Structure du nouveau fichier JSON, création des dictionnaires valides et invalides
@@ -371,12 +377,11 @@ class SourceProcess:
         with open(f'bad_results/{self.source}/mauvais_marches_{self.source}.json', "w", encoding='utf8') as new_f2:
             json.dump(jsonfile, new_f2, ensure_ascii=False, indent=4)
 
-        if not self.validate:
-            logging.info("Validation de la source non requise")
+        self.add_errors(self.source,file_name,'E_VALIDATION',dico_ignored_marche,'not validated')
+        self.add_errors(self.source,file_name,'E_VALIDATION',dico_ignored_concession,'not validated')
 
         logging.info(f"Nombre de marchés et concessions invalides dans {file_name}: {len(dico_ignored_marche)+len(dico_ignored_concession)} ")
         logging.info(f"Nombre de marchés et de concessions valides dans {file_name}: {len(self.dico_2022_marche)+len (self.dico_2022_concession)} ")
-
 
     def date_norm(self,datestr:str ) -> str:
         """
@@ -731,9 +736,9 @@ class SourceProcess:
                 jsonfile1.close
             return self.validateJson(jsonData,jsonScheme)
         else: 
-            scheme_path = 'schemes/schema_decp_v2.0.2.xml'   # xml
+            scheme_path = 'schemes/schema_decp_v2.0.2.xsd'   # xml
             try:
-                with open(xml_path, 'r', encoding='utf-8') as xml_file:
+                with open(scheme_path, 'r', encoding='utf-8') as xml_file:
                     xml_content = xml_file.read()
                 return xmlschema.validate(xml_content, scheme_path)==None
             except xmlschema.exceptions.XMLSchemaException as err:
@@ -783,7 +788,7 @@ class SourceProcess:
 
         # Pour les flux en exception avec "NC" ## OBSOLETE on duplique les colonnes qui contiendront des NC 
         # et on converti les "NC" en Nan
-        if not self.validate:
+        if self.convert_nc:
             self.enlever_nc_colonne(self.df,'offresRecues')
             self.enlever_nc_colonne(self.df,'marcheInnovant')
             self.enlever_nc_colonne(self.df,'attributionAvance')
@@ -827,6 +832,7 @@ class SourceProcess:
         # # with open(f'bad_results/{self.source}/doublons_{self.source}.csv', 'a', encoding='utf-8') as f:
         # #     writer = csv.writer(f, delimiter = ';')
         # #     writer.writerow(duplicates.iloc[:][:]) 
+        self.add_errors(self.source,'*','E_DUPLICATE',df_str[df_str.duplicated()],'Is duplicate')
         index_to_keep = df_str.drop_duplicates().index.tolist()
         self.df = self.df.iloc[index_to_keep]
         self.df = self.df.reset_index(drop=True)
@@ -1014,11 +1020,23 @@ class SourceProcess:
         self.marche_mark_fields(df_marche)
         self.concession_mark_fields(df_concession)
 
+    def add_errors(self,source:str,file_name:str,code_erreur:str,dico,message):
+        if source not in self.errors:
+            self.errors={source: {code_erreur: []}}
+        if code_erreur not in self.errors[source]:
+            self.errors[source]={code_erreur: []}
+        if isinstance(dico,list):
+            for i in range(0,len(dico)):
+                self.errors[source][code_erreur].append({'index': i, 'message': message, 'file': file_name, 'data': dico[i]})
+        else:
+            for i in range(0,len(dico)):
+                self.errors[source][code_erreur].append({'index': i, 'message': message, 'file': file_name, 'data': dico.iloc[i].to_json()})
+
     def get_statistics (self):
         return {'source': {
             'source': self.source, 
             'bad_marches': self.nb_bad_marches,
-            'bad_concessions': self.nb_bad_concession,
+            'bad_concessions': self.nb_bad_concessions,
             'marches': len(self.dico_2022_marche),
             'concessions': len(self.dico_2022_concession)
             }

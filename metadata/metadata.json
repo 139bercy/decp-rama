@@ -10,7 +10,8 @@
     "format": "xml",
     "cle_api": [],
     "url": "",
-    "validate" : true
+    "validate" : true,
+    "convert_nc": false
   },
   "sample_json":
   {
@@ -23,7 +24,8 @@
     "format": "json",
     "cle_api": [],
     "url": "",
-    "validate" : true
+    "validate" : true,
+    "convert_nc": false
   },
   "pes":
   {
@@ -33,7 +35,8 @@
     "format": "xml",
     "cle_api": ["5bd0b6fd8b4c413d0801dc57"],
     "url": "",
-    "validate" : true
+    "validate" : true,
+    "convert_nc": false
   },
   "pes2024":
   {
@@ -44,7 +47,8 @@
     "format": "xml",
     "cle_api": ["65cf3c55ec910b5a8e2fc084"],
     "url": "",
-    "validate" : false
+    "validate" : true,
+    "convert_nc": true
   },
   "aws":
   {
@@ -54,7 +58,8 @@
     "format": "json",
     "cle_api": ["5cdb1722634f41416ffe90e2"],
     "url": "",
-    "validate" : true
+    "validate" : true,
+    "convert_nc": false
   },
   "decp_aws": {
     "code": "decp_aws",
@@ -62,7 +67,8 @@
     "url_source" : "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/decp_aws/exports/json?lang=fr",
     "format" :"json",
     "url" :"",
-    "validate" : true
+    "validate" : true,
+    "convert_nc": false
   },
   "aife":
   {
@@ -72,7 +78,8 @@
     "format": "xml",
     "cle_api": ["5bd789ee8b4c4155bd9a0770", "5c3d0d6b8b4c41333775f45a", "5cc8be59634f412a53e309e8", "5df410e86f44413a91d34be3"],
     "url": "",
-    "validate" : true
+    "validate" : true,
+    "convert_nc": false
   },
   "emar":
   {
@@ -82,7 +89,8 @@
     "format": "json",
     "cle_api": ["5c0a7845634f4139b2ee8883"],
     "url": "",
-    "validate" : true
+    "validate" : true,
+    "convert_nc": false
   },
   "lyon":
   {
@@ -91,7 +99,8 @@
     "url_source": "https://download.data.grandlyon.com/files/grandlyon/citoyennete/marches_publics.xml",
     "format": "xml",
     "url": "",
-    "validate" : true
+    "validate" : true,
+    "convert_nc": false
   },
   "maxi":
   {
@@ -101,7 +110,8 @@
     "format": "json",
     "cle_api": ["65e0f07ac8d7ad71f10faffb"],
     "url": "",
-    "validate" : true
+    "validate" : true,
+    "convert_nc": false
   },
   "bfc":
   {
@@ -110,7 +120,8 @@
     "url_source": "http://focus-marches.ternum-bfc.fr/xml/",
     "format": "xml",
     "url": "",
-    "validate" : true
+    "validate" : true,
+    "convert_nc": false
   },
   "mega":
   {
@@ -120,7 +131,8 @@
     "format": "xml",
     "cle_api": ["5f4f4f8910f4b55843deae51"],
     "url": "",
-    "validate" : true
+    "validate" : true,
+    "convert_nc": false
   },
   "bre":
   {
@@ -129,6 +141,7 @@
     "url_source": "https://data.bretagne.bzh/api/v2/catalog/datasets/decp-crb0/exports/json",
     "format": "json",
     "url": "",
-    "validate" : true
+    "validate" : true,
+    "convert_nc": false
   }
 }

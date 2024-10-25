@@ -3,6 +3,7 @@ from specific_process import *
 import logging
 import json
 from datetime import datetime
+import numpy as np
 
 from specific_process.PesNouveauProcess import PesNouveauProcess
 
@@ -25,11 +26,13 @@ class ProcessFactory:
         #self.processes = [SampleJsonProcess]
         #self.processes = [SampleXmlProcess]
         self.processes = [EmarProcess,PesNouveauProcess,MaxiProcess]
+        self.processes = [PesNouveauProcess]
         # if data_format=='2022':
         # self.processes = [SampleXmlProcess] # For test ECO
         self.dataframes = []
         self.data_format = data_format
         self.statistics = []
+        self.errors = {}
         # si on lance main avec un process spécifié :
         if process:
             for proc in self.processes:
@@ -45,7 +48,7 @@ class ProcessFactory:
             #if True: #for debugonly
             logging.info(f"------------------------------{process.__name__}------------------------------")
             p = process(self.data_format)
-            p.get()
+            #p.get()
             loaded = 1
             p.clean()
             loaded = 2
@@ -57,6 +60,7 @@ class ProcessFactory:
             #    p.comment()
             logging.info ("Ajout des données")
             self.statistics.append(p.get_statistics())
+            self.errors.append(p.errors)
             self.dataframes.append(p.df)
             logging.info(f"----------------Fin du traitement {process.__name__}------------------------------")
             # except Exception as err:
@@ -85,4 +89,14 @@ class ProcessFactory:
             'sources': self.statistics
             }
         with open(f"results/{currentday}-statistics.json", 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, ensure_ascii=False, indent=4)
+
+        title = 'Liste des erreurs '
+        currentday = f"{datetime.now().year}-{datetime.now().month}-{datetime.now().day}"
+        json_data = {
+            'title': title,
+            'date': currentday,
+            'sources': self.errors
+            }
+        with open(f"results/{currentday}-errors.json", 'w', encoding='utf-8') as f:
             json.dump(json_data, f, ensure_ascii=False, indent=4)

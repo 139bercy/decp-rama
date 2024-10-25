@@ -30,6 +30,7 @@ class GlobalProcess:
         self.df = pd.DataFrame()
         self.dataframes = []
         self.data_format = data_format
+        self.errors = {}
     
     def merge_all(self) -> None:
         """Étape merge all qui permet la fusion des DataFrames de chacune des sources en un seul."""
@@ -194,6 +195,7 @@ class GlobalProcess:
             with open(f'bad_results/{duplicates.iloc[i]["source"]}/doublons_{duplicates.iloc[i]["source"]}.csv', 'a', encoding='utf-8') as f:
                 doublon = duplicates.iloc[i][:].to_json(orient='records', lines=True, force_ascii=False)
                 f.write(doublon)
+        self.add_errors('all','*','E_DUPLICATE',duplicates,'Is duplicate')
            
         # doublons = duplicates.to_json(orient='records', lines=True, force_ascii=False)
         # with open('doublons_demantis.json', 'w', encoding='utf-8') as f:
@@ -649,21 +651,21 @@ class GlobalProcess:
             jsonScheme: schéma à respecter
 
         """
-        errors = []  # Liste pour stocker les erreurs
+        errors_json = []  # Liste pour stocker les erreurs
     
         validator = Draft7Validator(jsonScheme)
         for error in sorted(validator.iter_errors(jsonData), key=lambda e: e.path):
             error_path = list(error.path)
             error_message = error.message
-            errors.append(f"Path: {error_path} -- Message: {error_message}")
+            errors_json.append(f"Path: {error_path} -- Message: {error_message}")
         
-        if errors:
+        if errors_json:
             with open('erreur.log.txt', 'w') as error_file:
                 error_file.write("\n")
                 error_file.write(jsonPath + "\n")
-                for error in errors:
+                for error in errors_json:
                     error_file.write(error + "\n")
-            print(f"{len(errors)} erreurs de validation ont été sauvegardées dans erreur.log.txt.")
+            print(f"{len(errors_json)} erreurs de validation ont été sauvegardées dans erreur.log.txt.")
             return False
         else:
             print("Le fichier JSON est valide.")
@@ -822,3 +824,16 @@ class GlobalProcess:
                 logging.info(f"Upload du fichier decp-{datetime.now().year}-{datetime.now().month}.json réussi")
             else:
                 print("Erreur ",response.status_code)
+
+    def add_errors(self,source:str,file_name:str,code_erreur:str,dico,message):
+        if source not in self.errors:
+            self.errors={source: {code_erreur: []}}
+        if code_erreur not in self.errors[source]:
+            self.errors[source]={code_erreur: []}
+        if isinstance(dico,list):
+            for i in range(0,len(dico)):
+                self.errors[source][code_erreur].append({'index': i, 'message': message, 'file': file_name, 'data': dico[i]})
+        else:
+            for i in range(0,len(dico)):
+                self.errors[source][code_erreur].append({'index': i, 'message': message, 'file': file_name, 'data': dico.iloc[i].to_json()})
+
