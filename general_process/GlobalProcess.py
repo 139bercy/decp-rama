@@ -30,8 +30,9 @@ class GlobalProcess:
         self.df = pd.DataFrame()
         self.dataframes = []
         self.data_format = data_format
+        self.statistics = []
         self.errors = {}
-    
+
     def merge_all(self) -> None:
         """Étape merge all qui permet la fusion des DataFrames de chacune des sources en un seul."""
         logging.info("  ÉTAPE MERGE ALL")
@@ -826,14 +827,34 @@ class GlobalProcess:
                 print("Erreur ",response.status_code)
 
     def add_errors(self,source:str,file_name:str,code_erreur:str,dico,message):
-        if source not in self.errors:
-            self.errors={source: {code_erreur: []}}
-        if code_erreur not in self.errors[source]:
-            self.errors[source]={code_erreur: []}
+#        if source not in self.errors:
+#            self.errors.append({source: {code_erreur: []}})
+#        if code_erreur not in self.errors[source]:
+#            self.errors[source].append({code_erreur: []})
         if isinstance(dico,list):
             for i in range(0,len(dico)):
-                self.errors[source][code_erreur].append({'index': i, 'message': message, 'file': file_name, 'data': dico[i]})
+                self.errors.append({'source': source, 'code_erreur': code_erreur, 'index': i, 'message': message, 'file': file_name, 'data': dico[i]})
         else:
             for i in range(0,len(dico)):
-                self.errors[source][code_erreur].append({'index': i, 'message': message, 'file': file_name, 'data': dico.iloc[i].to_json()})
+                self.errors.append({'source': source, 'code_erreur': code_erreur, 'index': i, 'message': message, 'file': file_name, 'data': dico.iloc[i].to_json()})
 
+    def save_statistics(self):
+        title = 'Nombre de marchés et de concessions en entrées de rama par sources'
+        currentday = f"{datetime.now().year}-{datetime.now().month}-{datetime.now().day}"
+        json_data = {
+            'title': title,
+            'date': currentday,
+            'sources': self.statistics
+            }
+        with open(f"results/{currentday}-statistics.json", 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, ensure_ascii=False, indent=4)
+
+        title = 'Liste des erreurs '
+        currentday = f"{datetime.now().year}-{datetime.now().month}-{datetime.now().day}"
+        json_data = {
+            'title': title,
+            'date': currentday,
+            'sources': self.errors
+            }
+        with open(f"results/{currentday}-errors.json", 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, ensure_ascii=False, indent=4)

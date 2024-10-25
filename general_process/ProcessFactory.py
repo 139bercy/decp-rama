@@ -32,7 +32,7 @@ class ProcessFactory:
         self.dataframes = []
         self.data_format = data_format
         self.statistics = []
-        self.errors = {}
+        self.errors = []
         # si on lance main avec un process spécifié :
         if process:
             for proc in self.processes:
@@ -60,7 +60,7 @@ class ProcessFactory:
             #    p.comment()
             logging.info ("Ajout des données")
             self.statistics.append(p.get_statistics())
-            self.errors = p.errors
+            self.errors.append(p.errors)
             self.dataframes.append(p.df)
             logging.info(f"----------------Fin du traitement {process.__name__}------------------------------")
             # except Exception as err:
@@ -78,24 +78,3 @@ class ProcessFactory:
         p.convert()
         p.fix()
         self.dataframes.append(p.df)
-
-    def save_statistics(self):
-        title = 'Nombre de marchés et de concessions en entrées de rama par sources'
-        currentday = f"{datetime.now().year}-{datetime.now().month}-{datetime.now().day}"
-        json_data = {
-            'title': title,
-            'date': currentday,
-            'sources': self.statistics
-            }
-        with open(f"results/{currentday}-statistics.json", 'w', encoding='utf-8') as f:
-            json.dump(json_data, f, ensure_ascii=False, indent=4)
-
-        title = 'Liste des erreurs '
-        currentday = f"{datetime.now().year}-{datetime.now().month}-{datetime.now().day}"
-        json_data = {
-            'title': title,
-            'date': currentday,
-            'sources': self.errors
-            }
-        with open(f"results/{currentday}-errors.json", 'w', encoding='utf-8') as f:
-            json.dump(json_data, f, ensure_ascii=False, indent=4)

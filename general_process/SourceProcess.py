@@ -329,6 +329,7 @@ class SourceProcess:
 
         """
         n, m = 0, 0
+        nb_marches,nb_concessions = 0, 0
         dico_ignored_marche, dico_ignored_concession = [], []
 
         #Creation des dossiers
@@ -348,6 +349,8 @@ class SourceProcess:
                 if self.validate and not self.check(dico_test, file_name):
                     self.dico_2022_marche.remove(dico['marche'][n])
                     dico_ignored_marche.append(dico['marche'][n])
+                else: 
+                    nb_marches+=1
                 n+=1
         # Mise a jour du nombre de marchés ignorés a    
         self.nb_bad_marches += len(dico_ignored_marche)
@@ -365,6 +368,8 @@ class SourceProcess:
                 if self.validate and not self.check(dico_test, file_name):
                     self.dico_2022_concession.remove(dico['contrat-concession'][m])
                     dico_ignored_concession.append(dico['contrat-concession'][m])
+                else: 
+                    nb_concessions+=1
                 m+=1
            
         # Mise a jour du nombre de concessions ignorées  
@@ -381,7 +386,7 @@ class SourceProcess:
         self.add_errors(self.source,file_name,'E_VALIDATION',dico_ignored_concession,'not validated')
 
         logging.info(f"Nombre de marchés et concessions invalides dans {file_name}: {len(dico_ignored_marche)+len(dico_ignored_concession)} ")
-        logging.info(f"Nombre de marchés et de concessions valides dans {file_name}: {len(self.dico_2022_marche)+len (self.dico_2022_concession)} ")
+        logging.info(f"Nombre de marchés et de concessions valides dans {file_name}: {nb_marches+nb_concessions} ")
 
     def date_norm(self,datestr:str ) -> str:
         """
@@ -1030,7 +1035,7 @@ class SourceProcess:
                 self.errors[source][code_erreur].append({'index': i, 'message': message, 'file': file_name, 'data': dico[i]})
         else:
             for i in range(0,len(dico)):
-                self.errors[source][code_erreur].append({'index': i, 'message': message, 'file': file_name, 'data': dico.iloc[i].to_json()})
+                self.errors[source][code_erreur].append({'index': i, 'message': message, 'file': file_name, 'data': dico.iloc[i].to_dict()})
 
     def get_statistics (self):
         return {'source': {

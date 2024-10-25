@@ -23,17 +23,18 @@ def main(data_format:str = 2022):
         p.run_processes()
     gp = GlobalProcess(data_format)
     gp.dataframes = p.dataframes
+    gp.statistics = p.statistics
     gp.errors = p.errors
     gp.merge_all()
     gp.fix_all()
     #gp.drop_by_date_2024()
     gp.drop_duplicate()
+    gp.save_statistics()
     gp.export()
     print("Exportation faite")
     if not args.local:
         # gp.upload_s3()
         gp.upload_datagouv()
-    gp.save_statistics()
 
 if __name__ == "__main__":
     """Lorsqu'on appelle la fonction main (courante), on définit le niveau de logging et le format d'affichage."""
