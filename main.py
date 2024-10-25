@@ -33,6 +33,7 @@ def main(data_format:str = 2022):
     if not args.local:
         # gp.upload_s3()
         gp.upload_datagouv()
+    gp.save_statistics()
 
 if __name__ == "__main__":
     """Lorsqu'on appelle la fonction main (courante), on définit le niveau de logging et le format d'affichage."""

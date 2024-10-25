@@ -68,7 +68,6 @@ class ProcessFactory:
                 #     logging.error(f"Erreur de traitement {loaded}  - {err}")
                 # else:
                 #     logging.error(f"Source introuvable - {err}")
-        self.save_statistics()
 
     def run_process(self):
         """Lance un seul processus"""
