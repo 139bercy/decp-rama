@@ -5,8 +5,8 @@ from dateutil.relativedelta import relativedelta
 
 
 class BfcProcess(SourceProcess):
-    def __init__(self,data_format):
-        super().__init__("bfc",data_format)
+    def __init__(self,data_format,report):
+        super().__init__("bfc",data_format,report)
 
     def _url_init(self):
         delta = relativedelta(months=1)

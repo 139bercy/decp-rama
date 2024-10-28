@@ -1,5 +1,6 @@
 from general_process.ProcessFactory import ProcessFactory
 from general_process.GlobalProcess import GlobalProcess
+from reporting.Report import Report
 import logging
 import argparse
 import os
@@ -14,24 +15,25 @@ def main(data_format:str = 2022):
     """La fonction main() appelle tour à tour les processus spécifiques (ProcessFactory.py/SourceProcess.py) et les
     étapes du Global Process (GlobalProcess.py)."""
 
+    # Init reporting
+    report = Report('rama')
     # get arguments from command line to know which process to run, if there is no arguments run all processes
     if args.process:
-        p = ProcessFactory(args.process,data_format)
+        p = ProcessFactory(args.process,data_format,report)
         p.run_process()
     else:
-        p = ProcessFactory(None,data_format)
+        p = ProcessFactory(None,data_format,report)
         p.run_processes()
-    gp = GlobalProcess(data_format)
+    gp = GlobalProcess(data_format,report)
     gp.dataframes = p.dataframes
-    gp.statistics = p.statistics
-    gp.errors = p.errors
     gp.merge_all()
     gp.fix_all()
     #gp.drop_by_date_2024()
     gp.drop_duplicate()
-    gp.save_statistics()
+    gp.report.add_statistics('merged')
     gp.export()
     print("Exportation faite")
+    gp.save_report()
     if not args.local:
         # gp.upload_s3()
         gp.upload_datagouv()

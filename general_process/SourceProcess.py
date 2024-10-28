@@ -25,6 +25,7 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 # pd.set_option('display.width', None)
 # pd.set_option('display.max_colwidth', None)
+from reporting.Report import Report
 
 class SourceProcess:
    
@@ -33,7 +34,7 @@ class SourceProcess:
     variables de classe (__init__), nettoyage des dossiers de la source (_clean_metadata_folder),
     récupération des URLs (_url_init), get, convert et fix."""
 
-    def __init__(self, key,data_format):
+    def __init__(self, key, data_format, report:Report):
         """L'étape __init__ crée les variables associées à la classe SourceProcess : key, source,
         format, df, title, url, cle_api et metadata.
         
@@ -42,6 +43,7 @@ class SourceProcess:
             data_format: il s'agit de l'année 2022 ou 2019
         """
         logging.info("  ÉTAPE INIT")
+        self.report = report
         self.key = key
         self.data_format = data_format
         with open("metadata/metadata.json", 'r+') as f:
@@ -62,12 +64,6 @@ class SourceProcess:
         # Liste des dictionnaires pour l'étape de nettoyage
         self.dico_2022_marche = []
         self.dico_2022_concession = []
-        self.nb_bad_marches = 0;
-        self.nb_bad_concessions = 0;
-        self.nb_total_marches = 0;
-        self.nb_total_concessions = 0;
-
-        self.errors = {}
 
     def _clean_metadata_folder(self) -> None:
         """La fonction _clean_metadata_folder permet le nettoyage de /metadata/{self.source}"""
@@ -338,6 +334,7 @@ class SourceProcess:
 
         if 'marche' in dico:
             while n < len(dico['marche']) :
+                dico['marche'][n]['file'] = file_name
                 self.dico_2022_marche.append(dico['marche'][n])
                 dico_test = {'marches': {'marche': [dico['marche'][n]], 'contrat-concession': []}}
 
@@ -353,10 +350,12 @@ class SourceProcess:
                     nb_marches+=1
                 n+=1
         # Mise a jour du nombre de marchés ignorés a    
-        self.nb_bad_marches += len(dico_ignored_marche)
+        self.report.nb_in_bad_marches += len(dico_ignored_marche)
+        self.report.nb_in_marches += nb_marches
 
         if 'contrat-concession' in dico:
             while m < len(dico['contrat-concession']) :
+                dico['contrat-concession'][n]['file'] = file_name
                 self.dico_2022_concession.append(dico['contrat-concession'][m])
                 dico_test = {'marches': {'marche': [], 'contrat-concession': [dico['contrat-concession'][m]]}}
 
@@ -373,7 +372,8 @@ class SourceProcess:
                 m+=1
            
         # Mise a jour du nombre de concessions ignorées  
-        self.nb_bad_concessions += len(dico_ignored_concession)
+        self.report.nb_in_bad_concessions += len(dico_ignored_concession)
+        self.report.nb_in_concessions += nb_concessions
 
         # Structure du nouveau fichier JSON, création des dictionnaires valides et invalides
         jsonfile = {'marches': {'marche':  dico_ignored_marche, 'contrat-concession': dico_ignored_concession}}
@@ -382,8 +382,10 @@ class SourceProcess:
         with open(f'bad_results/{self.source}/mauvais_marches_{self.source}.json', "w", encoding='utf8') as new_f2:
             json.dump(jsonfile, new_f2, ensure_ascii=False, indent=4)
 
-        self.add_errors(self.source,file_name,'E_VALIDATION',dico_ignored_marche,'not validated')
-        self.add_errors(self.source,file_name,'E_VALIDATION',dico_ignored_concession,'not validated')
+        if len(dico_ignored_marche)>0:
+            self.report.add('CLEAN','E_VALIDATION_MARCHE','Marchés non valides',dico_ignored_marche)
+        if len(dico_ignored_concession)>0:
+            self.report.add('CLEAN','E_VALIDATION_CONCESSION','Concessions non valides',dico_ignored_concession)
 
         logging.info(f"Nombre de marchés et concessions invalides dans {file_name}: {len(dico_ignored_marche)+len(dico_ignored_concession)} ")
         logging.info(f"Nombre de marchés et de concessions valides dans {file_name}: {nb_marches+nb_concessions} ")
@@ -837,7 +839,7 @@ class SourceProcess:
         # # with open(f'bad_results/{self.source}/doublons_{self.source}.csv', 'a', encoding='utf-8') as f:
         # #     writer = csv.writer(f, delimiter = ';')
         # #     writer.writerow(duplicates.iloc[:][:]) 
-        self.add_errors(self.source,'*','E_DUPLICATE',df_str[df_str.duplicated()],'Is duplicate')
+        self.report.add('FIX','E_DUPLICATE','Doublon dans la source',df_str[df_str.duplicated()])
         index_to_keep = df_str.drop_duplicates().index.tolist()
         self.df = self.df.iloc[index_to_keep]
         self.df = self.df.reset_index(drop=True)
@@ -1025,24 +1027,5 @@ class SourceProcess:
         self.marche_mark_fields(df_marche)
         self.concession_mark_fields(df_concession)
 
-    def add_errors(self,source:str,file_name:str,code_erreur:str,dico,message):
-        if source not in self.errors:
-            self.errors={source: {code_erreur: []}}
-        if code_erreur not in self.errors[source]:
-            self.errors[source]={code_erreur: []}
-        if isinstance(dico,list):
-            for i in range(0,len(dico)):
-                self.errors[source][code_erreur].append({'index': i, 'message': message, 'file': file_name, 'data': dico[i]})
-        else:
-            for i in range(0,len(dico)):
-                self.errors[source][code_erreur].append({'index': i, 'message': message, 'file': file_name, 'data': dico.iloc[i].to_dict()})
-
-    def get_statistics (self):
-        return {'source': {
-            'source': self.source, 
-            'bad_marches': self.nb_bad_marches,
-            'bad_concessions': self.nb_bad_concessions,
-            'marches': len(self.dico_2022_marche),
-            'concessions': len(self.dico_2022_concession)
-            }
-        }
+    def add_statistics(self):
+        self.report.add_statistics(self.source)

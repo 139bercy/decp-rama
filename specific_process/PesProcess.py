@@ -3,8 +3,8 @@ import json
 
 
 class PesProcess(SourceProcess):
-    def __init__(self,data_format):
-        super().__init__("pes",data_format)
+    def __init__(self,data_format,report):
+        super().__init__("pes",data_format,report)
 
     def fix(self):
         super().fix()

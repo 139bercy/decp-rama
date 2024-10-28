@@ -6,8 +6,8 @@ import wget
 
 
 class MaxiProcess(SourceProcess):
-    def __init__(self,data_format):
-        super().__init__("maxi",data_format)
+    def __init__(self,data_format,report):
+        super().__init__("maxi",data_format,report)
 
     def _url_init(self):
         super()._url_init()

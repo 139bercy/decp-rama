@@ -2,8 +2,8 @@ from general_process.SourceProcess import SourceProcess
 
 
 class AwsProcess(SourceProcess):
-    def __init__(self,data_format):
-        super().__init__("aws",data_format)
+    def __init__(self,data_format,report):
+        super().__init__("aws",data_format,report)
 
     def _url_init(self):
         super()._url_init()

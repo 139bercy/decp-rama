@@ -6,8 +6,8 @@ import numpy as np
 
 
 class PesNouveauProcess(SourceProcess):
-    def __init__(self,data_format):
-        super().__init__("pes2024",data_format)
+    def __init__(self,data_format,report):
+        super().__init__("pes2024",data_format,report)
 
     def _url_init(self):
         super()._url_init()

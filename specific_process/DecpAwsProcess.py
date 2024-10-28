@@ -7,7 +7,7 @@ import ast
 import logging
 
 class DecpAwsProcess(SourceProcess):
-    def __init__(self,data_format):
+    def __init__(self,data_format,report):
         with open("metadata/metadata.json", 'r+') as f:
             self.metadata = json.load(f)
         self.key = "decp_aws"
@@ -18,6 +18,7 @@ class DecpAwsProcess(SourceProcess):
         self.file_name = ["decp_aws.json"]
         self.df = pd.DataFrame()
         self.local_path = os.path.join("sources", self.source, self.file_name[0])
+        self.report = report
 
     def _url_init(self):
         pass

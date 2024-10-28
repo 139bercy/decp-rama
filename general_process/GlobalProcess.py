@@ -12,6 +12,7 @@ from datetime import datetime
 import time
 import jsonschema
 from jsonschema import validate,Draft7Validator,Draft202012Validator
+from reporting.Report import Report
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
@@ -23,15 +24,14 @@ class GlobalProcess:
     fusion des sources dans un seul DataFrame (merge_all), suppression des doublons (drop_duplicate)
     et l'exportation des données en json pour publication (export)."""
 
-    def __init__(self,data_format="2022"):
+    def __init__(self,data_format="2022", report:Report=None):
         """L'étape __init__ crée les variables associées à la classe GlobalProcess : le DataFrame et
         la liste des dataframes des différentes sources."""
         logging.info("------------------------------GlobalProcess------------------------------")
+        self.report = report
         self.df = pd.DataFrame()
         self.dataframes = []
         self.data_format = data_format
-        self.statistics = []
-        self.errors = {}
 
     def merge_all(self) -> None:
         """Étape merge all qui permet la fusion des DataFrames de chacune des sources en un seul."""
@@ -187,8 +187,18 @@ class GlobalProcess:
         df_nomodif_marche = df_nomodif_str[df_nomodif_str['_type'].str.contains("Marché")]
         index_to_keep_nomodif = df_nomodif_marche.drop_duplicates(subset=feature_doublons_marche).index.tolist()
 
+        # Mémoriser la nombre de marchés après dédoublonnage
+        self.report.nb_no_duplicated_marches = len(index_to_keep_nomodif)
+
         df_nomodif_concession = df_nomodif_str[~df_nomodif_str['_type'].str.contains("Marché")]
         index_to_keep_nomodif += df_nomodif_concession.drop_duplicates(subset=feature_doublons_concession).index.tolist()
+
+        # Mémoriser la nombre de concessions après dédoublonnage
+        self.report.nb_no_duplicated_marches = len(index_to_keep_nomodif) - self.report.nb_no_duplicated_marches
+
+        # Ajouter au reporting les doublons supprimés
+        self.report.add('FIXALL','E_DUPLICATE_MARCHE','Marchés en doublon',df_nomodif_marche[df_nomodif_marche.duplicated(feature_doublons_marche)])
+        self.report.add('FIXALL','E_DUPLICATE_CONCESSION','Concessions en doublon',df_nomodif_concession[df_nomodif_concession.duplicated(feature_doublons_concession)])
 
         duplicates = df_nomodif_str[df_nomodif_str.duplicated(subset=feature_doublons_marche, keep='first')]
         # jsonfile = {'marches': doublons}
@@ -196,7 +206,6 @@ class GlobalProcess:
             with open(f'bad_results/{duplicates.iloc[i]["source"]}/doublons_{duplicates.iloc[i]["source"]}.csv', 'a', encoding='utf-8') as f:
                 doublon = duplicates.iloc[i][:].to_json(orient='records', lines=True, force_ascii=False)
                 f.write(doublon)
-        self.add_errors('all','*','E_DUPLICATE',duplicates,'Is duplicate')
            
         # doublons = duplicates.to_json(orient='records', lines=True, force_ascii=False)
         # with open('doublons_demantis.json', 'w', encoding='utf-8') as f:
@@ -211,8 +220,18 @@ class GlobalProcess:
             df_modif_marche = df_modif_str[df_modif_str['_type'].str.contains("Marché")]
             index_to_keep_modif = df_modif_marche.drop_duplicates(subset=feature_doublons_marche,keep='last').index.tolist()  #'last', permet de garder la ligne avec la date est la plus récente
 
+            # Mémoriser la nombre de marchés après dédoublonnage
+            self.report.nb_no_duplicated_marches += len(index_to_keep_modif)
+
             df_modif_concession = df_modif_str[~df_modif_str['_type'].str.contains("Marché")]
             index_to_keep_modif += df_modif_concession.drop_duplicates(subset=feature_doublons_concession,keep='last').index.tolist()  #on ne garde que que les indexs pour récupérer les lignes qui sont dans df_modif (dont le type est dict)
+
+            # Mémoriser la nombre de concessions après dédoublonnage
+            self.report.nb_no_duplicated_marches = len(index_to_keep_modif) - self.report.nb_no_duplicated_marches
+
+            # Ajouter au reporting les doublons supprimés
+            self.report.add('FIXALL','E_DUPLICATE_MARCHE','Marchés en doublon avec modification',df_modif_marche[df_modif_marche.duplicated(feature_doublons_marche)])
+            self.report.add('FIXALL','E_DUPLICATE_CONCESSION','Concessions en doublon avec modification',df_modif_concession[df_modif_concession.duplicated(feature_doublons_concession)])
 
             df = pd.concat([df_nomodif.loc[index_to_keep_nomodif, :], df_modif.loc[index_to_keep_modif, :]])
 
@@ -826,35 +845,5 @@ class GlobalProcess:
             else:
                 print("Erreur ",response.status_code)
 
-    def add_errors(self,source:str,file_name:str,code_erreur:str,dico,message):
-#        if source not in self.errors:
-#            self.errors.append({source: {code_erreur: []}})
-#        if code_erreur not in self.errors[source]:
-#            self.errors[source].append({code_erreur: []})
-        if isinstance(dico,list):
-            for i in range(0,len(dico)):
-                self.errors.append({'source': source, 'code_erreur': code_erreur, 'index': i, 'message': message, 'file': file_name, 'data': dico[i]})
-        else:
-            for i in range(0,len(dico)):
-                self.errors.append({'source': source, 'code_erreur': code_erreur, 'index': i, 'message': message, 'file': file_name, 'data': dico.iloc[i].to_json()})
-
-    def save_statistics(self):
-        title = 'Nombre de marchés et de concessions en entrées de rama par sources'
-        currentday = f"{datetime.now().year}-{datetime.now().month}-{datetime.now().day}"
-        json_data = {
-            'title': title,
-            'date': currentday,
-            'sources': self.statistics
-            }
-        with open(f"results/{currentday}-statistics.json", 'w', encoding='utf-8') as f:
-            json.dump(json_data, f, ensure_ascii=False, indent=4)
-
-        title = 'Liste des erreurs '
-        currentday = f"{datetime.now().year}-{datetime.now().month}-{datetime.now().day}"
-        json_data = {
-            'title': title,
-            'date': currentday,
-            'sources': self.errors
-            }
-        with open(f"results/{currentday}-errors.json", 'w', encoding='utf-8') as f:
-            json.dump(json_data, f, ensure_ascii=False, indent=4)
+    def save_report(self):
+        self.report.save()

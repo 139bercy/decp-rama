@@ -3,8 +3,8 @@ import json
 
 
 class SampleXmlProcess(SourceProcess):
-    def __init__(self,data_format):
-        super().__init__("sample_xml",data_format)
+    def __init__(self,data_format,report):
+        super().__init__("sample_xml",data_format,report)
 
     def _url_init(self):
         super()._url_init()

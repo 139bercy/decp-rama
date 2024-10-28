@@ -6,13 +6,11 @@ from datetime import datetime
 import numpy as np
 
 from specific_process.PesNouveauProcess import PesNouveauProcess
-
-
-
+from reporting.Report import Report
 
 class ProcessFactory:
 
-    def __init__(self, process=None, data_format=None):
+    def __init__(self, process=None, data_format=None, report:Report=None):
         """Création de la liste des Processus qui correspondent chacun à une classe importée en début de document."""
         #self.processes = [PesProcess, AwsProcess, AifeProcess, EmarProcess, LyonProcess, MegaProcess]
         #self.processes = [MaxiProcess]
@@ -31,8 +29,8 @@ class ProcessFactory:
         # self.processes = [SampleXmlProcess] # For test ECO
         self.dataframes = []
         self.data_format = data_format
-        self.statistics = []
-        self.errors = []
+        self.report = report
+
         # si on lance main avec un process spécifié :
         if process:
             for proc in self.processes:
@@ -47,7 +45,7 @@ class ProcessFactory:
             # try:
             #if True: #for debugonly
             logging.info(f"------------------------------{process.__name__}------------------------------")
-            p = process(self.data_format)
+            p = process(self.data_format,self.report)
             #p.get()
             loaded = 1
             p.clean()
@@ -56,11 +54,10 @@ class ProcessFactory:
             loaded = 3
             p.fix()
             loaded = 4
+            p.add_statistics()
             #if self.data_format=='2022':
             #    p.comment()
             logging.info ("Ajout des données")
-            self.statistics.append(p.get_statistics())
-            self.errors.append(p.errors)
             self.dataframes.append(p.df)
             logging.info(f"----------------Fin du traitement {process.__name__}------------------------------")
             # except Exception as err:
@@ -78,3 +75,4 @@ class ProcessFactory:
         p.convert()
         p.fix()
         self.dataframes.append(p.df)
+        
