@@ -46,7 +46,7 @@ class ProcessFactory:
             #if True: #for debugonly
             logging.info(f"------------------------------{process.__name__}------------------------------")
             p = process(self.data_format,self.report)
-            #p.get()
+            p.get()
             loaded = 1
             p.clean()
             loaded = 2
