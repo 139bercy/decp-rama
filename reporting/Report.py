@@ -88,7 +88,7 @@ class Report:
             'Doublons de marchés supprimés': self.nb_duplicated_marches,
             'Doublons de concessions supprimées': self.nb_duplicated_concessions,
             'Marchés erronés en sortie' : self.nb_out_bad_marches,
-            'Concession erronés en sortie': self.nb_out_bad_concessions
+            'Concessions erronées en sortie': self.nb_out_bad_concessions
             }
         })
         self.init()
