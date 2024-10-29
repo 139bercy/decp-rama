@@ -30,13 +30,13 @@ def main(data_format:str = 2022):
     gp.fix_all()
     #gp.drop_by_date_2024()
     gp.drop_duplicate()
-    gp.report.add_statistics('merged')
+    gp.report.fix_statistics('merged')
     gp.export()
-    print("Exportation faite")
     gp.save_report()
     if not args.local:
         # gp.upload_s3()
         gp.upload_datagouv()
+    logging.info ("Execution de l'application terminée")
 
 if __name__ == "__main__":
     """Lorsqu'on appelle la fonction main (courante), on définit le niveau de logging et le format d'affichage."""

@@ -253,15 +253,15 @@ class SourceProcess:
             if element_name in node and isinstance(node[element_name],list): 
                 lst.clear()
                 for i in range(0,len(node[element_name])):
-                    if not field_name1 is None and field_name1 in node[element_name][i]:
+                    if field_name1 is not None and field_name1 in node[element_name][i]:
                         node[element_name][i][field_name1] = int(node[element_name][i][field_name1])
-                    if not field_name2 is None and field_name2 in node[element_name][i]:
+                    if field_name2 is not None and field_name2 in node[element_name][i]:
                         node[element_name][i][field_name2] = float(node[element_name][i][field_name2])
                     lst.append({element_name: node[element_name][i]})
             elif isinstance(node,dict):
-                if not field_name1 is None and element_name in node and field_name1 in node[element_name]:
+                if field_name1 is not None and element_name in node and field_name1 in node[element_name]:
                     node[element_name][field_name1] = int(node[element_name][field_name1])
-                if not field_name2 is None and element_name in node and field_name2 in node[element_name]:
+                if field_name2 is not None and element_name in node and field_name2 in node[element_name]:
                     node[element_name][field_name2] = float(node[element_name][field_name2])
                 lst = [node]
             return lst
@@ -275,9 +275,9 @@ class SourceProcess:
                 try:
                     with open(f"sources/{self.source}/{self.title[i]}", encoding='utf-8') as xml_file:
                         dico = xmltodict.parse(xml_file.read(), dict_constructor=dict, \
-                                               force_list=('marche','titulaires', 'modifications', 'actesSousTraitance',
-                                               'modificationsActesSousTraitance', 'typePrix','considerationEnvironnementale',
-                                               'modaliteExecution'))
+                            force_list=('marche','titulaires', 'modifications', 'actesSousTraitance',
+                            'modificationsActesSousTraitance', 'typePrix','considerationEnvironnementale',
+                            'modaliteExecution'))
                         #dico = xmltodict.parse(xml_file.read())
                 except Exception as err:
                     logging.error(f"Exception lors du chargement du fichier xml {self.title[i]} - {err}")
@@ -303,6 +303,8 @@ class SourceProcess:
                 except Exception as err:
                     logging.error(f"Exception lors du chargement du fichier json {self.title[i]} - {err}")
             try:
+                if self.title[i] == 'DECP-45072478600030-2024-10-23-01.json':
+                    print("STOP")
                 self.tri_format(dico['marches'], self.title[i])    #On obtient 2 fichiers qui sont mis jour à chaque tour de boucle
             except Exception as err:
                 logging.error("Exception clean: Balise 'marches' inexistante",err)
@@ -324,6 +326,12 @@ class SourceProcess:
             file_name : nom du fichier où se trouve le dictionnaire dico
 
         """
+        def complete_util_info(rec,source,file_name):
+            # Adding source and file_name for reporting
+            rec['file'] = file_name
+            rec['source'] = self.source
+            return rec
+        
         n, m = 0, 0
         nb_marches,nb_concessions = 0, 0
         dico_ignored_marche, dico_ignored_concession = [], []
@@ -334,8 +342,7 @@ class SourceProcess:
 
         if 'marche' in dico:
             while n < len(dico['marche']) :
-                dico['marche'][n]['file'] = file_name
-                self.dico_2022_marche.append(dico['marche'][n])
+                #self.dico_2022_marche.append(dico['marche'][n])
                 dico_test = {'marches': {'marche': [dico['marche'][n]], 'contrat-concession': []}}
 
                 if 'nature' in dico['marche'][n] and "march" not in dico['marche'][n]['nature'].lower():
@@ -344,9 +351,10 @@ class SourceProcess:
                     print("La nature n'est pas definie")
 
                 if self.validate and not self.check(dico_test, file_name):
-                    self.dico_2022_marche.remove(dico['marche'][n])
-                    dico_ignored_marche.append(dico['marche'][n])
+                    #self.dico_2022_marche.remove(dico['marche'][n])
+                    dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name))
                 else: 
+                    self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source,file_name))
                     nb_marches+=1
                 n+=1
         # Mise a jour du nombre de marchés ignorés a    
@@ -355,8 +363,7 @@ class SourceProcess:
 
         if 'contrat-concession' in dico:
             while m < len(dico['contrat-concession']) :
-                dico['contrat-concession'][n]['file'] = file_name
-                self.dico_2022_concession.append(dico['contrat-concession'][m])
+                #self.dico_2022_concession.append(dico['contrat-concession'][m])
                 dico_test = {'marches': {'marche': [], 'contrat-concession': [dico['contrat-concession'][m]]}}
 
                 if 'nature' in dico['contrat-concession'][m] and "concession" not in dico['contrat-concession'][m]['nature'].lower():
@@ -365,12 +372,13 @@ class SourceProcess:
                     print("La nature n'est pas definie")
 
                 if self.validate and not self.check(dico_test, file_name):
-                    self.dico_2022_concession.remove(dico['contrat-concession'][m])
-                    dico_ignored_concession.append(dico['contrat-concession'][m])
+                    #self.dico_2022_concession.remove(dico['contrat-concession'][m])
+                    dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name))
                 else: 
+                    self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name))
                     nb_concessions+=1
                 m+=1
-           
+        
         # Mise a jour du nombre de concessions ignorées  
         self.report.nb_in_bad_concessions += len(dico_ignored_concession)
         self.report.nb_in_concessions += nb_concessions
@@ -775,17 +783,16 @@ class SourceProcess:
         Étape fix qui crée la colonne source dans le
         DataFrame et qui supprime les doublons purs.
         """
-            
         def check_dico(dico):
             #Prend en entrée le dictionnaire du champ "acheteur"
-            if not dico is np.nan and (dico=={} or dico is None or dico['id']==None):
+            if dico is not np.nan and (dico=={} or dico is None or dico['id']==None):
                 return True
             return False
         
         def update_id(ligne):
             #Modifie le champ "id" du champ acheteur
             if check_dico(ligne["acheteur"]):
-                   ligne["acheteur"] = {"id": ligne["id"] }
+                ligne["acheteur"] = {"id": ligne["id"] }
             return ligne      
         
         logging.info("  ÉTAPE FIX")
@@ -822,13 +829,22 @@ class SourceProcess:
             #print("TYPE COLONNE sous traitance:", self.df['sousTraitanceDeclaree'].dtype)
             self.convert_boolean('sousTraitanceDeclaree')
 
-
-       
         # Suppression des doublons
         df_str = self.df.astype(str)
         # duplicates = df_str[df_str.duplicated()] 
         # doublons = duplicates.to_json(orient='records', lines=True, force_ascii=False)
         # jsonfile = {'marches': doublons}
+
+        # For statistics purpose only
+        df_marche = df_str[df_str['_type'].str.contains("Marché")]
+        if len(df_marche[df_marche.duplicated()])>0:
+            self.report.add('FIX','E_DUPLICATE_MARCHE','Doublon dans la source',df_marche[df_marche.duplicated()])
+            self.report.nb_duplicated_marches += len(df_marche[df_marche.duplicated()])
+    
+        df_concession = df_str[~df_str['_type'].str.contains("Marché")]
+        if len(df_concession[df_concession.duplicated()])>0:
+            self.report.add('FIX','E_DUPLICATE_CONCESSION','Doublon dans la source',df_concession[df_concession.duplicated()])
+            self.report.nb_duplicated_concessions += len(df_concession[df_concession.duplicated()])
 
         # #Ecriture dans les nouveaux fichiers
         # with open(f'bad_results/{self.source}/doublons_{self.source}.json', "a", encoding='utf8') as new_f:
@@ -838,8 +854,7 @@ class SourceProcess:
         # # duplicates.to_csv(f'bad_results/{self.source}/doublons_{self.source}.csv', sep = ';', encoding ='utf-8', mode= 'a', index = False)
         # # with open(f'bad_results/{self.source}/doublons_{self.source}.csv', 'a', encoding='utf-8') as f:
         # #     writer = csv.writer(f, delimiter = ';')
-        # #     writer.writerow(duplicates.iloc[:][:]) 
-        self.report.add('FIX','E_DUPLICATE','Doublon dans la source',df_str[df_str.duplicated()])
+        # #     writer.writerow(duplicates.iloc[:][:])         
         index_to_keep = df_str.drop_duplicates().index.tolist()
         self.df = self.df.iloc[index_to_keep]
         self.df = self.df.reset_index(drop=True)
@@ -1027,5 +1042,5 @@ class SourceProcess:
         self.marche_mark_fields(df_marche)
         self.concession_mark_fields(df_concession)
 
-    def add_statistics(self):
-        self.report.add_statistics(self.source)
+    def fix_statistics(self):
+        self.report.fix_statistics(self.source)

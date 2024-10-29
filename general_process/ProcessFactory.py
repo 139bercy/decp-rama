@@ -24,7 +24,7 @@ class ProcessFactory:
         #self.processes = [SampleJsonProcess]
         #self.processes = [SampleXmlProcess]
         self.processes = [EmarProcess,PesNouveauProcess,MaxiProcess]
-        self.processes = [PesNouveauProcess]
+        #self.processes = [PesNouveauProcess]
         # if data_format=='2022':
         # self.processes = [SampleXmlProcess] # For test ECO
         self.dataframes = []
@@ -54,7 +54,7 @@ class ProcessFactory:
             loaded = 3
             p.fix()
             loaded = 4
-            p.add_statistics()
+            p.fix_statistics()
             #if self.data_format=='2022':
             #    p.comment()
             logging.info ("Ajout des données")
