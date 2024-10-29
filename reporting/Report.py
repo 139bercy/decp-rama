@@ -16,6 +16,8 @@ class Report:
     nb_in_concessions = 0;
     nb_duplicated_marches = 0;
     nb_duplicated_concessions = 0;
+    nb_out_bad_marches = 0
+    nb_out_bad_concessions = 0
 
     # Constructor
     def __init__(self, application:str):
@@ -30,6 +32,8 @@ class Report:
         self.nb_in_concessions = 0;
         self.nb_duplicated_marches = 0;
         self.nb_duplicated_concessions = 0;
+        self.nb_out_bad_marches = 0
+        self.nb_out_bad_concessions = 0
 
     # Add a message record from dictionary or panda dataframe
     def add(self,step:str,code_erreur:str,message:str,data):
@@ -63,7 +67,7 @@ class Report:
     
     # Save data report to a file
     def save_report(self):
-        title = 'Liste des erreurs '
+        title = 'Liste des erreurs ayant conduit à la suppression des marchés ou des concessions du résultat'
         currentday = f"{datetime.now().year}-{datetime.now().month}-{datetime.now().day}"
         json_data = {
             'title': title,
@@ -83,6 +87,8 @@ class Report:
             'Concessions valides en entrée': self.nb_in_concessions,
             'Doublons de marchés supprimés': self.nb_duplicated_marches,
             'Doublons de concessions supprimées': self.nb_duplicated_concessions,
+            'Marchés erronés en sortie' : self.nb_out_bad_marches,
+            'Concession erronés en sortie': self.nb_out_bad_concessions
             }
         })
         self.init()
