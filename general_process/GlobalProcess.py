@@ -194,11 +194,11 @@ class GlobalProcess:
         index_to_keep_nomodif += df_nomodif_concession.drop_duplicates(subset=feature_doublons_concession).index.tolist()
 
         # Mémoriser la nombre de concessions après dédoublonnage
-        self.report.nb_duplicated_concessions = len(df_nomodif_concession) - self.report.nb_duplicated_marches
+        self.report.nb_duplicated_concessions = len(df_nomodif_concession) - len(index_to_keep_nomodif) + self.report.nb_duplicated_marches
 
         # Ajouter au reporting les doublons supprimés
-        self.report.add('FIXALL','E_DUPLICATE_MARCHE','Marchés en doublon',df_nomodif_marche[df_nomodif_marche.duplicated(feature_doublons_marche)])
-        self.report.add('FIXALL','E_DUPLICATE_CONCESSION','Concessions en doublon',df_nomodif_concession[df_nomodif_concession.duplicated(feature_doublons_concession)])
+        self.report.add('FixAll/Marchés',self.report.D_DUPLICATE,'Marchés en doublon',df_nomodif_marche[df_nomodif_marche.duplicated(feature_doublons_marche)])
+        self.report.add('FixAll/Concessions',self.report.D_DUPLICATE,'Concessions en doublon',df_nomodif_concession[df_nomodif_concession.duplicated(feature_doublons_concession)])
 
         duplicates = df_nomodif_str[df_nomodif_str.duplicated(subset=feature_doublons_marche, keep='first')]
         # jsonfile = {'marches': doublons}
@@ -232,8 +232,8 @@ class GlobalProcess:
             self.report.nb_concessions = len(index_to_keep_nomodif) - self.report.nb_duplicated_concessions
 
             # Ajouter au reporting les doublons supprimés
-            self.report.add('FIXALL','E_DUPLICATE_MARCHE','Marchés en doublon',df_nomodif_marche[df_nomodif_marche.duplicated(feature_doublons_marche)])
-            self.report.add('FIXALL','E_DUPLICATE_CONCESSION','Concessions en doublon',df_nomodif_concession[df_nomodif_concession.duplicated(feature_doublons_concession)])
+            self.report.add('FixAll/Merchés',self.report.D_DUPLICATE,'Marchés en doublon',df_nomodif_marche[df_nomodif_marche.duplicated(feature_doublons_marche)])
+            self.report.add('FixAll/Concessions',self.report.D_DUPLICATE,'Concessions en doublon',df_nomodif_concession[df_nomodif_concession.duplicated(feature_doublons_concession)])
 
             df = pd.concat([df_nomodif.loc[index_to_keep_nomodif, :], df_modif.loc[index_to_keep_modif, :]])
 

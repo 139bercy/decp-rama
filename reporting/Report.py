@@ -6,6 +6,9 @@ import os
 # Class for managing reports about records which are excluded from results during processibg
 class Report:
 
+    E_VALIDATION = 'E_VALIDATION'
+    D_DUPLICATE = 'E_DUPLICATE'
+    
     # Class members
     application = None          # Application launching this instance
     messages = {}                # Dict of reporting message about stream process to log 
@@ -40,25 +43,32 @@ class Report:
         if isinstance(data, list):
             for i in range(0,len(data)):
                 file_name = data[i]['file']
+                del data[i]['file']
                 source = data[i]['source']
-                self.add_message(step,code_erreur,source,file_name,message,i,data[i])
+                del data[i]['source']
+                if 'error_validation' in data[i]:
+                    error = data[i]['error_validation']
+                    del data[i]['error_validation']
+                else:
+                    error = None
+                self.add_message(step,code_erreur,source,file_name,error,message,i,data[i])
         else:
+            dic = []
             for i in range(0,len(data)):
-                file_name = data.iloc[i].to_dict()['file']
-                source = data.iloc[i].to_dict()['source']
-                self.add_message(step,code_erreur,source,file_name,message,i,data.iloc[i].to_dict())
+                dic.append(data.iloc[i].to_dict())
+            self.add(step,code_erreur,message,dic)
 
     # Add a message load file failed from dictionary or panda dataframe
-    def add_fail(self,step:str,code_erreur:str,message:str,source:str,file_name:str):
-        self.add_message(step,code_erreur,source,file_name,message,0,[])
+    def add_fail(self,step:str,code_erreur:str,error:str,source:str,file_name:str):
+        self.add_message(step,code_erreur,source,file_name,error,'',0,[])
 
     # Add a message record
-    def add_message(self,step:str,code_erreur:str,source:str,file_name:str,message:str,index,data):
+    def add_message(self,step:str,code_erreur:str,source:str,file_name:str,error:str,message:str,index,data):
         if source not in self.messages:
             self.messages[source] = {code_erreur: []}
         if code_erreur not in self.messages[source]:
             self.messages[source][code_erreur] = []
-        self.messages[source][code_erreur].append({'index': index, 'message': message, 'step': step, 'file': file_name, 'data': data})
+        self.messages[source][code_erreur].append({'index': index, 'error': error, 'message': message, 'step': step, 'file': file_name, 'data': data})
 
     # Save data report and statistics to files 
     def save(self):

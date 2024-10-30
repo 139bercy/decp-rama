@@ -303,8 +303,6 @@ class SourceProcess:
                 except Exception as err:
                     logging.error(f"Exception lors du chargement du fichier json {self.title[i]} - {err}")
             try:
-                if self.title[i] == 'DECP-45072478600030-2024-10-23-01.json':
-                    print("STOP")
                 self.tri_format(dico['marches'], self.title[i])    #On obtient 2 fichiers qui sont mis jour à chaque tour de boucle
             except Exception as err:
                 logging.error("Exception clean: Balise 'marches' inexistante",err)
@@ -326,15 +324,18 @@ class SourceProcess:
             file_name : nom du fichier où se trouve le dictionnaire dico
 
         """
-        def complete_util_info(rec,source,file_name):
+        def complete_util_info(rec,source,file_name,error_message):
             # Adding source and file_name for reporting
             rec['file'] = file_name
             rec['source'] = self.source
+            if error_message is not None:
+                rec['error_validation'] = error_message
             return rec
         
         n, m = 0, 0
         nb_marches,nb_concessions = 0, 0
         dico_ignored_marche, dico_ignored_concession = [], []
+        error_message = ''
 
         #Creation des dossiers
         os.makedirs("bad_results", exist_ok=True) 
@@ -350,11 +351,14 @@ class SourceProcess:
                 elif 'nature' not in dico['marche'][n]:
                     print("La nature n'est pas definie")
 
-                if self.validate and not self.check(dico_test, file_name):
+                if self.validate:
+                    valid,error_message = self.check(dico_test, file_name)
+                if self.validate and not valid:
                     #self.dico_2022_marche.remove(dico['marche'][n])
-                    dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name))
+                    error_message = 'Enregistrement ' + str(n) + ': ' + error_message
+                    dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,error_message))
                 else: 
-                    self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source,file_name))
+                    self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,None))
                     nb_marches+=1
                 n+=1
         # Mise a jour du nombre de marchés ignorés a    
@@ -366,16 +370,14 @@ class SourceProcess:
                 #self.dico_2022_concession.append(dico['contrat-concession'][m])
                 dico_test = {'marches': {'marche': [], 'contrat-concession': [dico['contrat-concession'][m]]}}
 
-                if 'nature' in dico['contrat-concession'][m] and "concession" not in dico['contrat-concession'][m]['nature'].lower():
-                    print("La nature ne correspond par a une concession")
-                elif 'nature' not in dico['contrat-concession'][m]:
-                    print("La nature n'est pas definie")
-
-                if self.validate and not self.check(dico_test, file_name):
+                if self.validate:
+                    valid,error_message = self.check(dico_test, file_name)
+                if self.validate and not valid:
                     #self.dico_2022_concession.remove(dico['contrat-concession'][m])
-                    dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name))
+                    error_message = 'Enregistrement ' + n + ': ' + error_message
+                    dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,error_message))
                 else: 
-                    self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name))
+                    self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,None))
                     nb_concessions+=1
                 m+=1
         
@@ -391,9 +393,9 @@ class SourceProcess:
             json.dump(jsonfile, new_f2, ensure_ascii=False, indent=4)
 
         if len(dico_ignored_marche)>0:
-            self.report.add('CLEAN','E_VALIDATION_MARCHE','Marchés non valides',dico_ignored_marche)
+            self.report.add('Clean/Marchés',self.report.E_VALIDATION,'Marchés non valides',dico_ignored_marche)
         if len(dico_ignored_concession)>0:
-            self.report.add('CLEAN','E_VALIDATION_CONCESSION','Concessions non valides',dico_ignored_concession)
+            self.report.add('Clean/Concession',self.report.E_VALIDATION,'Concessions non valides',dico_ignored_concession)
 
         logging.info(f"Nombre de marchés et concessions invalides dans {file_name}: {len(dico_ignored_marche)+len(dico_ignored_concession)} ")
         logging.info(f"Nombre de marchés et de concessions valides dans {file_name}: {nb_marches+nb_concessions} ")
@@ -685,7 +687,7 @@ class SourceProcess:
         logging.info(f"Nombre de marchés dans {self.source} après convert : {len(self.df)}")
 
 
-    def validateJson(self,jsonData:dict,jsonScheme:dict) -> bool:
+    def validateJson(self, jsonData:dict,jsonScheme:dict) -> tuple[bool,str]:
         """
         Fonction vérifiant si le fichier jsn "jsonData" respecte
         le schéma spécifié dans le  schéma en paramètre "jsonScheme". 
@@ -703,9 +705,9 @@ class SourceProcess:
         except jsonschema.exceptions.ValidationError as err: 
             logging.error(f"Erreur de validation json - {err}")
             with open(f'bad_results/{self.source}/log_erreurs_{self.source}.txt', 'a', encoding='utf8') as error_file:
-              error_file.write(str(err) + '\n')
-            return False
-        return True     
+                error_file.write(str(err) + '\n')
+            return False, err.message + ' (' + err.json_path + ')'
+        return True, None
 
     def validateXml(self, xml_path: str, xsd_path: str) -> bool:
         """
@@ -728,11 +730,11 @@ class SourceProcess:
         except jsonschema.exceptions.ValidationError as err:
             logging.error(f"Erreur de validation xml - {err}")
             with open(f'bad_results/{self.source}/log_erreurs_{self.source}.txt', 'a', encoding='utf8') as error_file:
-              error_file.write(str(err) + '\n')
+                error_file.write(str(err) + '\n')
             return False
         return result
     
-    def check(self,jsonData,xml_path) -> bool:
+    def check(self,jsonData,xml_path) -> tuple[bool,str]:
         """
         Fonction qui prend en paramètre une donnée json ou xml 
         et vérifiant, grâce à un schéma, que la donnée est valide.
@@ -755,12 +757,13 @@ class SourceProcess:
             try:
                 with open(scheme_path, 'r', encoding='utf-8') as xml_file:
                     xml_content = xml_file.read()
-                return xmlschema.validate(xml_content, scheme_path)==None
+                result = xmlschema.validate(xml_content, scheme_path)
+                return result is None, str(result)
             except xmlschema.exceptions.XMLSchemaException as err:
                 logging.error(f"Erreur de validation xml - {err}")
                 with open(f'bad_results/{self.source}/log_erreurs_{self.source}.txt', 'a', encoding='utf8') as error_file:
                     error_file.write(str(err) + '\n')
-                return False
+                return False,str(err)
 
     def convert_boolean(self,col_name:str) -> None:
         """
@@ -838,12 +841,12 @@ class SourceProcess:
         # For statistics purpose only
         df_marche = df_str[df_str['_type'].str.contains("Marché")]
         if len(df_marche[df_marche.duplicated()])>0:
-            self.report.add('FIX','E_DUPLICATE_MARCHE','Doublon dans la source',df_marche[df_marche.duplicated()])
+            self.report.add('Fix/Marchés',self.report.D_DUPLICATE,'Doublon dans la source',df_marche[df_marche.duplicated()])
             self.report.nb_duplicated_marches += len(df_marche[df_marche.duplicated()])
     
         df_concession = df_str[~df_str['_type'].str.contains("Marché")]
         if len(df_concession[df_concession.duplicated()])>0:
-            self.report.add('FIX','E_DUPLICATE_CONCESSION','Doublon dans la source',df_concession[df_concession.duplicated()])
+            self.report.add('Fix/Concessions',self.report.D_DUPLICATE,'Doublon dans la source',df_concession[df_concession.duplicated()])
             self.report.nb_duplicated_concessions += len(df_concession[df_concession.duplicated()])
 
         # #Ecriture dans les nouveaux fichiers
