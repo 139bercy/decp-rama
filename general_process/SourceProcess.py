@@ -333,7 +333,7 @@ class SourceProcess:
             return rec
         
         n, m = 0, 0
-        nb_marches,nb_concessions = 0, 0
+        nb_marches,nb_good_concessions = 0, 0
         dico_ignored_marche, dico_ignored_concession = [], []
         error_message = ''
 
@@ -378,12 +378,12 @@ class SourceProcess:
                     dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,error_message))
                 else: 
                     self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,None))
-                    nb_concessions+=1
+                    nb_good_concessions+=1
                 m+=1
         
         # Mise a jour du nombre de concessions ignorées  
         self.report.nb_in_bad_concessions += len(dico_ignored_concession)
-        self.report.nb_in_concessions += nb_concessions
+        self.report.nb_in_concessions += nb_good_concessions
 
         # Structure du nouveau fichier JSON, création des dictionnaires valides et invalides
         jsonfile = {'marches': {'marche':  dico_ignored_marche, 'contrat-concession': dico_ignored_concession}}
@@ -393,12 +393,12 @@ class SourceProcess:
             json.dump(jsonfile, new_f2, ensure_ascii=False, indent=4)
 
         if len(dico_ignored_marche)>0:
-            self.report.add('Clean/Marchés',self.report.E_VALIDATION,'Marchés non valides',dico_ignored_marche)
+            self.report.add('Clean/Marchés',self.report.E_VALIDATION,'Marché non valides',dico_ignored_marche)
         if len(dico_ignored_concession)>0:
-            self.report.add('Clean/Concession',self.report.E_VALIDATION,'Concessions non valides',dico_ignored_concession)
+            self.report.add('Clean/Concession',self.report.E_VALIDATION,'Concession non valides',dico_ignored_concession)
 
         logging.info(f"Nombre de marchés et concessions invalides dans {file_name}: {len(dico_ignored_marche)+len(dico_ignored_concession)} ")
-        logging.info(f"Nombre de marchés et de concessions valides dans {file_name}: {nb_marches+nb_concessions} ")
+        logging.info(f"Nombre de marchés et de concessions valides dans {file_name}: {nb_marches+nb_good_concessions} ")
 
     def date_norm(self,datestr:str ) -> str:
         """

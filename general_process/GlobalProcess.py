@@ -194,7 +194,7 @@ class GlobalProcess:
         index_to_keep_nomodif += df_nomodif_concession.drop_duplicates(subset=feature_doublons_concession).index.tolist()
 
         # Mémoriser la nombre de concessions après dédoublonnage
-        self.report.nb_duplicated_concessions = len(df_nomodif_concession) - len(index_to_keep_nomodif) + self.report.nb_duplicated_marches
+        self.report.nb_duplicated_concessions = len(df_nomodif_marche)+len(df_nomodif_concession) - len(index_to_keep_nomodif) -self.report.nb_duplicated_marches
 
         # Ajouter au reporting les doublons supprimés
         self.report.add('FixAll/Marchés',self.report.D_DUPLICATE,'Marchés en doublon',df_nomodif_marche[df_nomodif_marche.duplicated(feature_doublons_marche)])
@@ -221,15 +221,15 @@ class GlobalProcess:
             index_to_keep_modif = df_modif_marche.drop_duplicates(subset=feature_doublons_marche,keep='last').index.tolist()  #'last', permet de garder la ligne avec la date est la plus récente
 
             # Mémoriser la nombre de marchés après dédoublonnage
-            self.report.nb_duplicated_marches = len(df_nomodif_marche)-len(index_to_keep_nomodif)
+            self.report.nb_duplicated_marches = len(df_modif_marche)-len(index_to_keep_nomodif)
             self.report.nb_marches = len(index_to_keep_nomodif)
 
             df_modif_concession = df_modif_str[~df_modif_str['_type'].str.contains("Marché")]
             index_to_keep_modif += df_modif_concession.drop_duplicates(subset=feature_doublons_concession,keep='last').index.tolist()  #on ne garde que que les indexs pour récupérer les lignes qui sont dans df_modif (dont le type est dict)
 
             # Mémoriser la nombre de concessions après dédoublonnage
-            self.report.nb_duplicated_concessions = len(df_nomodif_concession) - self.report.nb_duplicated_marches
-            self.report.nb_concessions = len(index_to_keep_nomodif) - self.report.nb_duplicated_concessions
+            self.report.nb_duplicated_concessions = len(df_modif_concession) - self.report.nb_duplicated_marches
+            self.report.nb_concessions = len(index_to_keep_modif) - self.report.nb_duplicated_concessions
 
             # Ajouter au reporting les doublons supprimés
             self.report.add('FixAll/Merchés',self.report.D_DUPLICATE,'Marchés en doublon',df_nomodif_marche[df_nomodif_marche.duplicated(feature_doublons_marche)])
