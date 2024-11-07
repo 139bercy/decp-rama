@@ -969,7 +969,7 @@
                             "title": "Numéro d'identification de la modification",
                             "description": "Ce numéro permet d'identifier une modification de manière unique au sein d'un marché public. Les numéros d'identification de modification doivent être attribués de manière séquentielle de façon à pouvoir trier les modifications par ordre chronologique croissant.",
                             "type": "integer",
-                            "minimum": 1
+                            "minimum": 0
                         },
                         "dateSignatureModification": {
                             "title": "Date de la signature de la modification",

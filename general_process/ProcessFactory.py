@@ -6,6 +6,7 @@ from datetime import datetime
 import numpy as np
 
 from specific_process.PesNouveauProcess import PesNouveauProcess
+from specific_process.AifeNouveauProcess import AifeNouveauProcess
 from reporting.Report import Report
 
 class ProcessFactory:
@@ -17,15 +18,13 @@ class ProcessFactory:
         # self.processes = [DecpAwsProcess, BfcProcess, PesProcess, AwsProcess, AifeProcess, EmarProcess, LyonProcess, MegaProcess]  # Supprimer le BRe car pris en compte dans megalisbre, DecpAwsProcess
         #self.processes = [DecpAwsProcess, EmarProcess, LyonProcess]  # Supprimer le BRe car pris en compte dans megalisbre, DecpAwsProcess
         #self.processes = [PesProcess, LyonProcess, EmarProcess]
-        #self.processes = [AifeProcess]
+        self.processes = [AifeNouveauProcess]
         #self.processes = [MegaProcess]
-        #self.processes = [AifeProcess]
-        #self.processes = [PesProcess]
+        #self.processes = [PesNouveauProcess]
+        #self.processes = [EmarProcess]
         #self.processes = [SampleJsonProcess]
         #self.processes = [SampleXmlProcess]
-        self.processes = [EmarProcess,PesNouveauProcess,MaxiProcess]
-        #self.processes = [PesNouveauProcess]
-        self.processes = [EmarProcess]
+        self.processes = [EmarProcess,PesNouveauProcess]
         # if data_format=='2022':
         # self.processes = [SampleXmlProcess] # For test ECO
         self.dataframes = []

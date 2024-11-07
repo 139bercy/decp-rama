@@ -47,7 +47,7 @@
     "format": "xml",
     "cle_api": ["65cf3c55ec910b5a8e2fc084"],
     "url": "",
-    "validate" : true,
+    "validate" : false,
     "convert_nc": true
   },
   "aws":
@@ -77,6 +77,17 @@
     "url_source": "https://www.data.gouv.fr/fr/organizations/agence-pour-linformatique-financiere-de-letat/",
     "format": "xml",
     "cle_api": ["5bd789ee8b4c4155bd9a0770", "5c3d0d6b8b4c41333775f45a", "5cc8be59634f412a53e309e8", "5df410e86f44413a91d34be3"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "aife2024":
+  {
+    "code": "data.gouv.fr_aife_2024",
+    "description": "Ce r\u00e9pertoire propose les XML journaliers de donn\u00e9es essentielles issues de l'API AIFE, \u00e0 compter du 1er mai 2019",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/aife-de-13001977100018/",
+    "format": "xml",
+    "cle_api": ["5df410e86f44413a91d34be3"],
     "url": "",
     "validate" : true,
     "convert_nc": false

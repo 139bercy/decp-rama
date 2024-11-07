@@ -309,7 +309,7 @@ class GlobalProcess:
                     df_global = pd.DataFrame.from_dict(dico_global)
                     df_global = self.dedoublonnage(df_global)
                     dico_final = self.nan_correction(df_global)
-                    self.file_dump(path_result_month,dico_final)                      
+                    self.file_dump(path_result_month,dico_final)                   
             else:
                 self.file_dump(path_result_month,dico)
         self.file_dump(path_result_daily,dico)
@@ -490,6 +490,14 @@ class GlobalProcess:
         """
         dico = dico.copy()
         for marche in dico['marches']:
+            if 'report__file' in marche:
+                del marche["report__file"]
+            if 'report__error' in marche:
+                del marche["report__error"]
+            if 'report__path' in marche:
+                del marche["report__path"]
+            if 'report__position' in marche:
+                del marche["report__position"]
             #if 'source' in marche:
             #    del marche["source"]
             if 'idAccordCadre' in marche and marche['idAccordCadre'] == '':
@@ -770,7 +778,9 @@ class GlobalProcess:
 
     def upload_datagouv(self):
         """
-        Cette fonction exporte decp_2019.json or decp_2022.json sur data.gouv.fr
+        Cette fonction exporte les donnéees journalières, 
+        annuelles (decp-<Annee>.json) et mensuelles (decp-<Annee>-<mois>.json) sur data.gouv.fr
+        Les données exportées sont une copie des données de travail purgées afin de répondre au schéma de validation
         """
         config_file = "config.json"
         # read info from config.son
@@ -782,41 +792,48 @@ class GlobalProcess:
         headers = {
             "X-API-KEY": "eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyIjoiNWYwZjA0NzZkNzk3NDZjYmU5OGNjYmMwIiwidGltZSI6MTY0ODIxNzg4Ny4wOTg0ODE3fQ.d9b1s_170PeSNAOLyqFFOGoW8irEg1nxNxn-fdGCGAckFbVcIxpaxkEm8H-BlI6nLLvWmvS_lL3nKWaHb7Cd9g"
         }
-                
-        #Nous sommes le premier du mois, on doit donc mettre à jour le fichier decp_2022 sur datagouv et créer la ressource pour le fichier mensuel et l'upload
+
+        suffix_month = datetime.now().strftime('%Y-%m')
+
+        # Nousavons changé de mois, on doit donc mettre à jour le fichier decp_<Annee> sur datagouv 
+        # et créer la ressource pour le fichier mensuel et l'uploader
         if ((datetime.now().month)!=config["resource_month"]):
+
             resource_id_global = config["resource_id_global"]
             url = f"{api}/datasets/{dataset_id}/resources/{resource_id_global}/upload/"
             url_month = f"{api}/datasets/{dataset_id}/upload/"
 
+            suffix_year = datetime.now().strftime('%Y')
             try:
+                # On charge le fichier annuel existant
                 files = {
-                    "file": (f"decp-2022.json", open(f"results/decp-{self.data_format}.json", "rb"))
+                    "file": (f"decp-{suffix_year}.json", open(f"results/decp-{suffix_year}.json", "rb"))
                 }
-            except Exception as err:
+            except Exception:
                 files = {
-                    "file": (f"decp-2022.json", None)
+                    "file": (f"decp-{suffix_year}.json", None)
                 }
 
             try:
+                # On charge le fichier mensuel existant
                 files_month = {
-                    "file": (f"decp-{datetime.now().year}-{datetime.now().month}.json", open(f"results/decp-{datetime.now().year}-{datetime.now().month}.json", "rb"))
+                    "file": (f"decp-{suffix_month}.json", open(f"results/decp-{suffix_month}.json", "rb"))
                 }
             except Exception as err:
                 files_month = {
-                    "file": (f"decp-{datetime.now().year}-{datetime.now().month}.json", None)
+                    "file": (f"decp-{suffix_month}.json", None)
                 }
 
             response = requests.post(url, headers=headers, files=files)
             if response.status_code==200:
-                logging.info("Upload du fichier decp-2022 réussi")
+                logging.info(f"Upload du fichier decp-{suffix_year} réussi")
             else:
-                print("Erreur ",response.status_code)
+                print(response.status_code)
             
-            #Nous sommes le premier du mois, on créer le fichier mensuel sur datagouv
+            #On créer le fichier mensuel sur datagouv
             response_month = requests.post(url_month, headers=headers, files=files_month)
             if response_month.status_code==201:
-                logging.info(f"Création du fichier decp-{datetime.now().year}-{datetime.now().month}.json réussie")
+                logging.info(f"Création du fichier decp-{suffix_month}.json réussie")
                 data = response_month.json()
                 resource_id = data['id']
 
@@ -831,13 +848,13 @@ class GlobalProcess:
             else:
                 print("Erreur ",response_month.status_code)
         
-        #Cas pour tout les autres jours du mois
+        #Cas quand le mois n'a pas changé depuis la dernière exécution
         else:
             # Preparation des données de l'appel à l'API
             ressource_id_month = config["resource_id_month"]
             url_upload = f"{api}/datasets/{dataset_id}/resources/{ressource_id_month}/upload/"
             files_month = {
-                "file": (f"decp-{datetime.now().year}-{datetime.now().month}.json", open(f"results/decp-{datetime.now().year}-{datetime.now().month}_data_gouv.json", "rb"))
+                "file": (f"decp-{suffix_month}.json", open(f"results/decp-{suffix_month}_data_gouv.json", "rb"))
             }
 
             #On met à jour le fichier mensuel sur datagouv

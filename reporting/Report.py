@@ -15,8 +15,8 @@ class Report:
     statistics = []
     nb_in_bad_marches = 0;
     nb_in_bad_concessions = 0;
-    nb_in_marches = 0;
-    nb_in_concessions = 0;
+    nb_in_good_marches = 0;
+    nb_in_good_concessions = 0;
     nb_duplicated_marches = 0;
     nb_duplicated_concessions = 0;
     nb_out_bad_marches = 0
@@ -31,8 +31,8 @@ class Report:
     def init(self):
         self.nb_in_bad_marches = 0;
         self.nb_in_bad_concessions = 0;
-        self.nb_in_marches = 0;
-        self.nb_in_concessions = 0;
+        self.nb_in_good_marches = 0;
+        self.nb_in_good_concessions = 0;
         self.nb_duplicated_marches = 0;
         self.nb_duplicated_concessions = 0;
         self.nb_out_bad_marches = 0
@@ -42,16 +42,31 @@ class Report:
     def add(self,step:str,code_erreur:str,message:str,data):
         if isinstance(data, list):
             for i in range(0,len(data)):
-                file_name = data[i]['file']
-                del data[i]['file']
-                source = data[i]['source']
-                del data[i]['source']
-                if 'error_validation' in data[i]:
-                    error = data[i]['error_validation']
-                    del data[i]['error_validation']
+                if 'report__file' in data[i]:
+                    file_name = data[i]['report__file']
+                    del data[i]['report__file']
+                else:
+                    file_name = None
+                if 'source' in data[i]:
+                    source = data[i]['source']
+                else:
+                    source = None
+                if 'report__position' in data[i]:
+                    position = data[i]['report__position']
+                    del data[i]['report__position']
+                else:
+                    position = None
+                if 'report__error' in data[i]:
+                    error = data[i]['report__error']
+                    del data[i]['report__error']
                 else:
                     error = None
-                self.add_message(step,code_erreur,source,file_name,error,message,i,data[i])
+                if 'report__path' in data[i]:
+                    path = data[i]['report__path']
+                    del data[i]['report__path']
+                else:
+                    path = None
+                self.add_message(step,code_erreur,source,file_name,position,error,path,message,i,data[i])
         else:
             dic = []
             for i in range(0,len(data)):
@@ -60,15 +75,15 @@ class Report:
 
     # Add a message load file failed from dictionary or panda dataframe
     def add_fail(self,step:str,code_erreur:str,error:str,source:str,file_name:str):
-        self.add_message(step,code_erreur,source,file_name,error,'',0,[])
+        self.add_message(step,code_erreur,source,file_name,0,error,'','',0,[])
 
     # Add a message record
-    def add_message(self,step:str,code_erreur:str,source:str,file_name:str,error:str,message:str,index,data):
+    def add_message(self,step:str,code_erreur:str,source:str,file_name:str,position:int,error:str,path:str,message:str,index,data):
         if source not in self.messages:
             self.messages[source] = {code_erreur: []}
         if code_erreur not in self.messages[source]:
             self.messages[source][code_erreur] = []
-        self.messages[source][code_erreur].append({'index': index, 'error': error, 'message': message, 'step': step, 'file': file_name, 'data': data})
+        self.messages[source][code_erreur].append({'index': index, 'error': error, 'path': path, 'position': position,'message': message, 'step': step, 'file': file_name, 'date': datetime.now().strftime('%Y-%m-%d'),'data': data})
 
     # Save data report and statistics to files 
     def save(self):
@@ -78,7 +93,7 @@ class Report:
     # Save data report to a file
     def save_report(self):
         title = 'Liste des erreurs ayant conduit à la suppression des marchés ou des concessions du résultat'
-        currentday = f"{datetime.now().year}-{datetime.now().month}-{datetime.now().day}"
+        currentday = datetime.now().strftime('%Y-%m-%d')
         json_data = {
             'title': title,
             'date': currentday,
@@ -91,10 +106,11 @@ class Report:
     def fix_statistics (self,source):
         self.statistics.append ({'source': {
             'name': source, 
+            'date': datetime.now().strftime('%Y-%m-%d'),
             'Marchés non valides en entrée': self.nb_in_bad_marches,
             'Concessions non valides en entrée': self.nb_in_bad_concessions,
-            'Marchés valides en entrée': self.nb_in_marches,
-            'Concessions valides en entrée': self.nb_in_concessions,
+            'Marchés valides en entrée': self.nb_in_good_marches,
+            'Concessions valides en entrée': self.nb_in_good_concessions,
             'Doublons de marchés supprimés': self.nb_duplicated_marches,
             'Doublons de concessions supprimées': self.nb_duplicated_concessions,
             'Marchés erronés en sortie' : self.nb_out_bad_marches,
@@ -106,7 +122,7 @@ class Report:
     # Save statistics to a file 
     def save_statistics(self):
         title = 'Nombre de marchés et de concessions en entrées de rama par sources'
-        currentday = f"{datetime.now().year}-{datetime.now().month}-{datetime.now().day}"
+        currentday = datetime.now().strftime('%Y-%m-%d')
         json_data = {
             'title': title,
             'date': currentday,
