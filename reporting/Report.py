@@ -3,6 +3,8 @@ import pandas as pd
 import json
 import os
 
+from database.Db import Db
+
 # Class for managing reports about records which are excluded from results during processibg
 class Report:
 
@@ -26,6 +28,7 @@ class Report:
     def __init__(self, application:str):
         self.application = application
         self.init()
+        self.db = Db()
 
     # Init statistics
     def init(self):
@@ -84,6 +87,16 @@ class Report:
         if code_erreur not in self.messages[source]:
             self.messages[source][code_erreur] = []
         self.messages[source][code_erreur].append({'index': index, 'error': error, 'path': path, 'position': position,'message': message, 'step': step, 'file': file_name, 'date': datetime.now().strftime('%Y-%m-%d'),'data': data})
+        self.add_report_record(step,code_erreur,source,file_name,position,error,path,message,datetime.now().strftime('%Y-%m-%d'),data)
+
+    def add_report_record(self,step:str,code_erreur:str,source:str,file_name:str,position:int,error:str,path:str,message:str,date:str,data):
+        step_id = self.db.find_or_add_step(step)
+        source_id = self.db.find_or_add_source(source)
+        file_id = self.db.find_or_add_file(file_name,source_id)
+        exclusion_type_id = self.db.find_or_add_exclusion_type(code_erreur)
+
+        self.db.add_report_record(step_id, source_id, file_id, exclusion_type_id, message, error, path, position, data)
+        
 
     # Save data report and statistics to files 
     def save(self):

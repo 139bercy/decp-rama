@@ -40,7 +40,7 @@ def main(data_format:str = 2022):
 
 if __name__ == "__main__":
     """Lorsqu'on appelle la fonction main (courante), on définit le niveau de logging et le format d'affichage."""
-    os.makedirs(f"logs", exist_ok=True)
+    os.makedirs("logs", exist_ok=True)
     file_handler = logging.FileHandler(filename="logs/app.log", mode='a', encoding='utf-8')
     file_handler.setLevel(logging.INFO)
 
@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
     all_data_format = ['2022']
     for data_format in all_data_format:
-        print(f"---------------------------------------------------------------")
+        print("---------------------------------------------------------------")
         print(f"Traitement pour le format {data_format}")
         # try:
         main(data_format)
