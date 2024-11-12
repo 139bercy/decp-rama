@@ -11,7 +11,14 @@ logger = logging.getLogger(__name__)
 locale.setlocale(locale.LC_ALL, 'fr_FR.UTF-8')
 
 class Db:
-
+    ERROR_MESSAGE_SESSION_BEGIN = "Une erreur s'est produite lors de la fermeture de la session"
+    ERROR_MESSAGE_SESSION_END = "Une erreur s'est produite lors de la fermeture de la session"
+    ERROR_MESSAGE_STEP = "Une erreur s'est produite lors de la recherche ou de l'ajout de l'étape :"
+    ERROR_MESSAGE_SOURCE = "Une erreur s'est produite lors de la recherche ou de l'ajout de la source"
+    ERROR_MESSAGE_FILE = "Une erreur s'est produite lors de la recherche ou de l'ajout du fichier :"
+    ERROR_MESSAGE_EXCLUSION = "Une erreur s'est produite lors de la recherche ou de l'ajout du type d'exclusion :"
+    ERROR_MESSAGE_SESSION_REPORT = "Une erreur s'est produite lors de la recherche ou de l'ajout d'un élément du rapport':"
+    
     def __init__(self,filename='database.ini', section='postgresql'):
         # Load config file
         config_file = "config.json"
@@ -53,9 +60,65 @@ class Db:
                 conn.close()
                 print('Database connection closed.')
 
-    def add_report_record(self, step_id, source_id, file_id, exclusion_type_id, message, error, path, position:int, content):
+    def add_session(self,session_name):
+        """
+        Ajoute une entrée dans la table session.
+        :return: report_session_id de l'étape
+        """
+        session_id = None
+        try:
+            # Connexion à la base de données
+            connection = psycopg2.connect(**self.connection_params)
+            cursor = connection.cursor()
+
+            cursor.execute("INSERT INTO decp_report.session (session_id, name, begin_date) VALUES (nextval('decp_report.s_session'), %s, NOW()) RETURNING session_id", (session_name,))
+            session_id = cursor.fetchone()[0]  # Récupère le nouveau step_id
+
+            # Commit des changements
+            connection.commit()
+
+        except Exception as e:
+            print(self.ERROR_MESSAGE_SESSION_BEGIN, e)
+        finally:
+            # Fermeture de la connexion
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+        return session_id
+
+    def end_session(self,session_id:int,message:str):
+        """
+        Ajoute la date de fin de l'entrée dans la table session.
+        :return: session_id de l'étape
+        """
+        try:
+            # Connexion à la base de données
+            connection = psycopg2.connect(**self.connection_params)
+            cursor = connection.cursor()
+
+            cursor.execute("UPDATE decp_report.session SET message=%s, end_date = NOW() WHERE session_id = %s RETURNING session_id", (message,session_id,))
+            session_id = cursor.fetchone()[0]  # Récupère le nouveau step_id
+
+            # Commit des changements
+            connection.commit()
+
+        except Exception as e:
+            print(self.ERROR_MESSAGE_SESSION_END, e)
+        finally:
+            # Fermeture de la connexion
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+        return session_id
+
+    def add_report(self, session_id, step_id, source_id, file_id, exclusion_type_id, message, error, path, position:int, content):
         """
         Ajoute un enregistrement dans la table decp.report
+        :param session_id: INT8, identifiant de la session
         :param step_id: INT8, identifiant de l'étape
         :param source_id: INT8, identifiant de la source
         :param file_id: INT8, identifiant du fichier
@@ -74,12 +137,12 @@ class Db:
 
             # Instruction SQL pour insérer un enregistrement
             insert_query = """
-                INSERT INTO decp_report.report (report_id, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, content, creation_date)
-                VALUES (nextval('decp_report.s_report'), %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                INSERT INTO decp_report.report (report_id, session_id, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, content, creation_date)
+                VALUES (nextval('decp_report.s_report'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             """
 
             # Exécution de la requête d'insertion
-            cursor.execute(insert_query, (step_id, source_id, file_id, exclusion_type_id, message, error, path, position, str(content)))
+            cursor.execute(insert_query, (session_id, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, str(content)))
 
             # Commit des changements
             connection.commit()
@@ -87,7 +150,7 @@ class Db:
             print("L'enregistrement a été ajouté avec succès.")
 
         except Exception as e:
-            print("Une erreur s'est produite :", e)
+            print(self.ERROR_MESSAGE_SESSION_REPORT, e)
         finally:
             # Fermeture de la connexion
             if cursor:
@@ -99,9 +162,7 @@ class Db:
     def find_or_add_step(self, step_name):
         """
         Recherche un step par son nom et l'ajoute s'il n'existe pas.
-        :param connection_params: Dictionnaire des paramètres de connexion
         :param step_name: Nom de l'étape à rechercher
-        :param creation_date: Date de création à associer à la nouvelle étape
         :return: step_id de l'étape
         """
         step_id = None
@@ -125,7 +186,7 @@ class Db:
             connection.commit()
 
         except Exception as e:
-            print("Une erreur s'est produite lors de la recherche ou de l'ajout de l'étape :", e)
+            print(self.ERROR_MESSAGE_STEP, e)
         finally:
             # Fermeture de la connexion
             if cursor:
@@ -135,8 +196,12 @@ class Db:
 
         return step_id
 
-    def find_or_add_file(self, file_name, source_id):
-        """ Recherche un fichier par son nom et l'ajoute s'il n'existe pas. """
+    def find_or_add_file(self, file_name:str, source_id:int, nb_marches:int, nb_concessions:int):
+        """
+        Recherche un fichier par son nom et l'ajoute s'il n'existe pas.
+        :param source_id: INT8, identifiant de la source
+        :param nb: INT8, Nombre d'enregistrement dans la source
+        """
         file_id = None
         try:
             connection = psycopg2.connect(**self.connection_params)
@@ -148,13 +213,13 @@ class Db:
             if result:
                 file_id = result[0]
             else:
-                cursor.execute("INSERT INTO decp_report.file (file_id, name, source_id, creation_date) VALUES (nextval('decp_report.s_file'), %s, %s, NOW()) RETURNING file_id", (file_name, source_id))
+                cursor.execute("INSERT INTO decp_report.file (file_id, name, source_id, nb_marches, nb_concessions, creation_date) VALUES (nextval('decp_report.s_file'), %s, %s, %s, %s, NOW()) RETURNING file_id", (file_name, source_id, nb_marches, nb_concessions))
                 file_id = cursor.fetchone()[0]
 
             connection.commit()
 
         except Exception as e:
-            print("Une erreur s'est produite lors de la recherche ou de l'ajout du fichier :", e)
+            print(self.ERROR_MESSAGE_FILE, e)
         finally:
             if cursor:
                 cursor.close()
@@ -182,7 +247,7 @@ class Db:
             connection.commit()
 
         except Exception as e:
-            print("Une erreur s'est produite lors de la recherche ou de l'ajout du type d'exclusion :", e)
+            print(self.ERROR_MESSAGE_EXCLUSION, e)
         finally:
             if cursor:
                 cursor.close()
@@ -220,7 +285,7 @@ class Db:
             connection.commit()
 
         except Exception as e:
-            print("Une erreur s'est produite lors de la recherche ou de l'ajout de la source :", e)
+            print(self.ERROR_MESSAGE_SOURCE, e)
         finally:
             # Fermeture de la connexion
             if cursor:
@@ -234,4 +299,3 @@ class Db:
 if __name__ == '__main__':
     db = Db()
     db.connect()
-

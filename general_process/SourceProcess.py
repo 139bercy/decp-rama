@@ -195,7 +195,7 @@ class SourceProcess:
                         logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
                     wget.download(self.url[i], f"sources/{self.source}/{self.title[i]}")
                 except:
-                    logging.error("Problème de téléchargement du fichier ", self.url[i])
+                    logging.error(f"Problème de téléchargement du fichier {self.url[i]}")
         logging.info(f"Téléchargement : {len(self.url)} fichier(s) OK")
 
 
@@ -264,7 +264,7 @@ class SourceProcess:
                             force_list=('marche','titulaires', 'modifications', 'actesSousTraitance',
                             'modificationsActesSousTraitance', 'typePrix','considerationEnvironnementale',
                             'modaliteExecution'))
-                        #dico = xmltodict.parse(xml_file.read())
+                        # avant dico = xmltodict.parse(xml_file.read())
                 except Exception as err:
                     logging.error(f"Exception lors du chargement du fichier xml {self.title[i]} - {err}")
 
@@ -291,7 +291,7 @@ class SourceProcess:
             try:
                 self.tri_format(dico['marches'], self.title[i])    #On obtient 2 fichiers qui sont mis jour à chaque tour de boucle
             except Exception as err:
-                logging.error("Exception clean: Balise 'marches' inexistante",err)
+                logging.error(f"Exception tri_format: {err}")
 
         logging.info("Fin du tri")
         logging.info("Nettoyage OK")
@@ -322,26 +322,30 @@ class SourceProcess:
                 rec['report__path'] = error_path
             return rec
         
-        nb = 0
+        nb_total_marches = 0
+        nb_total_concessions = 0
         if 'marche' in dico and isinstance(dico['marche'],list):
-            nb += len(dico['marche'])
+            nb_total_marches += len(dico['marche'])
         elif 'marche' in dico:
-            nb += 1
+            nb_total_marches += 1
         if 'contrat-concession' in dico and isinstance(dico['contrat-concession'],list):
-            nb += len(dico['contrat-concession'])
+            nb_total_concessions += len(dico['contrat-concession'])
         elif 'contrat-concession' in dico:
-            nb += 1
+            nb_total_concessions += 1
 
-        logging.info(f"Nombre de marchés et concessions à valider dans {file_name}: {nb} ")
+        logging.info(f"Nombre de marchés et concessions à valider dans {file_name}: {(nb_total_marches+nb_total_concessions)} ")
 
         n, m = 0, 0
-        nb_marches,nb_good_concessions = 0, 0
+        nb_good_marches,nb_good_concessions = 0, 0
         dico_ignored_marche, dico_ignored_concession = [], []
         error_message = ''
 
         #Creation des dossiers
         os.makedirs("bad_results", exist_ok=True) 
         os.makedirs(f"bad_results/{self.source}", exist_ok=True)
+
+        # On mémorise juste le fichier source si aucune erreur
+        self.report.db_add_file(self.source,file_name,nb_total_marches,nb_total_concessions)
 
         if 'marche' in dico and isinstance(dico['marche'],list):
             while n < len(dico['marche']) :
@@ -355,14 +359,14 @@ class SourceProcess:
                     dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,n,error_message,error_path))
                 else: 
                     self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,n,None,None))
-                    nb_marches+=1
+                    nb_good_marches+=1
                 n+=1
         elif 'marche' in dico:
             dico_ignored_concession.append(complete_util_info(dico['marche'],self.source,file_name,0,'Une liste de marchés est attendue',''))
         
         # Mise a jour du nombre de marchés ignorés a    
         self.report.nb_in_bad_marches += len(dico_ignored_marche)
-        self.report.nb_in_good_marches += nb_marches
+        self.report.nb_in_good_marches += nb_good_marches
 
         if 'contrat-concession' in dico and isinstance(dico['contrat-concession'],list):
             while m < len(dico['contrat-concession']) :
@@ -396,9 +400,9 @@ class SourceProcess:
             self.report.add('Clean/Marchés',self.report.E_VALIDATION,'Marché non valides',dico_ignored_marche)
         if len(dico_ignored_concession)>0:
             self.report.add('Clean/Concession',self.report.E_VALIDATION,'Concession non valides',dico_ignored_concession)
-
+        
         logging.info(f"Nombre de marchés et concessions invalides dans {file_name}: {len(dico_ignored_marche)+len(dico_ignored_concession)} ")
-        logging.info(f"Nombre de marchés et de concessions valides dans {file_name}: {nb_marches+nb_good_concessions} ")
+        logging.info(f"Nombre de marchés et de concessions valides dans {file_name}: {nb_good_marches+nb_good_concessions} ")
 
     def date_norm(self,datestr:str ) -> str:
         """
@@ -421,7 +425,7 @@ class SourceProcess:
 
         """
         if nature == "marché":
-            if not record['nature'] is None  and 'concession' in record['nature'].lower():
+            if record['nature'] is not None  and 'concession' in record['nature'].lower():
                 if 'dateDebutExecution' in record:
                     if record['dateDebutExecution'] and self.date_norm(record['dateDebutExecution'])<'2024-01-01':
                         return True
@@ -870,7 +874,7 @@ class SourceProcess:
         # # with open(f'bad_results/{self.source}/doublons_{self.source}.csv', 'a', encoding='utf-8') as f:
         # #     writer = csv.writer(f, delimiter = ';')
         # #     writer.writerow(duplicates.iloc[:][:])         
-        index_to_keep = df_str.drop_duplicates(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep=False).index.tolist()
+        index_to_keep = df_str.drop_duplicates(subset=df_marche.columns.difference(['report__file','report__nbtotal','report__error','report__position']), keep=False).index.tolist()
         self.df = self.df.iloc[index_to_keep]
         self.df = self.df.reset_index(drop=True)
         logging.info(f"Fix de {self.source} OK")

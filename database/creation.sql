@@ -21,7 +21,7 @@ CREATE TABLE decp_report.report (
    source_id            INT8                 not null,
    file_id              INT8                 not null,
    exclusion_type_id    INT8                 not null,
-   position             INT8                 not null,
+   position             INT8                 null,
    message              VARCHAR(256)         not null,
    error                VARCHAR(256)         null,
    path                 VARCHAR(256)         null,
@@ -79,6 +79,8 @@ CREATE TABLE decp_report.file (
    file_id              INT8                 not null,
    name                 VARCHAR(64)          null,
    source_id            INT8                 null,
+   nb_marches           INT8                 null,
+   nb_concessions       INT8                 null,
    creation_date        TIMESTAMP            null,
    CONSTRAINT pk_file PRIMARY KEY (file_id)
 );

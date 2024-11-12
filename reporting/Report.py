@@ -29,6 +29,7 @@ class Report:
         self.application = application
         self.init()
         self.db = Db()
+        self.session = self.db.add_session('decp-rama')
 
     # Init statistics
     def init(self):
@@ -55,7 +56,7 @@ class Report:
                 else:
                     source = None
                 if 'report__position' in data[i]:
-                    position = data[i]['report__position']
+                    position = int(float(data[i]['report__position']))
                     del data[i]['report__position']
                 else:
                     position = None
@@ -87,15 +88,22 @@ class Report:
         if code_erreur not in self.messages[source]:
             self.messages[source][code_erreur] = []
         self.messages[source][code_erreur].append({'index': index, 'error': error, 'path': path, 'position': position,'message': message, 'step': step, 'file': file_name, 'date': datetime.now().strftime('%Y-%m-%d'),'data': data})
-        self.add_report_record(step,code_erreur,source,file_name,position,error,path,message,datetime.now().strftime('%Y-%m-%d'),data)
+        self.db_add_report(step,code_erreur,source,file_name,position,error,path,message,data)
 
-    def add_report_record(self,step:str,code_erreur:str,source:str,file_name:str,position:int,error:str,path:str,message:str,date:str,data):
+    def db_add_report(self,step:str,code_erreur:str,source:str,file_name:str,position:int,error:str,path:str,message:str,data):
         step_id = self.db.find_or_add_step(step)
         source_id = self.db.find_or_add_source(source)
-        file_id = self.db.find_or_add_file(file_name,source_id)
+        file_id = self.db.find_or_add_file(file_name,source_id,0,0)
         exclusion_type_id = self.db.find_or_add_exclusion_type(code_erreur)
 
-        self.db.add_report_record(step_id, source_id, file_id, exclusion_type_id, message, error, path, position, data)
+        self.db.add_report(self.session, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, data)
+        
+    def db_add_file(self,source:str,file_name:str, nb_marches:int, nb_concessions:int):
+        source_id = self.db.find_or_add_source(source)
+        self.db.find_or_add_file(file_name,source_id,nb_marches,nb_concessions)
+        
+    def db_end_session(self,message:str):
+        self.db.end_session(self.session,message)
         
 
     # Save data report and statistics to files 

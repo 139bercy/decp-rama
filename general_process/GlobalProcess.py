@@ -246,7 +246,7 @@ class GlobalProcess:
     def export(self):
         # if df is empty then return
         if len(self.df) == 0:
-            logging.warning(f"Le DataFrame global est vide, impossible d'exporter")
+            logging.warning("Le DataFrame global est vide, impossible d'exporter")
             return
         """Étape exportation des résultats au format json et xml dans le dossier /results"""
         logging.info("ÉTAPE EXPORTATION")
@@ -492,6 +492,8 @@ class GlobalProcess:
         for marche in dico['marches']:
             if 'report__file' in marche:
                 del marche["report__file"]
+            if 'report__nbtotal' in marche:
+                del marche["report__nbtotal"]
             if 'report__error' in marche:
                 del marche["report__error"]
             if 'report__path' in marche:

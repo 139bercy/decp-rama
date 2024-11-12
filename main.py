@@ -16,7 +16,7 @@ def main(data_format:str = 2022):
     étapes du Global Process (GlobalProcess.py)."""
 
     # Init reporting
-    report = Report('rama')
+    report = Report('decp-rama')
     # get arguments from command line to know which process to run, if there is no arguments run all processes
     if args.process:
         p = ProcessFactory(args.process,data_format,report)
@@ -36,6 +36,7 @@ def main(data_format:str = 2022):
     if not args.local:
         # gp.upload_s3()
         gp.upload_datagouv()
+    report.db_end_session('OK')
     logging.info ("Execution de l'application terminée")
 
 if __name__ == "__main__":
