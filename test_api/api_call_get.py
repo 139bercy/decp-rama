@@ -4,7 +4,7 @@ import json
 # Script d'appel à l'API pour récupére les resources d'un dataset
 
 api_host = "https://www.data.gouv.fr/api/1"
-dataset_id = "5bd0b6fd8b4c413d0801dc57"
+dataset_id = "5cd57bf68b4c4179299eb0e9" #"5bd0b6fd8b4c413d0801dc57"
 url = f"{api_host}/datasets/{dataset_id}/"
 
 headers = {

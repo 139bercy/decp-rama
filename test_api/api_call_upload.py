@@ -21,10 +21,10 @@ headers = {
     "X-API-KEY": "eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyIjoiNWYwZjA0NzZkNzk3NDZjYmU5OGNjYmMwIiwidGltZSI6MTY0ODIxNzg4Ny4wOTg0ODE3fQ.d9b1s_170PeSNAOLyqFFOGoW8irEg1nxNxn-fdGCGAckFbVcIxpaxkEm8H-BlI6nLLvWmvS_lL3nKWaHb7Cd9g"
 }
 
-sha1_hash = calculate_sha1('test_api/decp-fichier-test.json')
+sha1_hash = calculate_sha1('results/decp-2024_data_gouv.json')
 
 files_month = {
-    "file": (f"decp-2022.json", open(f"results/decp-2022.json", "rb"))
+    "file": (f"decp-2024.json", open(f"results/decp-2024_data_gouv.json", "rb"))
 }
 
 response = requests.post(url, headers=headers, files=files_month)
