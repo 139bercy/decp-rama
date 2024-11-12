@@ -1,3 +1,10 @@
+DROP SEQUENCE IF EXISTS decp_report.s_session;
+DROP SEQUENCE IF EXISTS decp_report.s_report;
+DROP SEQUENCE IF EXISTS decp_report.s_step;
+DROP SEQUENCE IF EXISTS decp_report.s_file;
+DROP SEQUENCE IF EXISTS decp_report.s_source;
+DROP SEQUENCE IF EXISTS decp_report.s_exclusion_type;
+
 CREATE SEQUENCE decp_report.s_session;
 CREATE SEQUENCE decp_report.s_report;
 CREATE SEQUENCE decp_report.s_step;
@@ -51,18 +58,10 @@ DROP TABLE IF EXISTS decp_report.session;
 CREATE TABLE decp_report.session (
    session_id           INT8                 not null,
    name                 VARCHAR(256)         not null,
+   message              VARCHAR(256)         null,
    begin_date           TIMESTAMP            not null,
    end_date             TIMESTAMP            null,
    CONSTRAINT pk_session primary key (session_id)
-);
-
-DROP TABLE IF EXISTS decp_report.source;
-
-CREATE TABLE decp_report.source (
-   source_id            INT8                 not null,
-   name                 VARCHAR(64)          null,
-   creation_date        TIMESTAMP            null,
-   CONSTRAINT pk_source PRIMARY KEY (source_id)
 );
 
 DROP TABLE IF EXISTS decp_report.step;
@@ -92,6 +91,16 @@ CREATE TABLE decp_report.exclusion_type (
    name                 VARCHAR(64)          null,
    creation_date        TIMESTAMP            null,
    CONSTRAINT pk_exclusion_type PRIMARY KEY (exclusion_type_id)
+);
+
+
+DROP TABLE IF EXISTS decp_report.source;
+
+CREATE TABLE decp_report.source (
+   source_id            INT8                 not null,
+   name                 VARCHAR(64)          null,
+   creation_date        TIMESTAMP            null,
+   CONSTRAINT pk_source PRIMARY KEY (source_id)
 );
 
 ALTER TABLE decp_report.report
