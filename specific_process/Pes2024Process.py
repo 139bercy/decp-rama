@@ -5,9 +5,9 @@ import json
 import numpy as np
 
 
-class PesNouveauProcess(SourceProcess):
+class Pes2024Process(SourceProcess):
     def __init__(self,data_format,report):
-        super().__init__("pes2024",data_format,report)
+        super().__init__("pes_2024",data_format,report)
 
     def _url_init(self):
         super()._url_init()

@@ -1,5 +1,7 @@
 from .AifeProcess import AifeProcess
+from .Aife2024Process import Aife2024Process
 from .AwsProcess import AwsProcess
+from .Aws2024Process import Aws2024Process
 from .BfcProcess import BfcProcess
 from .BreProcess import BreProcess
 from .DecpAwsProcess import DecpAwsProcess
@@ -8,6 +10,6 @@ from .LyonProcess import LyonProcess
 from .MaxiProcess import MaxiProcess
 from .MegaProcess import MegaProcess
 from .PesProcess import PesProcess
-from .PesNouveauProcess import PesNouveauProcess
+from .Pes2024Process import Pes2024Process
 from .SampleXmlProcess import SampleXmlProcess
 from .SampleJsonProcess import SampleJsonProcess

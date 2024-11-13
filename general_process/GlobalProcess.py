@@ -780,7 +780,7 @@ class GlobalProcess:
 
     def upload_datagouv(self):
         """
-        Cette fonction exporte les donnéees journalières, 
+        Cette fonction exporte les données journalières, 
         annuelles (decp-<Annee>.json) et mensuelles (decp-<Annee>-<mois>.json) sur data.gouv.fr
         Les données exportées sont une copie des données de travail purgées afin de répondre au schéma de validation
         """

@@ -5,9 +5,9 @@ import json
 import numpy as np
 
 
-class AifeNouveauProcess(SourceProcess):
+class Aife2024Process(SourceProcess):
     def __init__(self,data_format,report):
-        super().__init__("aife2024",data_format,report)
+        super().__init__("aife_2024",data_format,report)
 
     def _url_init(self):
         super()._url_init()
