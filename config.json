@@ -4,10 +4,11 @@
     "resource_id_global": "59ba0edb-cf94-4bf1-a546-61f561553917",
     "resource_id_month": "398e075e-5dc2-4797-86d7-21d04e39111f",
     "resource_month": 11,
+    "data_gouv_api_key": "",
     "database": {
-        "dbname": "ifap",
-        "user": "ifap_install",
-        "password": "ifap_install", 
+        "dbname": "decp",
+        "user": "decp",
+        "password": "decp", 
         "host": "localhost",
         "port": "5432"
     }
