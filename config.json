@@ -1,10 +1,10 @@
 {
     "url_api": "https://www.data.gouv.fr/api/1",
     "dataset_id": "5cd57bf68b4c4179299eb0e9",
-    "resource_id_global": "59ba0edb-cf94-4bf1-a546-61f561553917",
+    "resource_id_global": "4fafdaff-b697-4494-9523-e9f56916fea8",
     "resource_id_month": "398e075e-5dc2-4797-86d7-21d04e39111f",
     "resource_month": 11,
-    "data_gouv_api_key": "",
+    "data_gouv_api_key": null,
     "database": {
         "dbname": "decp",
         "user": "decp",
