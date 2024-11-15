@@ -26,6 +26,7 @@ pd.set_option('display.max_rows', None)
 # pd.set_option('display.width', None)
 # pd.set_option('display.max_colwidth', None)
 from reporting.Report import Report
+from utils.NodeFormat import NodeFormat
 
 class SourceProcess:
 
@@ -162,7 +163,9 @@ class SourceProcess:
             old_ressources: dictionnaire correspondant au champ "resources" dans le fichier old_metadata de la source
 
         """
-        # Nouvel version de creation de la liste des fichiers à traiter
+        # Creation de la liste des fichiers à traiter
+        # On inclus les fichiers qui n ont pas été traités dans une session précédente
+        # et ceux dont la date de publication est postérieure a celle memorisee dans old_metadata
         old_urls = {d['url'] for d in old_ressources}
         for d in new_ressources:
             if (d["url"].endswith("xml") or d["url"].endswith("json")):
@@ -230,30 +233,13 @@ class SourceProcess:
     def clean(self) -> None:
         """
         Cette fonction extrait les dictionnaires des fichiers 
-        (suivant le format 2022) pour qu'ils puissent être nettoyé.
-        Grâce à la fonction tri_format, un tri est effectué sur ces
-        dictionnaires pour séparer les bons marchés, des mauvais.
-        """
-        def normalize_list(node,element_name:str,field_name1=None,field_name2=None):
-            lst = []
-            if element_name in node and isinstance(node[element_name],list): 
-                lst.clear()
-                for i in range(0,len(node[element_name])):
-                    if field_name1 is not None and field_name1 in node[element_name][i]:
-                        node[element_name][i][field_name1] = int(node[element_name][i][field_name1])
-                    if field_name2 is not None and field_name2 in node[element_name][i]:
-                        node[element_name][i][field_name2] = float(node[element_name][i][field_name2])
-                    lst.append({element_name: node[element_name][i]})
-            elif isinstance(node,dict):
-                if field_name1 is not None and element_name in node and field_name1 in node[element_name]:
-                    node[element_name][field_name1] = int(node[element_name][field_name1])
-                if field_name2 is not None and element_name in node and field_name2 in node[element_name]:
-                    node[element_name][field_name2] = float(node[element_name][field_name2])
-                lst = [node]
-            return lst
-        
-        logging.info(" ÉTAPE CLEAN")
-        logging.info("Début du tri des nouveaux fichiers")
+        (suivant le format 2022) pour qu'ils puissent être nettoyés.
+        Grâce à la fonction validation_format, une sélection est effectuée sur ces
+        dictionnaires pour séparer les marchés et les concessions respectant le format 
+        des "mauvais".
+        """        
+        logging.info("ÉTAPE CLEAN")
+        logging.info("Début du nettoyage des nouveaux fichiers")
         #Ouverture des fichiers
         dico = {}
         for i in range(len(self.title)):            
@@ -261,26 +247,53 @@ class SourceProcess:
                 try:
                     with open(f"sources/{self.source}/{self.title[i]}", encoding='utf-8') as xml_file:
                         dico = xmltodict.parse(xml_file.read(), dict_constructor=dict, \
-                            force_list=('marche','titulaires', 'modifications', 'actesSousTraitance',
-                            'modificationsActesSousTraitance', 'typePrix','considerationEnvironnementale',
-                            'modaliteExecution'))
-                        # avant dico = xmltodict.parse(xml_file.read())
+                            force_list=('marche','contrat-concession',
+                                'titulaires','donneesExecution','modifications',
+                                'actesSousTraitance','modificationsActesSousTraitance'))
+                                #'techniques','typesPrix','modalitesExecution',
+                                #'considerationsEnvironnementales','considerationsSociales'))
                 except Exception as err:
                     logging.error(f"Exception lors du chargement du fichier xml {self.title[i]} - {err}")
 
-                if self.format == 'UNACTIVATEDxml' and 'marches' in dico and 'marche' in dico['marches']:
-                    n = 0
-                    for n in range(len(dico['marches']['marche'])):
-                        if 'modifications' in dico['marches']['marche'][n]:
-                            dico['marches']['marche'][n]['modifications'] = normalize_list(dico['marches']['marche'][n]['modifications'],'modification','id','montant')
-                        if 'techniques' in dico['marches']['marche'][n]:
-                            dico['marches']['marche'][n]['techniques'] = normalize_list(dico['marches']['marche'][n]['techniques'],'technique')
-                        if 'modalitesExecution' in dico['marches']['marche'][n]:
-                            dico['marches']['marche'][n]['modalitesExecution'] = normalize_list(dico['marches']['marche'][n]['modalitesExecution'],'modaliteExecution')
-                        if 'considerationsSociales' in dico['marches']['marche'][n]:
-                            dico['marches']['marche'][n]['considerationsSociales'] = normalize_list(dico['marches']['marche'][n]['considerationsSociales'],'considerationSociale')
-                        if 'considerationsEnvironnementales' in dico['marches']['marche'][n]:
-                            dico['marches']['marche'][n]['considerationsEnvironnementales'] = normalize_list(dico['marches']['marche'][n]['considerationsEnvironnementales'],'considerationEnvironnementale')
+
+                if 'marches' in dico and 'marche' in dico['marches']:
+                    for marche in dico['marches']['marche']:
+                        if 'titulaires' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'titulaires', 'titulaire'):
+                            NodeFormat.normalize_list_node(marche,'titulaires', 'titulaire')
+
+                        if 'concessionnaires' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'concessionnaires', 'concessionnaire'):
+                            NodeFormat.normalize_list_node(marche,'concessionnaires', 'concessionnaire')
+                        
+                        if 'donneesExecution' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'donneesExecution', 'donneesAnnuelles'):
+                            NodeFormat.normalize_list_node(marche,'donneesExecution', 'donneesAnnuelles')
+
+                        if 'modifications' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'modifications', 'modification'):
+                            NodeFormat.normalize_list_node(marche,'modifications', 'modification')
+                        NodeFormat.convert_ints(marche,'modifications', 'modification')
+
+                        if 'modificationsActesSousTraitance' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance'):
+                            NodeFormat.normalize_list_node(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance')
+
+                        if 'actesSousTraitance' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'actesSousTraitance', 'acteSousTraitance'):
+                            NodeFormat.normalize_list_node(marche,'actesSousTraitance', 'acteSousTraitance')
+
+                        if 'modalitesExecution' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'modalitesExecution', 'modaliteExecution'):
+                            NodeFormat.normalize_list_value(marche,'modalitesExecution', 'modaliteExecution')
+
+                        if 'techniques' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'techniques', 'technique'):
+                            NodeFormat.normalize_list_value(marche,'techniques', 'technique')
+
+                        if 'typesPrix' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'typesPrix', 'typePrix'):
+                            NodeFormat.normalize_list_value(marche,'typesPrix', 'typePrix')
+                            
+                        if 'considerationsSociales' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'considerationsSociales', 'considerationSociale'):
+                            NodeFormat.normalize_list_value(marche,'considerationsSociales', 'considerationSociale')
+                            
+                        if 'considerationsEnvironnementales' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'considerationsEnvironnementales', 'considerationEnvironnementale'):
+                            NodeFormat.normalize_list_value(marche,'considerationsEnvironnementales', 'considerationEnvironnementale')
+
+
+
 
             elif self.format == 'json':
                 try:
@@ -289,15 +302,14 @@ class SourceProcess:
                 except Exception as err:
                     logging.error(f"Exception lors du chargement du fichier json {self.title[i]} - {err}")
             try:
-                self.tri_format(dico['marches'], self.title[i])    #On obtient 2 fichiers qui sont mis jour à chaque tour de boucle
+                self.validation_format(dico['marches'], self.title[i])    #On obtient 2 fichiers qui sont mis jour à chaque tour de boucle
             except Exception as err:
-                logging.error(f"Exception tri_format: {err}")
+                logging.error(f"Exception lors de la validation du format des données: {err}")
 
-        logging.info("Fin du tri")
-        logging.info("Nettoyage OK")
+        logging.info("Fin du nettoyage des nouveaux fichier")
 
 
-    def tri_format(self, dico:dict, file_name:str) -> None:
+    def validation_format(self, dico:dict, file_name:str) -> None:
         """
         Cette fonction permet de vérifier la structure du dictionnaire fournit en
         entrée. Si le schéma est respecté, les marchés et concessions correctes
@@ -322,43 +334,29 @@ class SourceProcess:
                 rec['report__path'] = error_path
             return rec
         
-        nb_total_marches = 0
-        nb_total_concessions = 0
-        if 'marche' in dico and isinstance(dico['marche'],list):
-            nb_total_marches += len(dico['marche'])
-        elif 'marche' in dico:
-            nb_total_marches += 1
-        if 'contrat-concession' in dico and isinstance(dico['contrat-concession'],list):
-            nb_total_concessions += len(dico['contrat-concession'])
-        elif 'contrat-concession' in dico:
-            nb_total_concessions += 1
+        nb_total_marches,nb_total_concessions = self.get_nb_enregistrements(dico);
+
+        # On mémorise le fichier source et les nombres de marchés et de concession
+        self.report.db_add_file(self.source,file_name,nb_total_marches,nb_total_concessions)
 
         logging.info(f"Nombre de marchés et concessions à valider dans {file_name}: {(nb_total_marches+nb_total_concessions)} ")
 
         n, m = 0, 0
         nb_good_marches,nb_good_concessions = 0, 0
         dico_ignored_marche, dico_ignored_concession = [], []
-        error_message = ''
-
-        #Creation des dossiers
-        os.makedirs("bad_results", exist_ok=True) 
-        os.makedirs(f"bad_results/{self.source}", exist_ok=True)
-
-        # On mémorise juste le fichier source si aucune erreur
-        self.report.db_add_file(self.source,file_name,nb_total_marches,nb_total_concessions)
+        error_message = None
 
         if 'marche' in dico and isinstance(dico['marche'],list):
             while n < len(dico['marche']) :
                 #self.dico_2022_marche.append(dico['marche'][n])
                 dico_test = {'marches': {'marche': [dico['marche'][n]], 'contrat-concession': []}}
 
-                if self.validate:
-                    valid,error_message,error_path = self.check_json(dico_test)
+                valid,error_message,error_path = self.check_json(dico_test)
                 if self.validate and not valid:
                     #self.dico_2022_marche.remove(dico['marche'][n])
                     dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,n,error_message,error_path))
                 else: 
-                    self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,n,None,None))
+                    self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,n,error_message,error_path))
                     nb_good_marches+=1
                 n+=1
         elif 'marche' in dico:
@@ -373,13 +371,12 @@ class SourceProcess:
                 #self.dico_2022_concession.append(dico['contrat-concession'][m])
                 dico_test = {'marches': {'marche': [], 'contrat-concession': [dico['contrat-concession'][m]]}}
 
-                if self.validate:
-                    valid,error_message,error_path = self.check_json(dico_test)
+                valid,error_message,error_path = self.check_json(dico_test)
                 if self.validate and not valid:
                     #self.dico_2022_concession.remove(dico['contrat-concession'][m])
                     dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,m,error_message,error_path))
                 else: 
-                    self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,m,None,None))
+                    self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,m,error_message,error_path))
                     nb_good_concessions+=1
                 m+=1
         elif 'contrat-concession' in dico:
@@ -390,17 +387,20 @@ class SourceProcess:
         self.report.nb_in_good_concessions += nb_good_concessions
 
         # Structure du nouveau fichier JSON, création des dictionnaires valides et invalides
-        jsonfile = {'marches': {'marche':  dico_ignored_marche, 'contrat-concession': dico_ignored_concession}}
-
-        #Ecriture dans les nouveaux fichiers
-        with open(f'bad_results/{self.source}/mauvais_marches_{self.source}.json', "w", encoding='utf8') as new_f2:
-            json.dump(jsonfile, new_f2, ensure_ascii=False, indent=4)
+        # obsolete jsonfile = {'marches': {'marche':  dico_ignored_marche, 'contrat-concession': dico_ignored_concession}}
 
         if len(dico_ignored_marche)>0:
-            self.report.add('Clean/Marchés',self.report.E_VALIDATION,'Marché non valides',dico_ignored_marche)
+            self.report.add('Clean/Marchés',self.report.E_VALIDATION,'Marché non valide',dico_ignored_marche)
         if len(dico_ignored_concession)>0:
-            self.report.add('Clean/Concession',self.report.E_VALIDATION,'Concession non valides',dico_ignored_concession)
+            self.report.add('Clean/Concession',self.report.E_VALIDATION,'Concession non valide',dico_ignored_concession)
         
+        # Si la source est ajouté sans validation on mémorise quamd même les erreurs
+        if not self.validate: 
+            if len(self.dico_2022_marche)>0:
+                self.report.add_forced('Clean/Marchés',self.report.E_VALIDATION,'Marché non valide mais ajouté',self.dico_2022_marche)
+            if len(self.dico_2022_concession)>0:
+                self.report.add_forced('Clean/Concession',self.report.E_VALIDATION,'Concession non valide mais ajoutée',self.dico_2022_concession)
+
         logging.info(f"Nombre de marchés et concessions invalides dans {file_name}: {len(dico_ignored_marche)+len(dico_ignored_concession)} ")
         logging.info(f"Nombre de marchés et de concessions valides dans {file_name}: {nb_good_marches+nb_good_concessions} ")
 
@@ -500,124 +500,6 @@ class SourceProcess:
             else:
                 df['_type'] = df["nature"].apply(lambda x: "Marché" if "march" in x.lower() else "Concession")
 
-
-    # def convert_prestataire(self):
-    #     """Étape de conversion des fichiers qui supprime les ' et concatène les fichiers présents
-    #     dans {self.source} dans un seul DataFrame"""
-    #     logging.info("  ÉTAPE CONVERT")
-    #     # suppression des '
-    #     count = 0
-    #     list_path = []    #list_path sera la liste de tous les fichiers car self.title est la liste des noms de fichiers qui ont été téléchargés
-    #     repertoire_source = f"sources/{self.source}"
-    #     #on récupère le nom de chaque fichier et on le met dans liste path, en plus de compter le nombre de fichiers présent dnas le dossier source
-    #     for path in os.listdir(repertoire_source):
-    #         if os.path.isfile(os.path.join(repertoire_source, path)):
-    #             list_path = list_path + [path] 
-    #             count += 1
-    #     for i in range(count):
-    #         # print ("title",self.title) 
-    #         # print ("i :",i) 
-    #         file_path = f"sources/{self.source}/{list_path[i]}"
-    #         file_exist = os.path.exists(file_path)
-    #         if not file_exist:
-    #             logging.warning(f"Le fichier {file_path} n'existe pas.")
-
-    #     # if count != len(self.url):
-    #     #     logging.warning("Nombre de fichiers en local inégal au nombre d'url trouvé")
-    #     # if count != len(self.url):
-    #     #     logging.warning("Nombre de fichiers en local inégal au nombre d'url trouvé")
-    #     logging.info(f"Début de convert: mise au format DataFrame de {self.source}")
-    #     if self.format == 'xml':
-    #         li = []
-    #         for i in range(count):
-    #             if self.data_format=='2022':
-    #                 if not self.check(None,f"sources/{self.source}/{list_path[i]}"):
-    #                     logging.warning(f"sources/{self.source}/{list_path[i]} not a valide xml")
-    #                     continue
-    #                     #raise Exception(f"sources/{self.source}/{self.file_name[i]}.{self.format} not a valide xml")
-    #             try:
-    #                 with open(f"sources/{self.source}/{list_path[i]}", encoding='utf-8') as xml_file:
-    #                     dico = xmltodict.parse(xml_file.read(), dict_constructor=dict)
-
-    #                 if dico['marches'] is not None:
-    #                     dico = self.format_2022(dico,f"sources/{self.source}/{list_path[i]}_ignored.{self.format}")
-                        
-    #                     if 'marches' in dico:
-    #                         # Add marchés
-    #                         if 'marche' in dico['marches']:   #à chaque noueau marché, on ajoute une colonne, qui sera utilisé par un dataframe. Ce dataframe sera ajouté dans la liste li
-    #                             df = pd.DataFrame.from_dict(dico['marches']['marche'])
-    #                             self._add_column_type(df,"Marché")
-    #                             li.append(df)
-    #                             ##del df
-
-    #                         # Add Concession
-    #                         if self.data_format=='2022' and 'contrat-concession' in dico['marches']:
-    #                             df = pd.DataFrame.from_dict(dico['marches']['contrat-concession'])
-    #                             self._add_column_type(df,"Concession")
-    #                             li.append(df)
-    #                             ##del df
-    #                     ##del dico
-    #                 else:  # cas presque null
-    #                     logging.warning(f"Le fichier {list_path[i]} est vide, il est ignoré")
-    #             except Exception as err:
-    #                 logging.error(f"Exception lors du chargement du fichier xml {list_path[i]} - {err}")
-
-    #         if len(li) != 0:
-    #             df = pd.concat(li)
-    #             ##del li
-    #             df = df.reset_index(drop=True)
-    #         else:
-    #             # create empty dataframe
-    #             df = pd.DataFrame()
-    #         return df
-    #     elif self.format == 'json':
-    #         li = []
-    #         for i in range(count):
-    #             try:
-    #                 with open(f"sources/{self.source}/{list_path[i]}", encoding="utf-8") as json_file:
-                        
-    #                     #check for format compliance (only for data_format 2022)
-    #                     if self.data_format=='2022':
-    #                         if not self.check(json_file,None):
-    #                             logging.warning(f"sources/{self.source}/{list_path[i]} not a valid json")
-    #                             raise Exception("Json format not valid")
-                        
-    #                         dico = json.load(json_file)
-    #                         self._retain_with_format(dico,f"sources/{self.source}/{list_path[i]}_ignored.{self.format}")
-
-                            
-    #                         if 'marches' in dico:
-    #                             # Add marchés
-    #                             if 'marche' in dico['marches']:
-    #                                 df = pd.DataFrame.from_dict(dico['marches']['marche'])
-    #                                 self._add_column_type(df,"Marché")
-    #                                 li.append(df)
-    #                                 ##del df
-
-    #                             # Add Concession
-    #                             if self.data_format=='2022' and 'contrat-concession' in dico['marches']:
-    #                                 df = pd.DataFrame.from_dict(dico['marches']['contrat-concession'])
-    #                                 self._add_column_type(df,"Concession")
-    #                                 li.append(df)
-    #                                 ##del df
-    #                     else:
-    #                         dico = json.load(json_file)
-    #                         self._retain_with_format(dico,f"sources/{self.source}/{list_path[i]}_ignored.{self.format}")
-    #                         df = pd.DataFrame.from_dict(dico['marches'])
-    #                         self._add_column_type(df)
-    #                         li.append(df)
-    #                         ##del df
-    #                     ##del dico
-    #             except Exception as err:
-    #                 logging.error(f"Exception lors du chargement du fichier json {list_path[i]} - {err}")
-    #         df = pd.concat(li)
-    #         ##del li
-    #         df = df.reset_index(drop=True)
-    #         return df
-    #     logging.info("Conversion OK")
-    #     logging.info(f"Nombre de marchés dans {self.source} après convert : {len(self.df)}")
-
-
     def convert(self) -> None:
         """
         Étape de conversion des fichiers qui concatène les fichiers présents dans 
@@ -627,40 +509,6 @@ class SourceProcess:
         """
         logging.info("  ÉTAPE CONVERT")
         logging.info(f"Début de convert: mise au format DataFrame de {self.source}")
-
-        #Mise à jour des dictionnaires
-        # old_files = list(set(os.listdir(f"sources/{self.source}")) - set(self.title))   #liste des titres des fichiers déja présents en local
-    
-        # for i in range(len(old_files)):
-        #     logging.info("Extraction des données des anciens fichiers")
-
-        #     if self.format == 'xml':
-        #         try:
-        #             with open(f"sources/{self.source}/{old_files[i]}", encoding='utf-8') as xml_file:
-        #                 dico = xmltodict.parse(xml_file.read(), dict_constructor=dict,  \
-        #                                        force_list=('marche','titulaires', 'modifications', 'actesSousTraitance',
-        #                                        'modificationsActesSousTraitance', 'typePrix','considerationEnvironnementale',
-        #                                        'modaliteExecution'))
-        #                 #Ajout du dictionnaire dans la bonne variable (dico_2022_marche, dico_2022_concession, dico_ignored_marche, dico_ignored_concession)
-        #                 # try:
-        #                 #     self.tri_format(dico["marches"], f"sources/{self.source}/{old_files[i]}")
-        #                 # except Exception as err:
-        #                 #     logging.error("Balise 'marches' inexistante")
-        #         except Exception as err:
-        #             logging.error(f"Exception lors du chargement du fichier xml {old_files[i]} - {err}")
-
-        #     elif self.format == 'json':
-        #             try:
-        #                 with open(f"sources/{self.source}/{old_files[i]}", encoding="utf-8") as json_file:
-        #                     dico = json.load(json_file)
-        #                     #Ajout du dictionnaire dans la bonne variable (dico_2022_marche, dico_2022_concession, dico_ignored_marche, dico_ignored_concession)
-        #                 # try:
-        #                 #     self.tri_format(dico["marches"], f"sources/{self.source}/{old_files[i]}")
-        #                 # except Exception as err:
-        #                 #     logging.error("Balise 'marches' inexistante")
-
-        #             except Exception as err:
-        #                 logging.error(f"Exception lors du chargement du fichier json {old_files[i]} - {err}")
 
         logging.info(f"Début de convert: mise au format DataFrame de {self.source}")
         #Liste qui conservera les dataframes. 
@@ -672,14 +520,13 @@ class SourceProcess:
             self._add_column_type(df,"Marché")
         li.append(df)
 
-    
-        # Ajoutd'une concession à la liste des dataframes
+        # Ajout d'une concession à la liste des dataframes
         df = pd.DataFrame.from_dict(self.dico_2022_concession)
         if "_type" not in df.columns:
             self._add_column_type(df,"Concession")
         li.append(df)
 
-        #Concaténation des dataframes de la liste li en une dataframe                  
+        #Concaténation des dataframes de la liste li en un seul dataframe                  
         if len(li) != 0:
             df = pd.concat(li)
             df = df.reset_index(drop=True)
@@ -687,33 +534,32 @@ class SourceProcess:
             # create empty dataframe
             df = pd.DataFrame()
         self.df = df
+
         logging.info("Conversion OK")
         logging.info(f"Nombre de marchés dans {self.source} après convert : {len(self.df)}")
 
 
-    def validateJson(self, jsonData:dict,jsonScheme:dict) -> tuple[bool,str,str]:
+    def validate_json(self, json_data:dict,json_scheme:dict) -> tuple[bool,str,str]:
         """
-        Fonction vérifiant si le fichier jsn "jsonData" respecte
-        le schéma spécifié dans le  schéma en paramètre "jsonScheme". 
+        Fonction vérifiant si le fichier jsn "json_data" respecte
+        le schéma spécifié dans le  schéma en paramètre "json_scheme". 
 
         Args: 
 
-            jsonData: dictionnaire qui va être vérifié par le validateur
-            jsonScheme: schéma à respecter
+            json_data: dictionnaire qui va être vérifié par le validateur
+            json_scheme: schéma à respecter
 
         """
         try:
-            #Draft7Validator.check_schema(jsonScheme)
-            #Draft202012Validator.check_schema(jsonScheme)
-            validate(instance=jsonData, schema=jsonScheme)
+            # Alternative Draft7Validator.check_schema(jsonScheme)
+            # Alternative Draft202012Validator.check_schema(jsonScheme)
+            validate(instance=json_data, schema=json_scheme)
         except jsonschema.exceptions.ValidationError as err: 
-            #logging.error(f"Erreur de validation json - {err}")
-            with open(f'bad_results/{self.source}/log_erreurs_{self.source}.txt', 'a', encoding='utf8') as error_file:
-                error_file.write(err.message + err.json_path + str(err.instance) + '\n')
+            #logging.error(f"Erreur de validation json - {err.message}")
             return False, err.message, err.json_path
         return True, None, None
 
-    def validateXml(self, xml_path: str, xsd_path: str) -> bool:
+    def validate_xml(self, xml_path: str, xsd_path: str) -> bool:
         """
         Fonction vérifiant si un fichier xml  respecte 
         le schéma spécifié.
@@ -733,31 +579,29 @@ class SourceProcess:
             result = xml_schema.validate(xml_doc)
         except jsonschema.exceptions.ValidationError as err:
             logging.error(f"Erreur de validation xml - {err}")
-            with open(f'bad_results/{self.source}/log_erreurs_{self.source}.txt', 'a', encoding='utf8') as error_file:
-                error_file.write(err.message + err.json_path + str(err.instance) + '\n')
             return False
         return result
 
-    def check_json(self,jsonData) -> tuple[bool,str,str]:
+    def check_json(self,json_data) -> tuple[bool,str,str]:
         """
         Fonction qui prend en paramètre une donnée json
         et vérifiant, grâce à un schéma, que la donnée est valide.
 
         Args:
 
-            jsonData : donnée json en entrée
+            json_data : donnée json en entrée
 
         """
-        return self.validateJson(jsonData,self.json_scheme)
+        return self.validate_json(json_data,self.json_scheme)
     
-    def check(self,jsonData,xml_path) -> tuple[bool,str]:
+    def check(self,json_data,xml_path) -> tuple[bool,str]:
         """
         Fonction qui prend en paramètre une donnée json ou xml 
         et vérifiant, grâce à un schéma, que la donnée est valide.
 
         Args:
 
-            jsonData : donnée json en entrée (None si on vérifie un fichier xml)
+            json_data : donnée json en entrée (None si on vérifie un fichier xml)
             xml_path : chemin du fichier xml en entrée (None si on vérifie un fichier json)
 
         """
@@ -765,21 +609,20 @@ class SourceProcess:
         if self.format=='json':
             scheme_path = 'schemes/schema_decp_v2.0.2.json'
             with open(scheme_path, "r",encoding='utf-8') as jsonfile1:
-                jsonScheme = json.load(jsonfile1)
+                json_scheme = json.load(jsonfile1)
                 jsonfile1.close
-            return self.validateJson(jsonData,jsonScheme)
+            return self.validate_json(json_data,json_scheme)
         else: 
             scheme_path = 'schemes/schema_decp_v2.0.2.xsd'   # xml
             try:
                 with open(scheme_path, 'r', encoding='utf-8') as xml_file:
                     xml_content = xml_file.read()
                 result = xmlschema.validate(xml_content, scheme_path)
-                return result is None, str(result)
+                return result is None, str(result),None
             except xmlschema.exceptions.XMLSchemaException as err:
-                logging.error(f"Erreur de validation xml - {err}")
-                with open(f'bad_results/{self.source}/log_erreurs_{self.source}.txt', 'a', encoding='utf8') as error_file:
-                    error_file.write(err.message + err.json_path + str(err.instance) + '\n')
-                return False,str(err)
+                #logging.error(f"Erreur de validation xml - {err}")
+                return False, err.message, err.json_path
+            return True, None, None
 
     def convert_boolean(self,col_name:str) -> None:
         """
@@ -850,10 +693,7 @@ class SourceProcess:
 
         # Suppression des doublons
         df_str = self.df.astype(str)
-        # duplicates = df_str[df_str.duplicated()] 
-        # doublons = duplicates.to_json(orient='records', lines=True, force_ascii=False)
-        # jsonfile = {'marches': doublons}
-
+        
         # For statistics purpose only
         df_marche = df_str[df_str['_type'].str.contains("Marché")]
         if len(df_marche[df_marche.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep=False)])>0:
@@ -865,18 +705,10 @@ class SourceProcess:
             self.report.add('Fix/Concessions',self.report.D_DUPLICATE,'Doublon dans la source',df_concession[df_concession.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep=False)])
             self.report.nb_duplicated_concessions += len(df_concession[df_concession.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep=False)])
 
-        # #Ecriture dans les nouveaux fichiers
-        # with open(f'bad_results/{self.source}/doublons_{self.source}.json', "a", encoding='utf8') as new_f:
-        #     json.dump(jsonfile, new_f, ensure_ascii=False, indent=4)
-
-        # # print("duplicates",duplicates)
-        # # duplicates.to_csv(f'bad_results/{self.source}/doublons_{self.source}.csv', sep = ';', encoding ='utf-8', mode= 'a', index = False)
-        # # with open(f'bad_results/{self.source}/doublons_{self.source}.csv', 'a', encoding='utf-8') as f:
-        # #     writer = csv.writer(f, delimiter = ';')
-        # #     writer.writerow(duplicates.iloc[:][:])         
         index_to_keep = df_str.drop_duplicates(subset=df_marche.columns.difference(['report__file','report__nbtotal','report__error','report__position']), keep=False).index.tolist()
         self.df = self.df.iloc[index_to_keep]
         self.df = self.df.reset_index(drop=True)
+
         logging.info(f"Fix de {self.source} OK")
         logging.info(f"Nombre de marchés dans {self.source} après fix : {len(self.df)}")
     
@@ -1061,5 +893,22 @@ class SourceProcess:
         self.marche_mark_fields(df_marche)
         self.concession_mark_fields(df_concession)
 
+    def get_nb_enregistrements(self,dico:dict) -> tuple[int,int]:
+        """
+        Renvoie le nombre total de marchés et le nombre total de concession contenus dans le dictionnaire
+
+        """
+        nb_total_marches = 0
+        nb_total_concessions = 0
+        if 'marche' in dico and isinstance(dico['marche'],list):
+            nb_total_marches += len(dico['marche'])
+        elif 'marche' in dico:
+            nb_total_marches += 1
+        if 'contrat-concession' in dico and isinstance(dico['contrat-concession'],list):
+            nb_total_concessions += len(dico['contrat-concession'])
+        elif 'contrat-concession' in dico:
+            nb_total_concessions += 1
+        return nb_total_marches,nb_total_concessions
+    
     def fix_statistics(self):
         self.report.fix_statistics(self.source)

@@ -9,10 +9,12 @@ import requests
 import math
 import csv
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 import time
 import jsonschema
 from jsonschema import validate,Draft7Validator,Draft202012Validator
 from reporting.Report import Report
+from utils.NodeFormat import NodeFormat
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
@@ -87,8 +89,8 @@ class GlobalProcess:
                 self.df[s] = \
                     self.df[s].apply(lambda x:
                                     date(int(float(x.split("-")[0])),\
-                                     min(int(float(x.split("-")[1])),12), \
-                                     min(int(float(x.split("-")[2])),31)).isoformat()
+                                    min(int(float(x.split("-")[1])),12), \
+                                    min(int(float(x.split("-")[2])),31)).isoformat()
                                     if str(x) != 'nan' and len(x.split("-")) >= 3 else x)
         logging.info(f"Nombre de marchés dans le DataFrame fusionné après merge : {len(self.df)}")
         if 'dureeMois' in self.df.columns:
@@ -100,7 +102,7 @@ class GlobalProcess:
         # Montant doit être un float
         if 'montant' in self.df.columns: 
             self.df['montant'] = self.df['montant'].apply(lambda x: 0 if x == '' or
-                                                          str(x) in ['nan', 'None'] else float(x))
+                                                        str(x) in ['nan', 'None'] else float(x))
         else:
             self.df['montant'] = pd.NA
         # Type de contrat qui s'étale sur deux colonnes, on combine les deux et garde _type qui est l'appelation dans Ramav1
@@ -141,10 +143,10 @@ class GlobalProcess:
         # Delete all records with dateNotification or dateDebutExecution> 2024-01-01 ECO Compatibility V4
         if self.data_format=='2022':
             self.df = self.df[~(((~self.df['nature'].str.contains('concession', case=False, na=False)) & (self.df['dateNotification']<'2024-01-01') |
-                             ((self.df['nature'].str.contains('concession', case=False, na=False)) & (self.df['dateDebutExecution']<'2024-01-01'))))]
+                            ((self.df['nature'].str.contains('concession', case=False, na=False)) & (self.df['dateDebutExecution']<'2024-01-01'))))]
         else:
             self.df = self.df[~(((~self.df['nature'].str.contains('concession', case=False, na=False)) & (self.df['dateNotification']>='2024-01-01') |
-                             ((self.df['nature'].str.contains('concession', case=False, na=False)) & (self.df['dateDebutExecution']>='2024-01-01'))))]
+                            ((self.df['nature'].str.contains('concession', case=False, na=False)) & (self.df['dateDebutExecution']>='2024-01-01'))))]
 
     def drop_duplicate(self):
         """
@@ -200,17 +202,6 @@ class GlobalProcess:
         self.report.add('FixAll/Marchés',self.report.D_DUPLICATE,'Marchés en doublon',df_nomodif_marche[df_nomodif_marche.duplicated(feature_doublons_marche)])
         self.report.add('FixAll/Concessions',self.report.D_DUPLICATE,'Concessions en doublon',df_nomodif_concession[df_nomodif_concession.duplicated(feature_doublons_concession)])
 
-        duplicates = df_nomodif_str[df_nomodif_str.duplicated(subset=feature_doublons_marche, keep='first')]
-        # jsonfile = {'marches': doublons}
-        for i in range (len(duplicates.axes[0])):
-            with open(f'bad_results/{duplicates.iloc[i]["source"]}/doublons_{duplicates.iloc[i]["source"]}.csv', 'a', encoding='utf-8') as f:
-                doublon = duplicates.iloc[i][:].to_json(orient='records', lines=True, force_ascii=False)
-                f.write(doublon)
-        
-        # doublons = duplicates.to_json(orient='records', lines=True, force_ascii=False)
-        # with open('doublons_demantis.json', 'w', encoding='utf-8') as f:
-        #     f.write(doublons)
-
         #Séparation des marches et des concessions, tri selon la date et suppression ses doublons
         if not df_modif.empty:
             df_modif_str  = df_modif.astype(str)     #en str pour réaliser le dédoublonnage
@@ -258,10 +249,12 @@ class GlobalProcess:
         # Modification des champs titulaires et modifications
         dico = self.dico_modifications(dico)
         #Création des chemins des fichiers mensuel et global
-        path_result = f"results/decp-{self.data_format}.json"
-        path_result_month = f"results/decp-{datetime.now().year}-{datetime.now().month}.json"
-        path_result_daily = f"results/decp-daily.json"
-        path_result_backup = f"results/ref-decp-{self.data_format}.json"
+        suffix_month = datetime.now().strftime('%Y-%m')
+        suffix_year = datetime.now().strftime('%Y')
+        path_result = f"results/decp-{suffix_year}.json"
+        path_result_month = f"results/decp-{suffix_month}.json"
+        path_result_daily = "results/decp-daily.json"
+        path_result_backup = f"results/ref-decp-{suffix_year}.json"
         os.makedirs("results", exist_ok=True)
 
         config_file = "config.json"
@@ -271,10 +264,11 @@ class GlobalProcess:
 
         #Cas du premier jour du mois
         if ((datetime.now().month)!=config["resource_month"]):
+            logging.info("Finalisation du fichier")
             #On récupère la date du mois précédent pour pouvoir upload le fichier contenant les marchés du mois précédent.
-            path_result_last_month = f"results/decp-{datetime.now().year}-{datetime.now().month - 1}.json"
-            if ((datetime.now().month)==1):
-                path_result_last_month = f"results/decp-{datetime.now().year - 1}-12.json"
+            a_month_ago = datetime.now()- relativedelta(months=1)
+            suffix_month_ago = a_month_ago.strftime('%Y-%m')
+            path_result_last_month = f"results/decp-{suffix_month_ago}.json"
 
             dico_ancien = self.file_load(path_result)
             dico_nouveau = self.file_load(path_result_last_month)
@@ -423,7 +417,7 @@ class GlobalProcess:
         La fonction file_load essaie de lire un fichier JSON et de le convertir en dictionnaire.
         Si le fichier est vide ou invalide, on retourne alors un dictionnaire vide. 
         Pour toute autre erreur, elle enregistre un message d'erreur et renvoie également dico.
-         
+        
         Args:
 
             path: chemin du fichier d'où l'on récupère les données
@@ -482,8 +476,8 @@ class GlobalProcess:
         """
         La fonction dico_transtypage modifie le type des données du dictionnaire afin de produire en sortie
         des fichiers json au format valide 
- 
-       Args:
+
+        Args:
 
             dico: dictionnaire où on effectue les changements
 
@@ -511,75 +505,48 @@ class GlobalProcess:
             self.force_bool('actesSousTraitance',marche)
             self.force_bool('modificationsActesSousTraitance',marche)
 
-            if 'titulaires' in marche.keys() and marche['titulaires'] is not None and len(
-                    marche['titulaires']) == 0 :
-                del marche['titulaires']
-            elif not self.is_normalized_list_node(marche,'titulaires', 'titulaire'):
-                self.normalize_list_node(marche,'titulaires', 'titulaire')
+            # old if 'titulaires' in marche.keys() and marche['titulaires'] is not None and len(
+            # old        marche['titulaires']) == 0 :
+            # old    del marche['titulaires']
+            # old el
+            if 'titulaires' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'titulaires', 'titulaire'):
+                NodeFormat.normalize_list_node(marche,'titulaires', 'titulaire')
 
-            if 'concessionnaires' in marche.keys() and marche['concessionnaires'] is not None and len(
-                    marche['concessionnaires']) > 0 :
-                del marche['concessionnaires']
-            elif not self.is_normalized_list_node(marche,'concessionnaires', 'concessionnaire'):
-                self.normalize_list_node(marche,'concessionnaires', 'concessionnaire')
+            if 'concessionnaires' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'concessionnaires', 'concessionnaire'):
+                NodeFormat.normalize_list_node(marche,'concessionnaires', 'concessionnaire')
             
-            if 'donneesExecution' in marche.keys() and marche['donneesExecution'] is not None and len(
-                    marche['donneesExecution']) == 0 :
-                del marche['donneesExecution']
-            elif not self.is_normalized_list_node(marche,'donneesExecution', 'donneesAnnuelles'):
-                self.normalize_list_node(marche,'donneesExecution', 'donneesAnnuelles')
+            if 'donneesExecution' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'donneesExecution', 'donneesAnnuelles'):
+                NodeFormat.normalize_list_node(marche,'donneesExecution', 'donneesAnnuelles')
 
             if 'modifications' in marche.keys() and marche['modifications'] is not None and len(
                     marche['modifications']) == 0 :
                 del marche['modifications']
-            elif not self.is_normalized_list_node(marche,'modifications', 'modification'):
-                self.normalize_list_node(marche,'modifications', 'modification')
-            self.convert_ints(marche,'modifications', 'modification')
+            elif 'modifications' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'modifications', 'modification'):
+                NodeFormat.normalize_list_node(marche,'modifications', 'modification')
+            NodeFormat.convert_ints(marche,'modifications', 'modification')
 
-            if 'modificationsActesSousTraitance' in marche.keys() and marche['modificationsActesSousTraitance'] is not None and len(
-                    marche['modificationsActesSousTraitance']) == 0 :
-                del marche['modificationsActesSousTraitance']
-            elif not self.is_normalized_list_node(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance'):
-                self.normalize_list_node(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance')
+            if 'modificationsActesSousTraitance' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance'):
+                NodeFormat.normalize_list_node(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance')
 
-            if 'actesSousTraitance' in marche.keys() and marche['actesSousTraitance'] is not None and len(
-                    marche['actesSousTraitance']) == 0 :
-                del marche['actesSousTraitance']
-            elif not self.is_normalized_list_node(marche,'actesSousTraitance', 'acteSousTraitance'):
-                self.normalize_list_node(marche,'actesSousTraitance', 'acteSousTraitance')
-          
-            if 'modalitesExecution' in marche.keys() and marche['modalitesExecution'] is not None and len(
-                    marche['modalitesExecution']) == 0 :
-                del marche['modalitesExecution']
-            elif not self.is_normalized_list_node(marche,'modalitesExecution', 'modaliteExecution'):
-                self.normalize_list_node_short(marche,'modalitesExecution', 'modaliteExecution')
+            if 'actesSousTraitance' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'actesSousTraitance', 'acteSousTraitance'):
+                NodeFormat.normalize_list_node(marche,'actesSousTraitance', 'acteSousTraitance')
 
-            if 'techniques' in marche.keys() and marche['techniques'] is not None and len(
-                    marche['techniques']) == 0 :
-                del marche['techniques']
-            elif not self.is_normalized_list_node(marche,'techniques', 'technique'):
-                self.normalize_list_node_short(marche,'techniques', 'technique')
+            if 'modalitesExecution' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'modalitesExecution', 'modaliteExecution'):
+                NodeFormat.normalize_list_value(marche,'modalitesExecution', 'modaliteExecution')
 
-            if 'typesPrix' in marche.keys() and marche['typesPrix'] is not None and len(
-                    marche['typesPrix']) == 0 :
-                del marche['typesPrix']
-            elif not self.is_normalized_list_node(marche,'typesPrix', 'typePrix'):
-                self.normalize_list_node_short(marche,'typesPrix', 'typePrix')
+            if 'techniques' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'techniques', 'technique'):
+                NodeFormat.normalize_list_value(marche,'techniques', 'technique')
+
+            if 'typesPrix' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'typesPrix', 'typePrix'):
+                NodeFormat.normalize_list_value(marche,'typesPrix', 'typePrix')
                 
-            if 'considerationsSociales' in marche.keys() and marche['considerationsSociales'] is not None and len(
-                    marche['considerationsSociales']) == 0 :
-                del marche['considerationsSociales']
-            elif not self.is_normalized_list_node(marche,'considerationsSociales', 'considerationSociale'):
-                self.normalize_list_node_short(marche,'considerationsSociales', 'considerationSociale')
+            if 'considerationsSociales' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'considerationsSociales', 'considerationSociale'):
+                NodeFormat.normalize_list_value(marche,'considerationsSociales', 'considerationSociale')
                 
-            if 'considerationsEnvironnementales' in marche.keys() and marche['considerationsEnvironnementales'] is not None and len(
-                    marche['considerationsEnvironnementales']) == 0 :
-                del marche['considerationsEnvironnementales']
-            elif not self.is_normalized_list_node(marche,'considerationsEnvironnementales', 'considerationEnvironnementale'):
-                self.normalize_list_node_short(marche,'considerationsEnvironnementales', 'considerationEnvironnementale')
-                
+            if 'considerationsEnvironnementales' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'considerationsEnvironnementales', 'considerationEnvironnementale'):
+                NodeFormat.normalize_list_value(marche,'considerationsEnvironnementales', 'considerationEnvironnementale')
         return dico
-
+    
     def force_int(self,cle:str,marche:dict):
         if cle in marche.keys() :
             try:
@@ -614,59 +581,6 @@ class GlobalProcess:
                     if isinstance(element, dict) and child_node in element:
                         return True
         return False    
-
-    def is_normalized_list_node(self, dico, parent_node, child_node):
-        if parent_node in dico:
-            parent_dico = dico[parent_node]
-            if isinstance(parent_dico, list) and len(parent_dico)==1:
-                if isinstance(parent_dico[0], dict) and len(parent_dico[0])==1:
-                    for element in parent_dico[0]:
-                        # Vérifie si l'élément est un dictionnaire et si le noeud child_node y existe
-                        if child_node in element: #isinstance(element, dict) and 
-                            return True
-        return False
-
-    def normalize_list_node(self, marche, parent_node, child_node):
-        if parent_node in marche.keys() and marche[parent_node] is not None and len(
-            marche[parent_node]) > 0 and isinstance( marche[parent_node],list):
-            for i in range(len((marche[parent_node]))):
-                if isinstance( marche[parent_node][i],dict) and child_node not in marche[parent_node][i].keys():
-        #            if 'id' in marche[parent_node][i]:
-        #                marche[parent_node][i]['id'] = int(marche[parent_node][i]['id'])
-        #            if 'montant' in marche[parent_node][i]:
-        #                marche[parent_node][i]['montant'] = float(marche[parent_node][i]['montant'])
-                    marche[parent_node][i] = { child_node: marche[parent_node][i] }
-        #elif parent_node in marche.keys() and isinstance( marche[parent_node],dict):
-        #    if 'id' in marche[parent_node]:
-        #        marche[parent_node]['id'] = int(marche[parent_node]['id'])
-        #    if 'montant' in marche[parent_node]:
-        #        marche[parent_node]['montant'] = float(marche[parent_node]['montant'])
-            #if child_node in marche[parent_node]:
-            #    marche[parent_node] = [marche[parent_node]]
-            #else:
-            #    marche[parent_node] = [{child_node: marche[parent_node]}]
-
-    def normalize_list_node_short(self, marche, parent_node, child_node):
-        if parent_node in marche.keys() and marche[parent_node] is not None and len(
-            marche[parent_node]) > 0 and isinstance( marche[parent_node],list):
-            for i in range(len((marche[parent_node]))):
-                if isinstance( marche[parent_node][i],dict) and child_node not in marche[parent_node][i].keys():
-                    marche[parent_node][i] = { child_node: marche[parent_node][i] }
-        elif parent_node in marche.keys() and isinstance( marche[parent_node],dict):
-            if child_node in marche[parent_node]:
-                marche[parent_node][child_node] = [marche[parent_node][child_node]]
-
-    def convert_ints(self, marche, parent_node, child_node):
-        if parent_node in marche.keys() and marche[parent_node] is not None and len(
-            marche[parent_node]) > 0 and isinstance( marche[parent_node],list):
-            for i in range(len((marche[parent_node]))):
-                if isinstance( marche[parent_node][i],dict) and child_node in marche[parent_node][i].keys():
-                    if 'id' in marche[parent_node][i][child_node]:
-                        marche[parent_node][i][child_node]['id'] = int(marche[parent_node][i][child_node]['id'])
-                    if 'montant' in marche[parent_node][i][child_node]:
-                        marche[parent_node][i][child_node]['montant'] = float(marche[parent_node][i][child_node]['montant'])
-                    if 'dureeMois' in marche[parent_node][i][child_node]:
-                        marche[parent_node][i][child_node]['dureeMois'] = int(marche[parent_node][i][child_node]['dureeMois'])
 
     # Vérifie si le noeud "marche" existe à l'intérieur du moeud "marches" dans le dictionnaire
     def dico_exists_marche_in_marches(self,dico):
@@ -790,9 +704,10 @@ class GlobalProcess:
                 config = json.load(f)
                 api = config["url_api"]
                 dataset_id = config["dataset_id"]
+                data_gouv_api_key = config["data_gouv_api_key"]
 
         headers = {
-            "X-API-KEY": "eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyIjoiNWYwZjA0NzZkNzk3NDZjYmU5OGNjYmMwIiwidGltZSI6MTY0ODIxNzg4Ny4wOTg0ODE3fQ.d9b1s_170PeSNAOLyqFFOGoW8irEg1nxNxn-fdGCGAckFbVcIxpaxkEm8H-BlI6nLLvWmvS_lL3nKWaHb7Cd9g"
+            "X-API-KEY": data_gouv_api_key
         }
 
         suffix_month = datetime.now().strftime('%Y-%m')
