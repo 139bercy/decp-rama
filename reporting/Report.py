@@ -52,6 +52,8 @@ class Report:
         if isinstance(data, list):
             for i in range(0,len(data)):
                 file_name,source,position,error,path = self.extract_report_data(data[i])
+                if file_name is None:
+                    print("File name is null")
                 self.add_message(step,code_erreur,source,file_name,position,error,path,message,i,data[i])
         else:
             dic = []
@@ -62,7 +64,6 @@ class Report:
     def extract_report_data(self,data:dict) -> tuple[str,str,int,str,str]:
         if 'report__file' in data:
             file_name = data['report__file']
-            del data['report__file']
         else:
             file_name = None
         if 'source' in data:
@@ -71,7 +72,6 @@ class Report:
             source = None
         if 'report__position' in data:
             position = int(float(data['report__position']))
-            del data['report__position']
         else:
             position = 0
         if 'report__error' in data:
