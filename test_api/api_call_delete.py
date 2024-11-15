@@ -1,11 +1,12 @@
 import requests
 import hashlib
+import json
 
 # Script de test pour supprimer une resource
 # Renseigner le dataset_id et le resource_id
 
 dataset_id = "5cd57bf68b4c4179299eb0e9"
-resource_id = "aeaf9e4b-d808-4ad9-b477-6f7ad28fc03d"
+resource_id = "8b57f316-b61f-4033-9ca6-48b08e618b85"
 
 config_file = "config.json"
 # read info from config.son
