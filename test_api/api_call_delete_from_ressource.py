@@ -8,17 +8,30 @@ import json
 dataset_id = "5cd57bf68b4c4179299eb0e9"
 resource_id = ""
 
+config_file = "config.json"
+# read info from config.son
+with open(config_file, "r") as f:
+    config = json.load(f)
+    data_gouv_api_key = config["data_gouv_api_key"]
+
 headers = {
-    "X-API-KEY": "eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyIjoiNWYwZjA0NzZkNzk3NDZjYmU5OGNjYmMwIiwidGltZSI6MTY0ODIxNzg4Ny4wOTg0ODE3fQ.d9b1s_170PeSNAOLyqFFOGoW8irEg1nxNxn-fdGCGAckFbVcIxpaxkEm8H-BlI6nLLvWmvS_lL3nKWaHb7Cd9g"
+    "X-API-KEY": data_gouv_api_key
 }
 
 api_host = "https://www.data.gouv.fr/api/1"
 
+# Chargement du fichier JSON
+with open('results/result_ressources.json', 'r', encoding='utf-8') as f:
+    data = json.load(f)
 
+i=0
 # Extraction des titres, fichiers et IDs
 for resource in data['resources']:
-    print(f"Supression de : {resource['id']},{resource['title']}")
+    print(f"Suppression de : {resource['id']},{resource['title']}")
     url = f"{api_host}/datasets/{dataset_id}/resources/{resource['id']}/"
-    ######### ATTENTION response = requests.delete(url,headers=headers)
+    response = requests.delete(url,headers=headers)
 
     print(f"Statut de la requête : {response.status_code}")
+    i += 1
+
+print(f"{i} fichier(s) supprimé(s)")

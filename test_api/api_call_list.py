@@ -5,10 +5,16 @@ import json
 
 api_host = "https://www.data.gouv.fr/api/1"
 dataset_id = "5bd0b6fd8b4c413d0801dc57"
-url = f"{api_host}/datasets/?q=AIFE_DE_13001977100018&page=1&page_size=100"
+url = f"{api_host}/datasets/?q=Avenue%20Web%20Systèmes&page=1&page_size=100"
+
+config_file = "config.json"
+# read info from config.son
+with open(config_file, "r") as f:
+    config = json.load(f)
+    data_gouv_api_key = config["data_gouv_api_key"]
 
 headers = {
-    "X-API-KEY": "eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyIjoiNWYwZjA0NzZkNzk3NDZjYmU5OGNjYmMwIiwidGltZSI6MTY0ODIxNzg4Ny4wOTg0ODE3fQ.d9b1s_170PeSNAOLyqFFOGoW8irEg1nxNxn-fdGCGAckFbVcIxpaxkEm8H-BlI6nLLvWmvS_lL3nKWaHb7Cd9g"
+    "X-API-KEY": data_gouv_api_key
 }
 
 response = requests.get(url, headers=headers)

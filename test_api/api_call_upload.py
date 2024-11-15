@@ -14,17 +14,23 @@ def calculate_sha1(file_path):
 
 api_host = "https://www.data.gouv.fr/api/1"
 dataset_id = "5cd57bf68b4c4179299eb0e9"
-resource_id = "59ba0edb-cf94-4bf1-a546-61f561553917"
+resource_id = "eddb0aaf-e0cb-4dd2-abb4-9971fa84106c"
 url = f"{api_host}/datasets/{dataset_id}/resources/{resource_id}/upload/"
 
+config_file = "config.json"
+# read info from config.son
+with open(config_file, "r") as f:
+    config = json.load(f)
+    data_gouv_api_key = config["data_gouv_api_key"]
+
 headers = {
-    "X-API-KEY": "eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyIjoiNWYwZjA0NzZkNzk3NDZjYmU5OGNjYmMwIiwidGltZSI6MTY0ODIxNzg4Ny4wOTg0ODE3fQ.d9b1s_170PeSNAOLyqFFOGoW8irEg1nxNxn-fdGCGAckFbVcIxpaxkEm8H-BlI6nLLvWmvS_lL3nKWaHb7Cd9g"
+    "X-API-KEY": data_gouv_api_key
 }
 
-sha1_hash = calculate_sha1('results/decp-2024_data_gouv.json')
+sha1_hash = calculate_sha1('results/decp-2024-10_data_gouv.json')
 
 files_month = {
-    "file": (f"decp-2024.json", open(f"results/decp-2024_data_gouv.json", "rb"))
+    "file": ("decp-2024-10.json", open("results/decp-2024-10_data_gouv.json", "rb"))
 }
 
 response = requests.post(url, headers=headers, files=files_month)
