@@ -23,9 +23,9 @@ CREATE TABLE decp_report.report (
    exclusion_type_id    INT8                 not null,
    position             INT8                 null,
    message              VARCHAR(256)         not null,
-   error                VARCHAR(256)         null,
+   error                VARCHAR(2048)        null,
    path                 VARCHAR(256)         null,
-   content              bytea                null,
+   content              VARCHAR(4096)        null,
    creation_date        TIMESTAMP            not null,
    CONSTRAINT pk_report PRIMARY KEY (report_id)
 );

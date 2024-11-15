@@ -24,6 +24,11 @@ class Report:
     nb_out_bad_marches = 0
     nb_out_bad_concessions = 0
 
+    source_tmp = {}
+    file_tmp = {}
+    step_tmp = {}
+    exclusion_tmp = {}
+    
     # Constructor
     def __init__(self, application:str):
         self.application = application
@@ -46,35 +51,55 @@ class Report:
     def add(self,step:str,code_erreur:str,message:str,data):
         if isinstance(data, list):
             for i in range(0,len(data)):
-                if 'report__file' in data[i]:
-                    file_name = data[i]['report__file']
-                    del data[i]['report__file']
-                else:
-                    file_name = None
-                if 'source' in data[i]:
-                    source = data[i]['source']
-                else:
-                    source = None
-                if 'report__position' in data[i]:
-                    position = int(float(data[i]['report__position']))
-                    del data[i]['report__position']
-                else:
-                    position = None
-                if 'report__error' in data[i]:
-                    error = data[i]['report__error']
-                    del data[i]['report__error']
-                else:
-                    error = None
-                if 'report__path' in data[i]:
-                    path = data[i]['report__path']
-                    del data[i]['report__path']
-                else:
-                    path = None
+                file_name,source,position,error,path = self.extract_report_data(data[i])
                 self.add_message(step,code_erreur,source,file_name,position,error,path,message,i,data[i])
         else:
             dic = []
             for i in range(0,len(data)):
                 dic.append(data.iloc[i].to_dict())
+            self.add(step,code_erreur,message,dic)
+
+    def extract_report_data(self,data:dict) -> tuple[str,str,int,str,str]:
+        if 'report__file' in data:
+            file_name = data['report__file']
+            del data['report__file']
+        else:
+            file_name = None
+        if 'source' in data:
+            source = data['source']
+        else:
+            source = None
+        if 'report__position' in data:
+            position = int(float(data['report__position']))
+            del data['report__position']
+        else:
+            position = 0
+        if 'report__error' in data:
+            error = data['report__error']
+            del data['report__error']
+        else:
+            error = None
+        if 'report__path' in data:
+            path = data['report__path']
+            del data['report__path']
+        else:
+            path = None
+        return file_name,source,position,error,path
+    
+    def add_forced(self,step:str,code_erreur:str,message:str,data):
+        """
+        Add error from validated merche and concession with error
+        """
+        dic = []
+        if isinstance(data, list):
+            for i in range(0,len(data)):
+                if 'report__error' in data[i] and data[i]['report__error'] is not None:
+                    dic.append(data[i])
+        else:
+            for i in range(0,len(data)):
+                if data.iloc[i]['error'] is not None:
+                    dic.append(data.iloc[i].to_dict())
+        if len(dic)>0:
             self.add(step,code_erreur,message,dic)
 
     # Add a message load file failed from dictionary or panda dataframe
@@ -91,17 +116,38 @@ class Report:
         self.db_add_report(step,code_erreur,source,file_name,position,error,path,message,data)
 
     def db_add_report(self,step:str,code_erreur:str,source:str,file_name:str,position:int,error:str,path:str,message:str,data):
-        step_id = self.db.find_or_add_step(step)
-        source_id = self.db.find_or_add_source(source)
-        file_id = self.db.find_or_add_file(file_name,source_id,0,0)
-        exclusion_type_id = self.db.find_or_add_exclusion_type(code_erreur)
+        if step not in self.step_tmp:
+            step_id = self.db.find_or_add_step(step)
+            self.step_tmp[step] = step_id
+        else:
+            step_id = self.step_tmp[step]
+        if source not in self.source_tmp:
+            source_id = self.db.find_or_add_source(source)
+            self.source_tmp[source] = source_id
+        else:
+            source_id = self.source_tmp[source]
+        if file_name not in self.file_tmp:
+            file_id = self.db.find_or_add_file(file_name,source_id,0,0)
+            self.file_tmp[file_name] = file_id
+        else:
+            file_id = self.file_tmp[file_name]
+        if code_erreur not in self.exclusion_tmp:
+            exclusion_type_id = self.db.find_or_add_exclusion_type(code_erreur)
+            self.exclusion_tmp[code_erreur] = exclusion_type_id
+        else:
+            exclusion_type_id = self.exclusion_tmp[code_erreur]
 
         self.db.add_report(self.session, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, data)
         
     def db_add_file(self,source:str,file_name:str, nb_marches:int, nb_concessions:int):
-        source_id = self.db.find_or_add_source(source)
+        if source not in self.source_tmp:
+            source_id = self.db.find_or_add_source(source)
+            self.source_tmp[source] = source_id
+        else:
+            source_id = self.source_tmp[source]
         self.db.find_or_add_file(file_name,source_id,nb_marches,nb_concessions)
         
+
     def db_end_session(self,message:str):
         self.db.end_session(self.session,message)
         

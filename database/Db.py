@@ -142,12 +142,16 @@ class Db:
             """
 
             # Exécution de la requête d'insertion
+            if len(str(content))>4096:
+                content = str(content)[0:4090]+"..." 
+            if len(str(error))>2048:
+                error = str(error)[0:1020]+" (...) "+str(error)[len(str(error))-1020:len(str(error))] 
             cursor.execute(insert_query, (session_id, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, str(content)))
 
             # Commit des changements
             connection.commit()
 
-            print("L'enregistrement a été ajouté avec succès.")
+            #print("L'enregistrement a été ajouté avec succès.")
 
         except Exception as e:
             print(self.ERROR_MESSAGE_SESSION_REPORT, e)
