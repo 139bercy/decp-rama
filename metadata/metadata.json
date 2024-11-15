@@ -38,18 +38,6 @@
     "validate" : true,
     "convert_nc": false
   },
-  "pes2024":
-  {
-    "code": "data.gouv.fr_pes_2024",
-    "description": "Données des collectivités publiées via le PES Marché",
-    "url_source_OLD": "https://static.data.gouv.fr/resources/donnees-essentielles-de-la-commande-publique-transmises-via-le-pes-marche-depuis-2024/20241010-014720/decp-13000495500139-2024-10-10-01.xml",
-    "url_source" : "https://www.data.gouv.fr/fr/datasets/r/5cbbd08d-1473-4098-b01a-bbc95b2611ef",
-    "format": "xml",
-    "cle_api": ["65cf3c55ec910b5a8e2fc084"],
-    "url": "",
-    "validate" : false,
-    "convert_nc": true
-  },
   "aws":
   {
     "code": "marches-publics.info",
@@ -77,17 +65,6 @@
     "url_source": "https://www.data.gouv.fr/fr/organizations/agence-pour-linformatique-financiere-de-letat/",
     "format": "xml",
     "cle_api": ["5bd789ee8b4c4155bd9a0770", "5c3d0d6b8b4c41333775f45a", "5cc8be59634f412a53e309e8", "5df410e86f44413a91d34be3"],
-    "url": "",
-    "validate" : true,
-    "convert_nc": false
-  },
-  "aife2024":
-  {
-    "code": "data.gouv.fr_aife_2024",
-    "description": "Ce r\u00e9pertoire propose les XML journaliers de donn\u00e9es essentielles issues de l'API AIFE, \u00e0 compter du 1er mai 2019",
-    "url_source": "https://www.data.gouv.fr/fr/datasets/aife-de-13001977100018/",
-    "format": "xml",
-    "cle_api": ["5df410e86f44413a91d34be3"],
     "url": "",
     "validate" : true,
     "convert_nc": false
@@ -154,5 +131,39 @@
     "url": "",
     "validate" : true,
     "convert_nc": false
+  },
+  "aife_2024":
+  {
+    "code": "data.gouv.fr_aife_2024",
+    "description": "Ce r\u00e9pertoire propose les XML journaliers de donn\u00e9es essentielles issues de l'API AIFE, \u00e0 compter du 1er mai 2019",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/aife-de-13001977100018/",
+    "format": "xml",
+    "cle_api": ["5df410e86f44413a91d34be3"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "aws_2024":
+  {
+    "code": "marches-publics_aws_2024",
+    "description": "Données essentielles sai…lateforme AW Solutions.",
+    "url_source": "https://www.data.gouv.fr/api/1/datasets/declaration-des-donnees-essentielles-avenue-web-systemes/",
+    "format": "json",
+    "cle_api": ["65cf11893fda573b53b19f52"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "pes_2024":
+  {
+    "code": "data.gouv.fr_pes_2024",
+    "description": "Données des collectivités publiées via le PES Marché",
+    "url_source_OLD": "https://static.data.gouv.fr/resources/donnees-essentielles-de-la-commande-publique-transmises-via-le-pes-marche-depuis-2024/20241010-014720/decp-13000495500139-2024-10-10-01.xml",
+    "url_source" : "https://www.data.gouv.fr/fr/datasets/r/5cbbd08d-1473-4098-b01a-bbc95b2611ef",
+    "format": "xml",
+    "cle_api": ["65cf3c55ec910b5a8e2fc084"],
+    "url": "",
+    "validate" : false,
+    "convert_nc": true
   }
 }
