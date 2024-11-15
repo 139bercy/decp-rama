@@ -563,12 +563,12 @@ class UneClasseDeTest(unittest.TestCase):
         self.assertEqual(real_result, expected_result)
 
 
-    def test_tri_format_json(self):
+    def test_validation_format_json(self):
         with open(f"documents/marches_avec_modifications.json", encoding='utf8' ) as json_file1:
             dico1 = json.load(json_file1)
 
         #JSON
-        self.process.tri_format(dico1,"test_tri")
+        self.process.validation_format(dico1,"test_tri")
         expected_result_json = [
       {
         "id": "TEST2022",
@@ -796,7 +796,7 @@ class UneClasseDeTest(unittest.TestCase):
         self.assertListEqual(expected_result_json, self.process.dico_2022_marche)
 
 
-    def test_tri_format_xml(self):
+    def test_validation_format_xml(self):
         with open(f"tests/test_tri.xml", encoding='utf8') as xml_file1:
             dico3 =  xmltodict.parse(xml_file1.read(), dict_constructor = dict, force_list=('marche',))
 
@@ -804,7 +804,7 @@ class UneClasseDeTest(unittest.TestCase):
             jsn_file4.write(json.dumps(dico3))
 
         #XML
-        self.process.tri_format(dico3,"test_tri")
+        self.process.validation_format(dico3,"test_tri")
         expected_result_xml = [{
         "id": "20242023F0002600", 
         "acheteur": 
