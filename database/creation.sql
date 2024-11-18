@@ -113,6 +113,7 @@ DROP TABLE IF EXISTS decp_report.source;
 CREATE TABLE decp_report.source (
    source_id            INT8                 not null,
    name                 VARCHAR(64)          null,
+   code                 VARCHAR(64)          null,
    creation_date        TIMESTAMP            null,
    CONSTRAINT pk_source PRIMARY KEY (source_id)
 );
@@ -247,12 +248,12 @@ BEGIN
     'SELECT r.session_id, ' ||
     ' (SELECT end_date FROM decp_report."session" si WHERE si.session_id = r.session_id) AS session_date,' ||
     string_agg(
-        'MAX(CASE WHEN s.source_id = ' || s.source_id || ' THEN r.nb_records END) AS "' || s.name || '_nb_records"',
+        'MAX(CASE WHEN s.source_id = ' || s.source_id || ' THEN r.nb_records END) AS "' || s.code || '_nb_records"',
         ', '
     ) ||
     ','||
     string_agg(
-        'MAX(CASE WHEN s.source_id = ' || s.source_id || ' THEN r.nb_errors END) AS "' || s.name || '_nb_errors"',
+        'MAX(CASE WHEN s.source_id = ' || s.source_id || ' THEN r.nb_errors END) AS "' || s.code || '_nb_errors"',
         ', '
     ) ||
     ','||
