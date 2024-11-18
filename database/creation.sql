@@ -166,26 +166,28 @@ WHERE r.exclusion_type_id=1
 GROUP BY r.source_id,r.session_id,r.file_id,f.nb_marches,f.nb_concessions
 ORDER BY r.session_id;
 
-SELECT * FROM decp_report.v_nb_by_files; 
+--SELECT * FROM decp_report.v_nb_by_files; 
      
 -- Vue agrégant le nombre de marchés, de concessions et d'erreurs par session et par source
 DROP VIEW decp_report.v_nb_by_source_session;
 
 CREATE OR REPLACE VIEW decp_report.v_nb_by_source_session AS 
-SELECT r.source_id,r.session_id,count(DISTINCT file_id) AS nb_files,sum(nb_error) AS nb_errors, sum(nb_marches) + sum(nb_concessions) AS nb_records
+SELECT r.source_id,r.session_id,count(DISTINCT file_id) AS nb_files,sum(nb_error) AS nb_errors, sum(nb_duplicate) AS nb_duplicates, sum(nb_marches) + sum(nb_concessions) AS nb_records
 FROM (
- 	SELECT r.source_id,r.session_id,r.file_id,count(DISTINCT r.position) AS nb_error,f.nb_marches, f.nb_concessions
+ 	SELECT r.source_id,r.session_id,r.file_id,
+ 		count(DISTINCT (CASE WHEN r.exclusion_type_id=1 THEN r.POSITION ELSE NULL END)) AS nb_error,
+ 		count(DISTINCT (CASE WHEN r.exclusion_type_id=2 THEN r.POSITION ELSE NULL END)) AS nb_duplicate,
+ 		f.nb_marches, f.nb_concessions
  	FROM decp_report.report r
 	INNER JOIN decp_report.file f 
 	ON f.file_id = r.file_id 
-	WHERE r.exclusion_type_id=1
- 	GROUP BY r.source_id,r.session_id,r.file_id,f.nb_marches,f.nb_concessions
+	GROUP BY r.source_id,r.session_id,r.file_id,f.nb_marches,f.nb_concessions
  	ORDER BY r.session_id
 ) r
 GROUP BY r.source_id,r.session_id
 ORDER BY r.session_id;
 
-SELECT * FROM decp_report.v_nb_by_source_session; 
+--SELECT * FROM decp_report.v_nb_by_source_session; 
 
 DROP VIEW decp_report.v_stats_global_by_session;
 
@@ -207,7 +209,7 @@ CREATE OR REPLACE VIEW decp_report.v_stats_global_by_session AS
  ON src.source_id = f.source_id 
  GROUP BY s.session_id,s.name,s.begin_date,s.end_date, src."name";
 
-SELECT * FROM decp_report.v_stats_global_by_session;
+--SELECT * FROM decp_report.v_stats_global_by_session;
 	
 DROP VIEW decp_report.v_stats_all;
 
@@ -220,12 +222,14 @@ SELECT s.name,s.source_id,r.session_id,
 FROM (
 	SELECT r.source_id,r.session_id,sum(DISTINCT file_id) AS nb_files,sum(nb_error) AS nb_errors, sum(nb_marches) + sum(nb_concessions) AS nb_records
 	FROM (
-	 	SELECT r.source_id,r.session_id,r.file_id,count(DISTINCT r.position) AS nb_error,f.nb_marches, f.nb_concessions
+	 	SELECT r.source_id,r.session_id,r.file_id,
+	 		count(DISTINCT (CASE WHEN r.exclusion_type_id=1 THEN r.POSITION ELSE NULL END)) AS nb_error,
+	 		count(DISTINCT (CASE WHEN r.exclusion_type_id=2 THEN r.POSITION ELSE NULL END)) AS nb_duplicate,
+	 		f.nb_marches, f.nb_concessions
 	 	FROM decp_report.report r
 		INNER JOIN decp_report.file f 
 		ON f.file_id = r.file_id 
-		WHERE r.exclusion_type_id=1
-	 	GROUP BY r.source_id,r.session_id,r.file_id,f.nb_marches,f.nb_concessions
+		GROUP BY r.source_id,r.session_id,r.file_id,f.nb_marches,f.nb_concessions
 	 	ORDER BY r.session_id
 	) r
 	GROUP BY r.source_id,r.session_id
@@ -258,7 +262,7 @@ BEGIN
     ) ||
     ','||
     string_agg(
-        'MAX(CASE WHEN s.source_id = ' || s.source_id || ' THEN (r.nb_errors / COALESCE(r.nb_records,NULL)) END) AS "' || s.name || '_per_errors"',
+        'MAX(CASE WHEN s.source_id = ' || s.source_id || ' THEN ((100*r.nb_errors) / COALESCE(r.nb_records,NULL)) END) AS "' || s.code || '_per_errors"',
         ', '
     ) ||
     ' FROM decp_report.v_nb_by_source_session r' ||
@@ -274,3 +278,4 @@ END $$ LANGUAGE plpgsql;
 
 --SELECT decp_report.get_query_stats_global()
 
+SELECT r.session_id,  (SELECT end_date FROM decp_report."session" si WHERE si.session_id = r.session_id) AS session_date,MAX(CASE WHEN s.source_id = 1 THEN r.nb_records END) AS "Dematis_nb_records", MAX(CASE WHEN s.source_id = 2 THEN r.nb_records END) AS "PES_nb_records",MAX(CASE WHEN s.source_id = 1 THEN r.nb_errors END) AS "Dematis_nb_errors", MAX(CASE WHEN s.source_id = 2 THEN r.nb_errors END) AS "PES_nb_errors",MAX(CASE WHEN s.source_id = 1 THEN ((100*r.nb_errors) / COALESCE(r.nb_records,NULL)) END) AS "Dematis_per_errors", MAX(CASE WHEN s.source_id = 2 THEN ((100*r.nb_errors) / COALESCE(r.nb_records,NULL)) END) AS "PES_per_errors" FROM decp_report.v_nb_by_source_session r INNER JOIN decp_report.source s ON s.source_id = r.source_id GROUP BY r.session_id ORDER BY r.session_id
