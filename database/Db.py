@@ -245,7 +245,7 @@ class Db:
             if result:
                 exclusion_type_id = result[0]  # Récupère l'id si trouvé
             else:
-                cursor.execute("INSERT INTO decp_report.exclusion_type (exclusion_type_id, code, name, creation_date) VALUES (nextval('decp_report.s_file'), %s, %s, NOW()) RETURNING exclusion_type_id", (code, code))
+                cursor.execute("INSERT INTO decp_report.exclusion_type (exclusion_type_id, code, name, creation_date) VALUES (nextval('decp_report.s_exclusion_type'), %s, %s, NOW()) RETURNING exclusion_type_id", (code, code))
                 exclusion_type_id = cursor.fetchone()[0]  # Récupère le nouvel id
 
             connection.commit()
@@ -282,7 +282,7 @@ class Db:
                 source_id = result[0]  # Récupère le source_id si trouvé
             else:
                 # Si la source n'existe pas, l'ajouter
-                cursor.execute("INSERT INTO decp_report.source (source_id, name, creation_date) VALUES (nextval('decp_report.s_file'), %s, NOW()) RETURNING source_id", (source_name,))
+                cursor.execute("INSERT INTO decp_report.source (source_id, name, creation_date) VALUES (nextval('decp_report.s_source'), %s, NOW()) RETURNING source_id", (source_name,))
                 source_id = cursor.fetchone()[0]  # Récupère le nouvel source_id
 
             # Commit des changements

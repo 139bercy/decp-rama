@@ -13,12 +13,16 @@ def calculate_sha1(file_path):
             sha1.update(chunk)
     return sha1.hexdigest()
 
+#resource_id = "4fafdaff-b697-4494-9523-e9f56916fea8"
+#nom_fichier = "results/LAST_REAL_DATA/decp-2024_data_gouv.json"
+#renommage_fichier = "decp-2024.json"
+resource_id = "398e075e-5dc2-4797-86d7-21d04e39111f"
+nom_fichier = "results/decp-2024-11_data_gouv.json"
+renommage_fichier = "decp-2024-11.json"
+
 api_host = "https://www.data.gouv.fr/api/1"
 dataset_id = "5cd57bf68b4c4179299eb0e9"
-resource_id = "4fafdaff-b697-4494-9523-e9f56916fea8"
 url = f"{api_host}/datasets/{dataset_id}/resources/{resource_id}/upload/"
-nom_fichier = "results/LAST_REAL_DATA/decp-2024_data_gouv.json"
-renommage_fichier = "decp-2024.json"
 
 config_file = "config.json"
 # read info from config.son
