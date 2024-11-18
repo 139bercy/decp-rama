@@ -152,6 +152,40 @@ ALTER TABLE decp_report.account
       REFERENCES decp_report.source (source_id)
       ON DELETE RESTRICT ON UPDATE RESTRICT;
 
+     
+-- Vue agrégant le nombre de marchés, de concessions et d'erreurs  par fichier
+DROP VIEW decp_report.v_nb_by_files;
+
+CREATE OR REPLACE VIEW decp_report.v_nb_by_files AS 
+SELECT r.source_id,r.session_id,r.file_id,count(DISTINCT r.position) AS nb_error,f.nb_marches, f.nb_concessions
+FROM decp_report.report r
+INNER JOIN decp_report.file f 
+ON f.file_id = r.file_id 
+WHERE r.exclusion_type_id=1
+GROUP BY r.source_id,r.session_id,r.file_id,f.nb_marches,f.nb_concessions
+ORDER BY r.session_id;
+
+SELECT * FROM decp_report.v_nb_by_files; 
+     
+-- Vue agrégant le nombre de marchés, de concessions et d'erreurs par session et par source
+DROP VIEW decp_report.v_nb_by_source_session;
+
+CREATE OR REPLACE VIEW decp_report.v_nb_by_source_session AS 
+SELECT r.source_id,r.session_id,count(DISTINCT file_id) AS nb_files,sum(nb_error) AS nb_errors, sum(nb_marches) + sum(nb_concessions) AS nb_records
+FROM (
+ 	SELECT r.source_id,r.session_id,r.file_id,count(DISTINCT r.position) AS nb_error,f.nb_marches, f.nb_concessions
+ 	FROM decp_report.report r
+	INNER JOIN decp_report.file f 
+	ON f.file_id = r.file_id 
+	WHERE r.exclusion_type_id=1
+ 	GROUP BY r.source_id,r.session_id,r.file_id,f.nb_marches,f.nb_concessions
+ 	ORDER BY r.session_id
+) r
+GROUP BY r.source_id,r.session_id
+ORDER BY r.session_id;
+
+SELECT * FROM decp_report.v_nb_by_source_session; 
+
 DROP VIEW decp_report.v_stats_global_by_session;
 
 CREATE OR REPLACE VIEW decp_report.v_stats_global_by_session AS 
@@ -162,6 +196,7 @@ CREATE OR REPLACE VIEW decp_report.v_stats_global_by_session AS
  	FROM decp_report.report r
 	 INNER JOIN decp_report.file f 
 	 ON f.file_id = r.file_id 
+	WHERE r.exclusion_type_id=1
  	GROUP BY r.session_id,r.file_id,f.nb_marches ,f.nb_concessions
  ) r
  ON r.session_id = s.session_id 
@@ -170,7 +205,9 @@ CREATE OR REPLACE VIEW decp_report.v_stats_global_by_session AS
  INNER JOIN decp_report."source" src 
  ON src.source_id = f.source_id 
  GROUP BY s.session_id,s.name,s.begin_date,s.end_date, src."name";
- 
+
+SELECT * FROM decp_report.v_stats_global_by_session;
+	
 DROP VIEW decp_report.v_stats_all;
 
 CREATE OR REPLACE VIEW decp_report.v_stats_all AS 
@@ -186,7 +223,7 @@ FROM (
 	 	FROM decp_report.report r
 		INNER JOIN decp_report.file f 
 		ON f.file_id = r.file_id 
-		WHERE r.exclusion_type_id=3
+		WHERE r.exclusion_type_id=1
 	 	GROUP BY r.source_id,r.session_id,r.file_id,f.nb_marches,f.nb_concessions
 	 	ORDER BY r.session_id
 	) r
@@ -199,42 +236,40 @@ ORDER BY name;
 
 --SELECT * FROM decp_report.v_stats_all;
 
-DROP VIEW decp_report.v_stats_global;
 
-CREATE OR REPLACE VIEW decp_report.v_stats_global AS
-SELECT session_id,
-	(SELECT end_date FROM decp_report."session" si WHERE si.session_id = r.session_id) AS session_date,
-	SUM(CASE WHEN source_id=1 THEN nb_records ELSE NULL END) AS nb_records_dematis,
-	SUM(CASE WHEN source_id=1 THEN nb_errors ELSE NULL END) AS nb_errors_dematis,
-	100 * SUM(CASE WHEN source_id=1 THEN nb_errors ELSE NULL END) /
-	COALESCE (SUM(CASE WHEN source_id=1 THEN nb_records ELSE NULL END),NULL) AS per_errors_dematis,
-	SUM(CASE WHEN source_id=310 THEN nb_records ELSE NULL END) AS nb_records_pes,
-	SUM(CASE WHEN source_id=310 THEN nb_errors ELSE NULL END) AS nb_errors_pes,
-	100 * SUM(CASE WHEN source_id=310 THEN nb_errors ELSE NULL END) / 
-	COALESCE (SUM(CASE WHEN source_id=310 THEN nb_records ELSE NULL END),NULL) AS per_errors_pes
-FROM (
-	SELECT s.name,s.source_id,r.session_id,r.nb_errors,r.nb_records
-	FROM (
-		SELECT r.source_id,r.session_id,sum(DISTINCT file_id) AS nb_files,sum(nb_error) AS nb_errors, sum(nb_marches) + sum(nb_concessions) AS nb_records
-		FROM (
-		 	SELECT r.source_id,r.session_id,r.file_id,count(DISTINCT r.position) AS nb_error,f.nb_marches, f.nb_concessions
-		 	FROM decp_report.report r
-			INNER JOIN decp_report.file f 
-			ON f.file_id = r.file_id 
-			WHERE r.exclusion_type_id=3
-		 	GROUP BY r.source_id,r.session_id,r.file_id,f.nb_marches,f.nb_concessions
-		 	ORDER BY r.session_id
-		) r
-		GROUP BY r.source_id,r.session_id
-		ORDER BY r.session_id
-	) r
-	INNER JOIN decp_report.source s 
-	ON s.source_id = r.source_id
-	ORDER BY name
-) r
-GROUP BY session_id,session_date
-ORDER BY session_date;
+DROP FUNCTION decp_report.get_query_stats_global();
+CREATE OR REPLACE FUNCTION decp_report.get_query_stats_global()
+RETURNS varchar AS $$
+DECLARE
+    sql_query TEXT;
+BEGIN
+    SELECT INTO sql_query
+    'SELECT r.session_id, ' ||
+    ' (SELECT end_date FROM decp_report."session" si WHERE si.session_id = r.session_id) AS session_date,' ||
+    string_agg(
+        'MAX(CASE WHEN s.source_id = ' || s.source_id || ' THEN r.nb_records END) AS "' || s.name || '_nb_records"',
+        ', '
+    ) ||
+    ','||
+    string_agg(
+        'MAX(CASE WHEN s.source_id = ' || s.source_id || ' THEN r.nb_errors END) AS "' || s.name || '_nb_errors"',
+        ', '
+    ) ||
+    ','||
+    string_agg(
+        'MAX(CASE WHEN s.source_id = ' || s.source_id || ' THEN (r.nb_errors / COALESCE(r.nb_records,NULL)) END) AS "' || s.name || '_per_errors"',
+        ', '
+    ) ||
+    ' FROM decp_report.v_nb_by_source_session r' ||
+    ' INNER JOIN decp_report.source s'||
+	' ON s.source_id = r.source_id' ||
+    ' GROUP BY r.session_id' ||
+    ' ORDER BY r.session_id'
+    FROM decp_report.source s;
 
---SELECT * FROM decp_report.v_stats_global;
+    -- Exécute la requête dynamique
+    return sql_query;
+END $$ LANGUAGE plpgsql;
 
+--SELECT decp_report.get_query_stats_global()
 
