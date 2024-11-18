@@ -137,6 +137,11 @@ ALTER TABLE decp_report.report
       REFERENCES decp_report.session (session_id)
       ON DELETE RESTRICT ON UPDATE RESTRICT;
 
+ALTER TABLE decp_report.report
+   ADD CONSTRAINT fk_report_exclusion_type FOREIGN KEY (exclusion_type_id)
+      REFERENCES decp_report.exclusion_type (exclusion_type_id)
+      ON DELETE RESTRICT ON UPDATE RESTRICT;
+
 ALTER TABLE decp_report.file
    ADD CONSTRAINT fk_file_source FOREIGN KEY (source_id)
       REFERENCES decp_report.source (source_id)
@@ -192,7 +197,7 @@ INNER JOIN decp_report.source s
 ON s.source_id = r.source_id
 ORDER BY name;
 
-SELECT * FROM decp_report.v_stats_all;
+--SELECT * FROM decp_report.v_stats_all;
 
 DROP VIEW decp_report.v_stats_global;
 
@@ -230,5 +235,6 @@ FROM (
 GROUP BY session_id,session_date
 ORDER BY session_date;
 
-SELECT * FROM decp_report.v_stats_global;
+--SELECT * FROM decp_report.v_stats_global;
+
 
