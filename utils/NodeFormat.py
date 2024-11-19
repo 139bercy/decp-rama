@@ -12,24 +12,29 @@ class NodeFormat:
         return False
 
     def normalize_list_node( marche, parent_node, child_node):
-        if parent_node in marche.keys() and marche[parent_node] is not None and len(
-            marche[parent_node]) > 0 and isinstance( marche[parent_node],list):
-            for i in range(len((marche[parent_node]))):
-                if isinstance( marche[parent_node][i],dict) and child_node not in marche[parent_node][i].keys():
-        #            if 'id' in marche[parent_node][i]:
-        #                marche[parent_node][i]['id'] = int(marche[parent_node][i]['id'])
-        #            if 'montant' in marche[parent_node][i]:
-        #                marche[parent_node][i]['montant'] = float(marche[parent_node][i]['montant'])
-                    marche[parent_node][i] = { child_node: marche[parent_node][i] }
-        #elif parent_node in marche.keys() and isinstance( marche[parent_node],dict):
-        #    if 'id' in marche[parent_node]:
-        #        marche[parent_node]['id'] = int(marche[parent_node]['id'])
-        #    if 'montant' in marche[parent_node]:
-        #        marche[parent_node]['montant'] = float(marche[parent_node]['montant'])
-            #if child_node in marche[parent_node]:
-            #    marche[parent_node] = [marche[parent_node]]
-            #else:
-            #    marche[parent_node] = [{child_node: marche[parent_node]}]
+        # If array is into the child element move array to replace parent_node list
+        if parent_node in marche.keys() and marche[parent_node] is not None \
+            and len(marche[parent_node]) > 0 and isinstance( marche[parent_node],list) \
+            and child_node in marche[parent_node][0].keys() and isinstance(marche[parent_node][0][child_node],list):
+            if 'modificationActesSousTraitance' == child_node:
+                child_node_forced = 'modificationActeSousTraitance'
+            else:
+                child_node_forced = child_node
+            nc = []
+            for element in marche[parent_node][0][child_node]:
+                nc.append({child_node_forced: element})
+            marche[parent_node] = nc
+        if parent_node in marche.keys() and marche[parent_node] is not None \
+            and len(marche[parent_node]) > 0 and isinstance( marche[parent_node],list) \
+            and child_node in marche[parent_node][0].keys() and isinstance(marche[parent_node][0][child_node],dict) \
+            and 'modificationActesSousTraitance' == child_node:
+            marche[parent_node][0]={'modificationActeSousTraitance':marche[parent_node][0][child_node]}
+        if not 'modificationActesSousTraitance' == child_node:
+            if parent_node in marche.keys() and marche[parent_node] is not None and len(
+                marche[parent_node]) > 0 and isinstance( marche[parent_node],list):
+                for i in range(len((marche[parent_node]))):
+                    if isinstance( marche[parent_node][i],dict) and child_node not in marche[parent_node][i].keys():
+                        marche[parent_node][i] = { child_node: marche[parent_node][i] }
 
     def is_normalized_list_value(dico, parent_node, child_node):
         if parent_node in dico:

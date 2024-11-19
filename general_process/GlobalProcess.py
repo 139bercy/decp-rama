@@ -380,36 +380,6 @@ class GlobalProcess:
                     marche['modifications']) > 0 and type( marche['modifications'])== list:
                 marche['modifications'] = marche['modifications']['modification']
 
-            if 'modificationsActesSousTraitance' in marche.keys() and marche['modificationsActesSousTraitance'] is not None and len(
-                    marche['modificationsActesSousTraitance']) > 0 and type( marche['modificationsActesSousTraitance'])== list:
-                modifs = []
-                for i in range(len((marche['modificationsActesSousTraitance']))):
-                    if type( marche['modificationsActesSousTraitance'][i])== dict and 'modificationActeSousTraitance' in marche['modificationsActesSousTraitance'][i].keys():
-                        #On affecte au champ modificationsActesSousTraitance' le champ acteSousTraitance
-                        if type(marche['modificationsActesSousTraitance'][i]['modificationActeSousTraitance']) == list:
-                            modifs += marche['modificationsActesSousTraitance'][i]['modificationActeSousTraitance']
-                        else:
-                            modifs += [marche['modificationsActesSousTraitance'][i]['modificationActeSousTraitance']]
-                marche['modificationsActesSousTraitance'] = modifs
-            elif 'modificationsActesSousTraitance' in marche.keys() and marche['modificationsActesSousTraitance'] is not None and len(
-                    marche['modificationsActesSousTraitance']) > 0 and type( marche['modificationsActesSousTraitance'])== list:
-                marche['modificationsActesSousTraitance'] = marche['modificationsActesSousTraitance']['modificationActeSousTraitance']
-
-            if 'actesSousTraitance' in marche.keys() and marche['actesSousTraitance'] is not None and len(
-                    marche['actesSousTraitance']) > 0 and type( marche['actesSousTraitance'])== list:
-                modifs = []
-                for i in range(len((marche['actesSousTraitance']))):
-                    if type( marche['actesSousTraitance'][i])== dict and 'acteSousTraitance' in marche['actesSousTraitance'][i].keys():
-                        #On affecte au champ actesSousTraitance' le champ acteSousTraitance
-                        if type(marche['actesSousTraitance'][i]['acteSousTraitance']) == list:
-                            modifs += marche['actesSousTraitance'][i]['acteSousTraitance']
-                        else:
-                            modifs += [marche['actesSousTraitance'][i]['acteSousTraitance']]
-                marche['actesSousTraitance'] = modifs
-            elif 'actesSousTraitance' in marche.keys() and marche['actesSousTraitance'] is not None and len(
-                    marche['actesSousTraitance']) > 0 and type( marche['actesSousTraitance'])== list:
-                marche['actesSousTraitance'] = marche['actesSousTraitance']['acteSousTraitance']
-
         return dico
 
     def file_load(self,path:str) ->dict:
@@ -525,7 +495,13 @@ class GlobalProcess:
                 NodeFormat.normalize_list_node(marche,'modifications', 'modification')
             NodeFormat.convert_ints(marche,'modifications', 'modification')
 
-            if 'modificationsActesSousTraitance' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance'):
+            if 'modificationsActesSousTraitance' in marche.keys() \
+                and 'modificationActesSousTraitance' in marche['modificationsActesSousTraitance'] \
+                and not NodeFormat.is_normalized_list_node(marche,'modificationsActesSousTraitance', 'modificationActesSousTraitance'):
+                NodeFormat.normalize_list_node(marche,'modificationsActesSousTraitance', 'modificationActesSousTraitance')
+            elif 'modificationsActesSousTraitance' in marche.keys() \
+                and 'modificationActeSousTraitance' in marche['modificationsActesSousTraitance'] \
+                and not NodeFormat.is_normalized_list_node(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance'):
                 NodeFormat.normalize_list_node(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance')
 
             if 'actesSousTraitance' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'actesSousTraitance', 'acteSousTraitance'):
