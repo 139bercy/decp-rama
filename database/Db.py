@@ -115,7 +115,7 @@ class Db:
 
         return session_id
 
-    def add_report(self, session_id, step_id, source_id, file_id, exclusion_type_id, message, error, path, position:int, content):
+    def add_report(self, session_id:int, step_id:int, source_id:int, file_id:int, exclusion_type_id:int, message, error, path, position:int, id_content:str, content):
         """
         Ajoute un enregistrement dans la table decp.report
         :param session_id: INT8, identifiant de la session
@@ -127,6 +127,7 @@ class Db:
         :param error: VARCHAR(256), message d'erreur
         :param path: VARCHAR(256), Chemin de l'erreur
         :param position: VARCHAR(256), position
+        :param id_content: VARCHAR(64), Identifiant de l'enregistrement exclu/invalide (extrait du contenu en erreur "content")
         :param content: BYTEA, contenu
         """
         try:
@@ -137,8 +138,8 @@ class Db:
 
             # Instruction SQL pour insérer un enregistrement
             insert_query = """
-                INSERT INTO decp_report.report (report_id, session_id, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, content, creation_date)
-                VALUES (nextval('decp_report.s_report'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                INSERT INTO decp_report.report (report_id, session_id, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, id_content, content, creation_date)
+                VALUES (nextval('decp_report.s_report'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             """
 
             # Exécution de la requête d'insertion
@@ -146,7 +147,7 @@ class Db:
                 content = str(content)[0:4090]+"..." 
             if len(str(error))>2048:
                 error = str(error)[0:1020]+" (...) "+str(error)[len(str(error))-1020:len(str(error))] 
-            cursor.execute(insert_query, (session_id, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, str(content)))
+            cursor.execute(insert_query, (session_id, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, id_content, str(content)))
 
             # Commit des changements
             connection.commit()

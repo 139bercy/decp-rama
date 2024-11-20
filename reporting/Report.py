@@ -10,6 +10,7 @@ class Report:
 
     E_VALIDATION = 'E_VALIDATION'
     D_DUPLICATE = 'E_DUPLICATE'
+    D_DATA = 'E_DATA'
     
     # Class members
     application = None          # Application launching this instance
@@ -34,7 +35,8 @@ class Report:
         self.application = application
         self.init()
         self.db = Db()
-        self.session = self.db.add_session('decp-rama')
+        self_path = os.path.basename(os. getcwd()).lower()
+        self.session = self.db.add_session(self_path)
 
     # Init statistics
     def init(self):
@@ -51,17 +53,15 @@ class Report:
     def add(self,step:str,code_erreur:str,message:str,data):
         if isinstance(data, list):
             for i in range(0,len(data)):
-                file_name,source,position,error,path = self.extract_report_data(data[i])
-                if file_name is None:
-                    print("File name is null")
-                self.add_message(step,code_erreur,source,file_name,position,error,path,message,i,data[i])
+                file_name,source,position,error,path,idr = self.extract_report_data(data[i])
+                self.add_message(step,code_erreur,source,file_name,position,error,path,message,i,idr,data[i])
         else:
             dic = []
             for i in range(0,len(data)):
                 dic.append(data.iloc[i].to_dict())
             self.add(step,code_erreur,message,dic)
 
-    def extract_report_data(self,data:dict) -> tuple[str,str,int,str,str]:
+    def extract_report_data(self,data:dict) -> tuple[str,str,int,str,str,str]:
         if 'report__file' in data:
             file_name = data['report__file']
         else:
@@ -84,7 +84,11 @@ class Report:
             del data['report__path']
         else:
             path = None
-        return file_name,source,position,error,path
+        if 'id' in data:
+            idr = data['id']
+        else:
+            idr = None
+        return file_name,source,position,error,path,idr
     
     def add_forced(self,step:str,code_erreur:str,message:str,data):
         """
@@ -104,18 +108,18 @@ class Report:
 
     # Add a message load file failed from dictionary or panda dataframe
     def add_fail(self,step:str,code_erreur:str,error:str,source:str,file_name:str):
-        self.add_message(step,code_erreur,source,file_name,0,error,'','',0,[])
+        self.add_message(step,code_erreur,source,file_name,0,error,'','',0,'',[])
 
     # Add a message record
-    def add_message(self,step:str,code_erreur:str,source:str,file_name:str,position:int,error:str,path:str,message:str,index,data):
+    def add_message(self,step:str,code_erreur:str,source:str,file_name:str,position:int,error:str,path:str,message:str,index:int,idr:str,data):
         if source not in self.messages:
             self.messages[source] = {code_erreur: []}
         if code_erreur not in self.messages[source]:
             self.messages[source][code_erreur] = []
-        self.messages[source][code_erreur].append({'index': index, 'error': error, 'path': path, 'position': position,'message': message, 'step': step, 'file': file_name, 'date': datetime.now().strftime('%Y-%m-%d'),'data': data})
-        self.db_add_report(step,code_erreur,source,file_name,position,error,path,message,data)
+        self.messages[source][code_erreur].append({'index': index, 'error': error, 'path': path, 'position': position,'message': message, 'step': step, 'file': file_name, 'id': idr, 'date': datetime.now().strftime('%Y-%m-%d'),'data': data})
+        self.db_add_report(step,code_erreur,source,file_name,position,error,path,message,idr,data)
 
-    def db_add_report(self,step:str,code_erreur:str,source:str,file_name:str,position:int,error:str,path:str,message:str,data):
+    def db_add_report(self,step:str,code_erreur:str,source:str,file_name:str,position:int,error:str,path:str,message:str,idr:str,data):
         if step not in self.step_tmp:
             step_id = self.db.find_or_add_step(step)
             self.step_tmp[step] = step_id
@@ -137,7 +141,7 @@ class Report:
         else:
             exclusion_type_id = self.exclusion_tmp[code_erreur]
 
-        self.db.add_report(self.session, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, data)
+        self.db.add_report(self.session, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, idr, data)
         
     def db_add_file(self,source:str,file_name:str, nb_marches:int, nb_concessions:int):
         if source not in self.source_tmp:

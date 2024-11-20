@@ -27,6 +27,8 @@ CREATE TABLE decp_report.report (
    message              VARCHAR(256)         not null,
    error                VARCHAR(2048)        null,
    path                 VARCHAR(256)         null,
+   content_type_id      INT8                 null,
+   id_content           VARCHAR(64)          null,
    content              VARCHAR(4096)        null,
    creation_date        TIMESTAMP            not null,
    CONSTRAINT pk_report PRIMARY KEY (report_id)
