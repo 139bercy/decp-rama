@@ -127,14 +127,20 @@ class SourceProcess:
                 old_ressources = refjson["resources"]
             else:
                 old_ressources = []
-            
+
+            # Quand plusieurs api_key sont déclarées on ajoute un prefixe 
+            # pour eviter d'écraser les fichiers ayant le même nom
+            if n>1:
+                prefix = str(i)+'_'+self.cle_api[i]+'_'
+            else:
+                prefix = ''
             #Création de la liste des urls selon 2 cas: 1er téléchargement, i-nième téléchargement
             if old_ressources==[]:
                 url = url + [d["url"] for d in ressources if
                             (d["url"].endswith("xml") or d["url"].endswith("json"))]
-                title = title + [d["title"] for d in ressources]
+                title = title + [prefix+d["title"] for d in ressources]
             else: 
-                url, title = self.check_date_file(url,title, ressources, old_ressources)
+                url, title = self.check_date_file(url,title, ressources, old_ressources,prefix)
                 # print("Les urls dont le contenu a été modifié sont: ", url)
 
             #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
@@ -148,10 +154,11 @@ class SourceProcess:
                 shutil.copy(f"metadata/{self.source}/metadata_{self.key}_{i}.json",f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json")
                 print(os.listdir(f"old_metadata/{self.source}"))
             logging.info("Récupération des url OK")
-            return url,title
+
+        return url,title
 
 
-    def check_date_file(self,url:list, title: list, new_ressources:dict,old_ressources:dict)->tuple[list,list]:
+    def check_date_file(self,url:list, title: list, new_ressources:dict,old_ressources:dict,prefix:str)->tuple[list,list]:
         """
         Fonction vérifiant si la date de dernière modification des fichiers ressources 
         dans les metadatas est strictement antérieure à la date de dernière modification.
@@ -171,7 +178,7 @@ class SourceProcess:
             if (d["url"].endswith("xml") or d["url"].endswith("json")):
                 if d['url'] not in old_urls or d['last_modified'] > next((item['last_modified'] for item in old_ressources if item['url'] == d['url']), None):
                     url = url + [d["url"]] 
-                    title = title + [d["title"]]
+                    title = title + [prefix+d["title"]]
 
         print("url",url)
         return url, title         
