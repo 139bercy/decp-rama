@@ -1,5 +1,6 @@
 from .AifeProcess import AifeProcess
 from .Aife2024Process import Aife2024Process
+from .Atexo2024Process import Atexo2024Process
 from .AwsProcess import AwsProcess
 from .Aws2024Process import Aws2024Process
 from .BfcProcess import BfcProcess
