@@ -1,3 +1,9 @@
+DROP VIEW IF EXISTS decp_report.v_stats_all;
+DROP VIEW IF EXISTS decp_report.v_stats_global_by_session;
+DROP VIEW IF EXISTS decp_report.v_nb_by_source_session;
+DROP VIEW IF EXISTS decp_report.v_nb_by_files;
+DROP FUNCTION IF EXISTS decp_report.get_query_stats_global();
+
 DROP SEQUENCE IF EXISTS decp_report.s_account;
 DROP SEQUENCE IF EXISTS decp_report.s_session;
 DROP SEQUENCE IF EXISTS decp_report.s_report;
@@ -34,23 +40,23 @@ CREATE TABLE decp_report.report (
    CONSTRAINT pk_report PRIMARY KEY (report_id)
 );
 
-COMMENT ON COLUMN report.report_id IS 'Identifiant interne de l''enregistrement';
+COMMENT ON COLUMN decp_report.report.report_id IS 'Identifiant interne de l''enregistrement';
 
-COMMENT ON COLUMN report.source_id IS 'Flux d''ou provient l''enregistrement';
+COMMENT ON COLUMN decp_report.report.source_id IS 'Flux d''ou provient l''enregistrement';
 
-COMMENT ON COLUMN report.exclusion_type_id IS 'Type de message ou d''erreur lie a l''enregistrement';
+COMMENT ON COLUMN decp_report.report.exclusion_type_id IS 'Type de message ou d''erreur lie a l''enregistrement';
 
-COMMENT ON COLUMN report.file_id IS 'Nom du fichier d''ou provient l''enregistrement';
+COMMENT ON COLUMN decp_report.report.file_id IS 'Nom du fichier d''ou provient l''enregistrement';
 
-COMMENT ON COLUMN report.path IS 'Chemin logique du noeud où s''est produit l''erreur';
+COMMENT ON COLUMN decp_report.report.path IS 'Chemin logique du noeud où s''est produit l''erreur';
 
-COMMENT ON COLUMN report.position IS 'Position de l''enregistrement dans fichier';
+COMMENT ON COLUMN decp_report.report.position IS 'Position de l''enregistrement dans fichier';
 
-COMMENT ON COLUMN report.message IS 'Message d''erreur';
+COMMENT ON COLUMN decp_report.report.message IS 'Message d''erreur';
 
-COMMENT ON COLUMN report.content IS 'Contenu de l''enregistrement';
+COMMENT ON COLUMN decp_report.report.content IS 'Contenu de l''enregistrement';
 
-COMMENT ON COLUMN report.creation_date IS 'Date de creation de l''enregistrement ';
+COMMENT ON COLUMN decp_report.report.creation_date IS 'Date de creation de l''enregistrement ';
 
 CREATE INDEX fk_report_source_id on decp_report.report (source_id);
 
@@ -157,7 +163,7 @@ ALTER TABLE decp_report.account
 
      
 -- Vue agrégant le nombre de marchés, de concessions et d'erreurs  par fichier
-DROP VIEW decp_report.v_nb_by_files;
+DROP VIEW IF EXISTS decp_report.v_nb_by_files;
 
 CREATE OR REPLACE VIEW decp_report.v_nb_by_files AS 
 SELECT r.source_id,r.session_id,r.file_id,count(DISTINCT r.position) AS nb_error,f.nb_marches, f.nb_concessions
@@ -171,7 +177,7 @@ ORDER BY r.session_id;
 --SELECT * FROM decp_report.v_nb_by_files; 
      
 -- Vue agrégant le nombre de marchés, de concessions et d'erreurs par session et par source
-DROP VIEW decp_report.v_nb_by_source_session;
+DROP VIEW IF EXISTS decp_report.v_nb_by_source_session;
 
 CREATE OR REPLACE VIEW decp_report.v_nb_by_source_session AS 
 SELECT r.source_id,r.session_id,count(DISTINCT file_id) AS nb_files,sum(nb_error) AS nb_errors, sum(nb_duplicate) AS nb_duplicates, sum(nb_marches) + sum(nb_concessions) AS nb_records
@@ -191,7 +197,7 @@ ORDER BY r.session_id;
 
 --SELECT * FROM decp_report.v_nb_by_source_session; 
 
-DROP VIEW decp_report.v_stats_global_by_session;
+DROP VIEW IF EXISTS decp_report.v_stats_global_by_session;
 
 CREATE OR REPLACE VIEW decp_report.v_stats_global_by_session AS 
  SELECT s.begin_date,s.end_date, src."name", SUM(f.nb_marches) + SUM(f.nb_concessions) AS nb_records, SUM( nb_error) AS nb_errors
@@ -213,7 +219,7 @@ CREATE OR REPLACE VIEW decp_report.v_stats_global_by_session AS
 
 --SELECT * FROM decp_report.v_stats_global_by_session;
 	
-DROP VIEW decp_report.v_stats_all;
+DROP VIEW IF EXISTS decp_report.v_stats_all;
 
 CREATE OR REPLACE VIEW decp_report.v_stats_all AS 
 SELECT s.name,s.source_id,r.session_id,
@@ -244,7 +250,7 @@ ORDER BY name;
 --SELECT * FROM decp_report.v_stats_all;
 
 
-DROP FUNCTION decp_report.get_query_stats_global();
+DROP FUNCTION IF EXISTS decp_report.get_query_stats_global();
 CREATE OR REPLACE FUNCTION decp_report.get_query_stats_global()
 RETURNS varchar AS $$
 DECLARE
@@ -279,5 +285,3 @@ BEGIN
 END $$ LANGUAGE plpgsql;
 
 --SELECT decp_report.get_query_stats_global()
-
-SELECT r.session_id,  (SELECT end_date FROM decp_report."session" si WHERE si.session_id = r.session_id) AS session_date,MAX(CASE WHEN s.source_id = 1 THEN r.nb_records END) AS "Dematis_nb_records", MAX(CASE WHEN s.source_id = 2 THEN r.nb_records END) AS "PES_nb_records",MAX(CASE WHEN s.source_id = 1 THEN r.nb_errors END) AS "Dematis_nb_errors", MAX(CASE WHEN s.source_id = 2 THEN r.nb_errors END) AS "PES_nb_errors",MAX(CASE WHEN s.source_id = 1 THEN ((100*r.nb_errors) / COALESCE(r.nb_records,NULL)) END) AS "Dematis_per_errors", MAX(CASE WHEN s.source_id = 2 THEN ((100*r.nb_errors) / COALESCE(r.nb_records,NULL)) END) AS "PES_per_errors" FROM decp_report.v_nb_by_source_session r INNER JOIN decp_report.source s ON s.source_id = r.source_id GROUP BY r.session_id ORDER BY r.session_id
