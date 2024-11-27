@@ -8,7 +8,6 @@ import xml
 import xmlschema
 import jsonschema
 from jsonschema import validate,Draft7Validator,Draft202012Validator
-from dateutil.parser import parse
 from lxml import etree
 from datetime import datetime
 import pandas as pd

@@ -1,4 +1,3 @@
-from dateutil.relativedelta import relativedelta
 import json
 import psycopg2
 from os import environ as env
@@ -90,7 +89,7 @@ class Db:
 
     def end_session(self,session_id:int,message:str):
         """
-        Ajoute la date de fin de l'entrée dans la table session.
+        Ajoute la date de fin lénregistrement avec le session_id dans la table session.
         :return: session_id de l'étape
         """
         try:

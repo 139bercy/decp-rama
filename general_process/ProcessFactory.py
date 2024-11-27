@@ -1,9 +1,6 @@
 from specific_process import * 
 # Source non traitée pour l'instant
 import logging
-import json
-from datetime import datetime
-import numpy as np
 
 from reporting.Report import Report
 
