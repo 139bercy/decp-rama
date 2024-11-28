@@ -16,11 +16,11 @@ class ProcessFactory:
         self.processes = [Aife2024Process]
         #self.processes = [MegaProcess]
         #self.processes = [Pes2024Process]
-        #self.processes = [EmarProcess]
+        self.processes = [EmarProcess]
         #self.processes = [SampleJsonProcess]
         #self.processes = [SampleXmlProcess]
-        self.processes = [EmarProcess,Pes2024Process]
-        self.processes = [Atexo2024Process]
+        #self.processes = [EmarProcess,Pes2024Process]
+        #self.processes = [Atexo2024Process]
         # if data_format=='2022':
         # self.processes = [SampleXmlProcess] # For test ECO
         self.dataframes = []

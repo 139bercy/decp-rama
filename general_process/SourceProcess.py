@@ -261,7 +261,6 @@ class SourceProcess:
                 except Exception as err:
                     logging.error(f"Exception lors du chargement du fichier xml {self.title[i]} - {err}")
 
-
                 if 'marches' in dico and 'marche' in dico['marches']:
                     for marche in dico['marches']['marche']:
                         if 'titulaires' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'titulaires', 'titulaire'):

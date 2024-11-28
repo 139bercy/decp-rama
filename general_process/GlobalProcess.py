@@ -1,4 +1,5 @@
 import pandas as pd
+import ast
 import json
 import os
 from datetime import date
@@ -174,8 +175,10 @@ class GlobalProcess:
     def dedoublonnage(self,df: pd.DataFrame) -> pd.DataFrame:
         if "modifications" in df.columns: # Règles de dédoublonnages diffèrentes. On part du principe qu'en cas 
             # de modifications, la colonne "modifications" est créée ou modifiée
-            df_modif = df[df.modifications.apply(len)>0]     #lignes avec modifs     
-            df_nomodif = df[df.modifications.apply(len)==0]  #lignes sans aucune modif
+            df_modif = df[df.modifications.apply(lambda x: 0 if x == '' or
+                                                        str(x) in ['nan', 'None'] else len(x))>0]     #lignes avec modifs     
+            df_nomodif = df[df.modifications.apply(lambda x: 0 if x == '' or
+                                                        str(x) in ['nan', 'None'] else len(x))==0]  #lignes sans aucune modif
         else:
             df_modif = pd.DataFrame() 
             df_nomodif = df
@@ -206,8 +209,7 @@ class GlobalProcess:
         if not df_modif.empty:
             df_modif_str  = df_modif.astype(str)     #en str pour réaliser le dédoublonnage
             df_modif_str.sort_values(by=["datePublicationDonnees"], inplace=True)   #Tri
-            #print(df_modif['modifications'])
-
+            
             df_modif_marche = df_modif_str[df_modif_str['_type'].str.contains("Marché")]
             index_to_keep_modif = df_modif_marche.drop_duplicates(subset=feature_doublons_marche,keep='last').index.tolist()  #'last', permet de garder la ligne avec la date est la plus récente
 
@@ -233,6 +235,18 @@ class GlobalProcess:
         df = df.reset_index(drop=True)
         return df
 
+    def extract_publication_dates(self, modifications_node) -> list:
+        # Pour test sur chaine de caractere modification_list = ast.literal_eval(modification_str)  # Évalue la chaîne comme une structure de données
+        dates_publication = []
+        for modification in modifications_node:
+            if 'modification' in modification and isinstance(modification['modification'],dict):
+                if 'datePublicationDonneesModification' in modification['modification']:
+                    dates_publication.append(modification['modification']['datePublicationDonneesModification'])
+                else:
+                    dates_publication.append(modification['modification']['modification']['datePublicationDonneesModification'])
+            elif 'modification' in modification and isinstance(modification['modification'],list):
+                return self.extract_publication_dates(modification['modification'])
+        return dates_publication
 
     def export(self):
         # if df is empty then return
@@ -242,36 +256,76 @@ class GlobalProcess:
         """Étape exportation des résultats au format json et xml dans le dossier /results"""
         logging.info("ÉTAPE EXPORTATION")
         logging.info("Début de l'étape Exportation en JSON")
+        
         dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
                             for m in self.df.to_dict(orient='records')]}
         with open('dico.pkl', 'wb') as f:
             pickle.dump(dico, f)
         # Modification des champs titulaires et modifications
         dico = self.dico_modifications(dico)
-        #Création des chemins des fichiers mensuel et global
-        suffix_month = datetime.now().strftime('%Y-%m')
-        suffix_year = datetime.now().strftime('%Y')
+
+        #Création des chemins des fichiers mensuel et annuel(global)
+        suffix_month = self.get_current_date().strftime('%Y-%m')
+        suffix_year = self.get_current_date().strftime('%Y')
         path_result = f"results/decp-{suffix_year}.json"
         path_result_month = f"results/decp-{suffix_month}.json"
         path_result_daily = "results/decp-daily.json"
         path_result_backup = f"results/ref-decp-{suffix_year}.json"
+        
+        # Creation du sous répertoire "results"
         os.makedirs("results", exist_ok=True)
 
         config_file = "config.json"
         # read info from config.son
         with open(config_file, "r") as f:
-                config = json.load(f)
+            config = json.load(f)
 
-        #Cas du premier jour du mois
-        if ((datetime.now().month)!=config["resource_month"]):
-            logging.info("Finalisation du fichier")
-            #On récupère la date du mois précédent pour pouvoir upload le fichier contenant les marchés du mois précédent.
-            a_month_ago = datetime.now()- relativedelta(months=1)
+        # Cas du changement de mois 
+        # prenant en compte le cas de l'inactivité de l'application pendant plusieurs jours 
+        if ((self.get_current_date().month)!=config["resource_month"]):
+            logging.info("Finalisation du fichier du mois précédent")
+            # On récupère la date du mois précédent  
+            # pour pouvoir retrouver le nom du fichier contenant les marchés et concession du mois précédent.
+            a_month_ago = self.get_current_date() - relativedelta(months=1)
             suffix_month_ago = a_month_ago.strftime('%Y-%m')
             path_result_last_month = f"results/decp-{suffix_month_ago}.json"
 
+            # Si l'execution de l'application ne s'est pas faite depuis plusieurs jours 
+            # il faut scinder le dico en 2: les données du mois précédent et celle du mois en cours
+            self.df['datePublicationDonnees_comp'] = pd.to_datetime(self.df['datePublicationDonnees'])
+            self.df['dateModifications_tmp'] = self.df['modifications'].apply(self.extract_publication_dates)
+            self.df['dateModifications_comp'] = self.df['dateModifications_tmp'].apply(lambda x: max(pd.to_datetime(x, errors='coerce')) if x else None)
+            self.df['datePublication__max'] = self.df[['datePublicationDonnees_comp', 'dateModifications_comp']].max(axis=1)
+            del self.df['datePublicationDonnees_comp']
+            del self.df['dateModifications_tmp']
+            del self.df['dateModifications_comp']
+
+            month_first_day = self.get_month_first_day(self.get_current_date())
+            df_prev_month = self.df[(self.df['datePublication__max'] < month_first_day)]
+            df_curr_month = self.df[(self.df['datePublication__max'] >= month_first_day)]
+            del df_prev_month['datePublication__max']
+            del df_curr_month['datePublication__max']
+            
+            dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
+                                for m in df_curr_month.to_dict(orient='records')]}
+            # Modification des champs titulaires et modifications
+            dico = self.dico_modifications(dico)
+
             dico_ancien = self.file_load(path_result)
             dico_nouveau = self.file_load(path_result_last_month)
+            if not df_prev_month.empty:
+                logging.error(f"Mise à jour du fichier {path_result_last_month}")
+                dico_prev_month = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
+                                    for m in df_prev_month.to_dict(orient='records')]}
+                dico_prev_month = self.dico_modifications(dico_prev_month)
+                dico_nouveau = self.dico_merge(dico_nouveau,dico_prev_month)
+                df_prev_month = pd.DataFrame.from_dict(dico_nouveau)
+                df_prev_month = self.dedoublonnage(df_prev_month)
+                dico_nouveau = self.nan_correction(df_prev_month)
+                try:
+                    self.file_dump(path_result_last_month,dico_nouveau) 
+                except:
+                    logging.error(f"Erreur d'écriture dans le fichier {path_result_last_month}")
             dico_global = self.dico_merge(dico_ancien,dico_nouveau)
             #On transforme les dictionnaires en dataframes pour les dédoublonner
             if dico_global!={}:
@@ -281,7 +335,7 @@ class GlobalProcess:
                 try:
                     self.file_dump(path_result,dico_final) 
                 except:
-                    logging.error("Erreur d'écriture dans le fichier {path_result}")
+                    logging.error(f"Erreur d'écriture dans le fichier {path_result}")
                     #Il faudra publier le fichier backup
                 self.file_dump(path_result_backup,dico_final)
             elif dico_nouveau !={} :
@@ -292,7 +346,7 @@ class GlobalProcess:
                 self.file_dump(path_result_backup,dico_nouveau)
             self.file_dump(path_result_month,dico)
         else:
-            #On vérifie que le fichier su mois a bien été crée, sinon on le crée
+            #On vérifie que le fichier du mois a bien été crée, sinon on le crée
             if os.path.exists(path_result_month):
                 dico_mensuel = self.file_load(path_result_month)
                 if dico_mensuel=={}:
@@ -619,7 +673,7 @@ class GlobalProcess:
         elif(dico_nouveau=={}) and (dico_ancien!={}):
             dico_global = dico_ancien['marches']
         elif(dico_nouveau=={}) and (dico_ancien=={}):
-            logging.info(f"Les fichiers decp_2022 et decp_{datetime.now().year}_{datetime.now().month-1} sont vides")
+            logging.info(f"Les fichiers decp_2022 et decp_{self.get_current_date().year}_{self.get_current_date().month-1} sont vides")
             dico_global={}
         else:
             #dico_global récupère l'ensemble des marchés et concessions des deux fichiers
@@ -686,17 +740,17 @@ class GlobalProcess:
             "X-API-KEY": data_gouv_api_key
         }
 
-        suffix_month = datetime.now().strftime('%Y-%m')
+        suffix_month = self.get_current_date().strftime('%Y-%m')
 
         # Nousavons changé de mois, on doit donc mettre à jour le fichier decp_<Annee> sur datagouv 
         # et créer la ressource pour le fichier mensuel et l'uploader
-        if ((datetime.now().month)!=config["resource_month"]):
+        if ((self.get_current_date().month)!=config["resource_month"]):
 
             resource_id_global = config["resource_id_global"]
             url = f"{api}/datasets/{dataset_id}/resources/{resource_id_global}/upload/"
             url_month = f"{api}/datasets/{dataset_id}/upload/"
 
-            suffix_year = datetime.now().strftime('%Y')
+            suffix_year = self.get_current_date().strftime('%Y')
             try:
                 # On charge le fichier annuel existant
                 files = {
@@ -734,7 +788,7 @@ class GlobalProcess:
                     data = json.load(file)
 
                 data['resource_id_month'] = resource_id
-                data['resource_month'] = datetime.now().month
+                data['resource_month'] = self.get_current_date().month
 
                 with open(config_file, "w") as file:
                     json.dump(data, file, indent=4)
@@ -753,9 +807,15 @@ class GlobalProcess:
             #On met à jour le fichier mensuel sur datagouv
             response = requests.post(url_upload, headers=headers, files=files_month)
             if response.status_code==200:
-                logging.info(f"Upload du fichier decp-{datetime.now().year}-{datetime.now().month}.json réussi")
+                logging.info(f"Upload du fichier decp-{self.get_current_date().year}-{self.get_current_date().month}.json réussi")
             else:
                 print("Erreur ",response.status_code)
 
+    def get_current_date(self) -> datetime:
+        return datetime.now()
+    
+    def get_month_first_day(self,date:datetime) -> datetime:
+        return date.replace(day=1)
+        
     def save_report(self):
         self.report.save()
