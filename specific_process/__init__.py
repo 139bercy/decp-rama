@@ -7,6 +7,7 @@ from .BfcProcess import BfcProcess
 from .BreProcess import BreProcess
 from .DecpAwsProcess import DecpAwsProcess
 from .EmarProcess import EmarProcess
+from .Emar2024Process import Emar2024Process
 from .LyonProcess import LyonProcess
 from .MaxiProcess import MaxiProcess
 from .MegaProcess import MegaProcess

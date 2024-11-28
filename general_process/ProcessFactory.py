@@ -15,8 +15,8 @@ class ProcessFactory:
         #self.processes = [PesProcess, LyonProcess, EmarProcess]
         self.processes = [Aife2024Process]
         #self.processes = [MegaProcess]
-        #self.processes = [Pes2024Process]
-        self.processes = [EmarProcess]
+        self.processes = [Pes2024Process]
+        #self.processes = [Emar2024Process]
         #self.processes = [SampleJsonProcess]
         #self.processes = [SampleXmlProcess]
         #self.processes = [EmarProcess,Pes2024Process]
@@ -37,30 +37,27 @@ class ProcessFactory:
     def run_processes(self):
         """Création d'une boucle (1 source=1 itération) qui appelle chacun des processus de chaque source."""
         for process in self.processes:
-            loaded = 0
-            # try:
-            #if True: #for debugonly
-            logging.info(f"------------------------------{process.__name__}------------------------------")
-            p = process(self.data_format,self.report)
-            p.get()
-            loaded = 1
-            p.clean()
-            loaded = 2
-            p.convert()
-            loaded = 3
-            p.fix()
-            loaded = 4
-            p.fix_statistics()
-            #if self.data_format=='2022':
-            #    p.comment()
-            logging.info ("Ajout des données")
-            self.dataframes.append(p.df)
-            logging.info(f"----------------Fin du traitement {process.__name__}------------------------------")
-            # except Exception as err:
-                # if loaded>0:
-                #     logging.error(f"Erreur de traitement {loaded}  - {err}")
-                # else:
-                #     logging.error(f"Source introuvable - {err}")
+            loaded = ''
+            try:
+                logging.info(f"------------------------------{process.__name__}------------------------------")
+                p = process(self.data_format,self.report)
+                p.get()
+                loaded = 'get'
+                p.clean()
+                loaded = 'clean'
+                p.convert()
+                loaded = 'convert'
+                p.fix()
+                loaded = 'fix'
+                p.fix_statistics()
+                logging.info (f"Ajout des données de la source {process.__name__}")
+                self.dataframes.append(p.df)
+                logging.info(f"----------------Fin du traitement {process.__name__}------------------------------")
+            except Exception as err:
+                if loaded != '':
+                    logging.error(f"Erreur de traitement après l'opération {loaded}  - {err}")
+                else:
+                    logging.error(f"Source introuvable - {err}")
 
     def run_process(self):
         """Lance un seul processus"""

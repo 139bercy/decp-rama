@@ -71,6 +71,7 @@ class SourceProcess:
             self.json_scheme = json.load(json_file)
             json_file.close
 
+    
     def _clean_metadata_folder(self) -> None:
         """La fonction _clean_metadata_folder permet le nettoyage de /metadata/{self.source}"""
         # Lavage des dossiers dans metadata
@@ -113,8 +114,12 @@ class SourceProcess:
         url = []    
         for i in range(n):
             #Téléchargement du fichier de metadata de self.source et création de la 1ere variable json pour la comparaison 
-            wget.download(f"https://www.data.gouv.fr/api/1/datasets/{self.cle_api[i]}/",
+            try:
+                wget.download(f"https://www.data.gouv.fr/api/1/datasets/{self.cle_api[i]}/",
                             f"metadata/{self.source}/metadata_{self.key}_{i}.json")
+            except:
+                logging.error("Erreur lors du chargement des métadonnées")
+
             with open(f"metadata/{self.source}/metadata_{self.key}_{i}.json", 'r+') as f:
                 ref_json = json.load(f)
             ressources = ref_json["resources"]
@@ -182,6 +187,7 @@ class SourceProcess:
         print("url",url)
         return url, title         
     
+
     def get(self) -> None:
         """
         Étape get qui permet le lavage du dossier sources/{self.source} et 
@@ -262,7 +268,18 @@ class SourceProcess:
                     logging.error(f"Exception lors du chargement du fichier xml {self.title[i]} - {err}")
 
                 if 'marches' in dico and 'marche' in dico['marches']:
+                    j = 0
                     for marche in dico['marches']['marche']:
+                        if self.convert_nc:
+                            if 'sousTraitanceDeclaree' in marche.keys() and not isinstance(marche['sousTraitanceDeclaree'],bool):
+                                if marche['sousTraitanceDeclaree'] == '0':
+                                    marche['sousTraitanceDeclaree'] = False
+                                elif marche['sousTraitanceDeclaree'] == '1':
+                                    marche['sousTraitanceDeclaree'] = True
+
+                        self.force_floats(['tauxAvance','origineUE','origineFrance','montant'],marche)
+                        self.force_ints(['offresRecues'],marche)
+
                         if 'titulaires' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'titulaires', 'titulaire'):
                             NodeFormat.normalize_list_node(marche,'titulaires', 'titulaire')
 
@@ -279,9 +296,11 @@ class SourceProcess:
                         if self.format == "xml":
                             if 'modificationsActesSousTraitance' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'modificationsActesSousTraitance', 'modificationActesSousTraitance'):
                                 NodeFormat.normalize_list_node(marche,'modificationsActesSousTraitance', 'modificationActesSousTraitance')
+                            NodeFormat.convert_ints(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance')
                         else:
                             if 'modificationsActesSousTraitance' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance'):
                                 NodeFormat.normalize_list_node(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance')
+                            NodeFormat.convert_ints(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance')
 
                         if 'actesSousTraitance' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'actesSousTraitance', 'acteSousTraitance'):
                             NodeFormat.normalize_list_node(marche,'actesSousTraitance', 'acteSousTraitance')
@@ -300,9 +319,7 @@ class SourceProcess:
                             
                         if 'considerationsEnvironnementales' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'considerationsEnvironnementales', 'considerationEnvironnementale'):
                             NodeFormat.normalize_list_value(marche,'considerationsEnvironnementales', 'considerationEnvironnementale')
-
-
-
+                        j += 1
 
             elif self.format == 'json':
                 try:
@@ -354,6 +371,7 @@ class SourceProcess:
         nb_good_marches,nb_good_concessions = 0, 0
         dico_ignored_marche, dico_ignored_concession = [], []
         error_message = None
+        aucun_marches = False
 
         if 'marche' in dico and isinstance(dico['marche'],list):
             while n < len(dico['marche']) :
@@ -370,7 +388,9 @@ class SourceProcess:
                 n+=1
         elif 'marche' in dico:
             dico_ignored_concession.append(complete_util_info(dico['marche'],self.source,file_name,0,'Une liste de marchés est attendue',''))
-        
+        else:
+            aucun_marches = True
+
         # Mise a jour du nombre de marchés ignorés a    
         self.report.nb_in_bad_marches += len(dico_ignored_marche)
         self.report.nb_in_good_marches += nb_good_marches
@@ -390,7 +410,9 @@ class SourceProcess:
                 m+=1
         elif 'contrat-concession' in dico:
             dico_ignored_concession.append(complete_util_info(dico['contrat-concession'],self.source,file_name,0,'Une liste de concessions est attendue',''))
-        
+        elif aucun_marches:
+            self.report.db_add_error_file(self.source,'Clean',self.report.E_VALIDATION,file_name,'Aucun marchés ni concessions n\'ont été retrouvé dans le fichier')
+
         # Mise a jour du nombre de concessions ignorées  
         self.report.nb_in_bad_concessions += len(dico_ignored_concession)
         self.report.nb_in_good_concessions += nb_good_concessions
@@ -411,84 +433,7 @@ class SourceProcess:
                 self.report.add_forced('Clean/Concession',self.report.E_VALIDATION,'Concession non valide mais ajoutée',self.dico_2022_concession)
 
         logging.info(f"Nombre de marchés et concessions invalides dans {file_name}: {len(dico_ignored_marche)+len(dico_ignored_concession)} ")
-        logging.info(f"Nombre de marchés et de concessions valides dans {file_name}: {nb_good_marches+nb_good_concessions} ")
-
-    def date_norm(self,datestr:str ) -> str:
-        """
-        Permet de modifier le format d'une date. Plus
-        précsément, les '+' sont remplacés par des '-'
-        """
-        return datestr.replace('+','-') if datestr else datestr
-
-
-    def date_before_2024(self, record:dict, nature:str) -> bool:
-        """ 
-        La fonction vérifie que les dates contenues dans un marché/une 
-        concession sont postérieures à 2024 et sont de la forme Y-M-J
-        pour les colonnes date et date_de_publication. 
-
-        Args:
-
-            record: dictionnaire dans lequel se fait la vérification
-            nature: il s'agit soit d'une concession, soit d'un marché
-
-        """
-        if nature == "marché":
-            if record['nature'] is not None  and 'concession' in record['nature'].lower():
-                if 'dateDebutExecution' in record:
-                    if record['dateDebutExecution'] and self.date_norm(record['dateDebutExecution'])<'2024-01-01':
-                        return True
-                if 'datedebutexecution' in record:
-                    if record['datedebutexecution'] and self.date_norm(record['datedebutexecution'])<'2024-01-01':
-                        return True
-            else:
-                if 'dateNotification' in record:
-                    if record['dateNotification'] and self.date_norm(record['dateNotification'])<'2024-01-01':
-                        return True
-                if 'datenotification' in record:
-                    if record['datenotification'] and self.date_norm(record['datenotification'])<'2024-01-01':
-                        return True
-        else:
-            if 'dateNotification' in record:
-                if record['dateNotification'] and self.date_norm(record['dateNotification'])<'2024-01-01':
-                    return True
-            if 'datenotification' in record:
-                if record['datenotification'] and self.date_norm(record['datenotification'])<'2024-01-01':
-                    return True
-        return False
-    
-
-    def date_after_2024(self, record:dict) -> bool:
-            """
-            La fonction prend en entrée un dictionnaire et renvoie un 
-            booléeen.Les dates postérieures à 2024 doivent être de la
-            forme Y-M-J pour les colonnes date et date_de_publication.
-
-            Args:
-
-                record: dictionnaire dans lequel se fait la vérification
-
-            """
-            first = datetime.strptime("2024-01-01", "%Y-%m-%d")
-            pattern1 = r'20[0-9]{2}-[0-1]{1}[0-9]{1}-[0-9]{2}'
-            pattern2 = r'20[0-9]{2}/[0-1]{1}[0-9]{1}/[0-9]{2}'
-            if record['nature']=='Marché':
-                col_date = 'dateNotification'
-            else :
-                col_date = 'dateDebutExecution'
-            col_date_publication='datePublicationDonnees'
-            col_list = [col_date,col_date_publication]
-            for col in col_list:
-                if col in record and record[col] and (re.match(pattern1,record[col]) or re.match(pattern2,record[col])):
-                    try:
-                        date = datetime.strptime(record[col], "%Y-%m-%d")
-                        if date>=first:
-                            if col == col_date_publication:
-                                record[col_date] = record[col_date_publication]
-                            return True
-                    except:
-                        None
-            return False
+        logging.info(f"Nombre de marchés et concessions valides dans {file_name}: {nb_good_marches+nb_good_concessions} ")
 
 
     def _add_column_type(self, df: pd.DataFrame, default_type_name:str = None) -> None :
@@ -508,6 +453,7 @@ class SourceProcess:
                 df['_type'] = default_type_name
             else:
                 df['_type'] = df["nature"].apply(lambda x: "Marché" if "march" in x.lower() else "Concession")
+
 
     def convert(self) -> None:
         """
@@ -568,28 +514,6 @@ class SourceProcess:
             return False, err.message, err.json_path
         return True, None, None
 
-    def validate_xml(self, xml_path: str, xsd_path: str) -> bool:
-        """
-        Fonction vérifiant si un fichier xml  respecte 
-        le schéma spécifié.
-
-        Args:
-
-            xml_path: chemin du fichier à vérifier
-            xsd_path: chemin du schéma 
-
-        """
-        xml_schema_doc = etree.parse(xsd_path)
-        xml_schema = etree.XMLSchema(xml_schema_doc)
-
-        xml_doc = etree.parse(xml_path)
-
-        try:
-            result = xml_schema.validate(xml_doc)
-        except jsonschema.exceptions.ValidationError as err:
-            logging.error(f"Erreur de validation xml - {err}")
-            return False
-        return result
 
     def check_json(self,json_data) -> tuple[bool,str,str]:
         """
@@ -603,35 +527,6 @@ class SourceProcess:
         """
         return self.validate_json(json_data,self.json_scheme)
     
-    def check(self,json_data,xml_path) -> tuple[bool,str]:
-        """
-        Fonction qui prend en paramètre une donnée json ou xml 
-        et vérifiant, grâce à un schéma, que la donnée est valide.
-
-        Args:
-
-            json_data : donnée json en entrée (None si on vérifie un fichier xml)
-            xml_path : chemin du fichier xml en entrée (None si on vérifie un fichier json)
-
-        """
-        #on vérifie que la donnée en entrée est valide par rapport au schéma
-        if self.format=='json':
-            scheme_path = 'schemes/schema_decp_v2.0.2.json'
-            with open(scheme_path, "r",encoding='utf-8') as jsonfile1:
-                json_scheme = json.load(jsonfile1)
-                jsonfile1.close
-            return self.validate_json(json_data,json_scheme)
-        else: 
-            scheme_path = 'schemes/schema_decp_v2.0.2.xsd'   # xml
-            try:
-                with open(scheme_path, 'r', encoding='utf-8') as xml_file:
-                    xml_content = xml_file.read()
-                result = xmlschema.validate(xml_content, scheme_path)
-                return result is None, str(result),None
-            except xmlschema.exceptions.XMLSchemaException as err:
-                #logging.error(f"Erreur de validation xml - {err}")
-                return False, err.message, err.json_path
-            return True, None, None
 
     def convert_boolean(self,col_name:str) -> None:
         """
@@ -680,8 +575,8 @@ class SourceProcess:
             self.enlever_nc_colonne(self.df,'sousTraitanceDeclaree')
             self.enlever_nc_colonne(self.df,'dureeMois')
             self.enlever_nc_colonne(self.df,'variationPrix')
-            self.enlever_nc_colonne_(self.df,'dureeMois','actesSousTraitance','acteSousTraitance')
-            self.enlever_nc_colonne_(self.df,'variationPrix','actesSousTraitance','acteSousTraitance')
+            self.enlever_nc_colonne_inside(self.df,'dureeMois','actesSousTraitance','acteSousTraitance')
+            self.enlever_nc_colonne_inside(self.df,'variationPrix','actesSousTraitance','acteSousTraitance')
 
         # Transformation des acheteurs
         if "acheteur" in self.df.columns:
@@ -720,145 +615,7 @@ class SourceProcess:
 
         logging.info(f"Fix de {self.source} OK")
         logging.info(f"Nombre de marchés dans {self.source} après fix : {len(self.df)}")
-    
 
-    def mark_mandatory_field(self,df: pd.DataFrame,field_name:str) -> pd.DataFrame:
-        """
-        Complète les lignes vides de la colonne "field_name" avec
-        le string 'MQ'
-
-        Args:
-
-            df: dataframe dans lequel s'effectue les modifications
-            filed_name: nom d'une colonne qui est obligatoire
-        """
-        if field_name in df.columns:
-            empty_mandatory = ~pd.notna(df[field_name]) | pd.isnull(df[field_name])
-            if not empty_mandatory.empty:
-                df.loc[empty_mandatory,field_name] = 'MQ'
-        return df
-
-    def mark_optional_field(self,df: pd.DataFrame,field_name:str) -> pd.DataFrame:
-        """
-        Complète les lignes vides de la colonne "field_name" avec
-        le string 'CDL'
-
-        Args:
-
-            df: dataframe dans lequel s'effectue les modifications
-            filed_name: nom d'une colonne qui est optionnel
-        """
-        if field_name in df.columns:
-            empty_optional  = ~pd.notna(df[field_name]) | pd.isnull(df[field_name])
-            if not empty_optional.empty:
-                df.loc[empty_optional,field_name] = 'CDL'
-        return df
-
-    def marche_mark_fields(self,df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Commente toutes les colonnes du dataframe en 
-        appelant les fonctions mark_mandatory_field
-        et mark_optional_field. Le dataframe doit 
-        contenir que des marchés.
-
-        Args:
-
-            df: dataframe dans lequel s'effectue les modifications
-        """
-        df = self.mark_mandatory_field(df,"id")
-        df = self.mark_mandatory_field(df,"nature")
-        df = self.mark_mandatory_field(df,"objet")
-        df = self.mark_mandatory_field(df,"technique")
-        df = self.mark_mandatory_field(df,"modaliteExecution")
-        df = self.mark_mandatory_field(df,"codeCPV")
-        df = self.mark_mandatory_field(df,"procedure")
-        df = self.mark_mandatory_field(df,"dureeMois")
-        df = self.mark_mandatory_field(df,"dateNotification")
-        df = self.mark_mandatory_field(df,"considerationsSociales")
-        df = self.mark_mandatory_field(df,"considerationsEnvironnementales")
-        df = self.mark_mandatory_field(df,"marcheInnovant")
-        df = self.mark_mandatory_field(df,"origineUE")
-        df = self.mark_mandatory_field(df,"origineFrance")
-        df = self.mark_mandatory_field(df,"ccag")
-        df = self.mark_mandatory_field(df,"offresRecues")
-        df = self.mark_mandatory_field(df,"montant")
-        df = self.mark_mandatory_field(df,"formePrix")
-        df = self.mark_mandatory_field(df,"typePrix")
-        df = self.mark_mandatory_field(df,"attributionAvance")
-        df = self.mark_mandatory_field(df,"datePublicationDonnees")
-        df = self.mark_mandatory_field(df,"acheteur.id")
-        df = self.mark_mandatory_field(df,"lieuExecution.code")
-        df = self.mark_mandatory_field(df,"lieuExecution.typeCode")
-        df = self.mark_mandatory_field(df,"titulaire_id_1")
-        df = self.mark_mandatory_field(df,"titulaire_typeIdentifiant_1")
-        df = self.mark_mandatory_field(df,"idActeSousTraitanceModification")
-        df = self.mark_mandatory_field(df,"typeIdentifiantActeSousTraitanceModification")
-        df = self.mark_mandatory_field(df,"dureeMoisActeSousTraitanceModification")
-        df = self.mark_mandatory_field(df,"dateNotificationActeSousTraitanceModification")
-        df = self.mark_mandatory_field(df,"montantActeSousTraitanceModification")
-        df = self.mark_mandatory_field(df,"datePublicationDonneesActeSousTraitanceModification")
-
-        df = self.mark_optional_field(df,"idAccordCadre")
-        df = self.mark_optional_field(df,"tauxAvance")
-        df = self.mark_optional_field(df,"typeGroupementOperateurs")
-        df = self.mark_optional_field(df,"sousTraitanceDeclaree")
-        df = self.mark_optional_field(df,"idSousTraitance")
-        df = self.mark_optional_field(df,"dureeMoisSousTraitance")
-        df = self.mark_optional_field(df,"dateNotificationSousTraitance")
-        df = self.mark_optional_field(df,"montantSousTraitance")
-        df = self.mark_optional_field(df,"variationPrixSousTraitance")
-        df = self.mark_optional_field(df,"datePublicationDonneesSousTraitance")
-        df = self.mark_optional_field(df,"idActeSousTraitance")
-        df = self.mark_optional_field(df,"typeIdentifiantActeSousTraitance")
-        df = self.mark_optional_field(df,"idModification")
-        df = self.mark_optional_field(df,"dureeMoisModification")
-        df = self.mark_optional_field(df,"montantModification")
-        df = self.mark_optional_field(df,"titulairesModification")
-        df = self.mark_optional_field(df,"typeIdentifiantModification")
-        df = self.mark_optional_field(df,"dateNotificationModification")
-        df = self.mark_optional_field(df,"datePublicationDonneesModification")
-        
-        return df
-
-    def concession_mark_fields(self,df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Commente toutes les colonnes du dataframe en 
-        appelant es fonctions mark_mandatory_field
-        et mark_optional_field. Le dataframe doit 
-        contenir que des concessions.
-
-        Args:
-
-            df: dataframe dans lequel s'effectue les modifications
-        """
-
-        df = self.mark_mandatory_field(df,"id")
-        df = self.mark_mandatory_field(df,"nature")
-        df = self.mark_mandatory_field(df,"objet")
-        df = self.mark_mandatory_field(df,"procedure")
-        df = self.mark_mandatory_field(df,"dureeMois")
-        df = self.mark_mandatory_field(df,"dateDebutExecution")
-        df = self.mark_mandatory_field(df,"dateSignature")
-        df = self.mark_mandatory_field(df,"considerationsSociales")
-        df = self.mark_mandatory_field(df,"considerationsEnvironnementales")
-        df = self.mark_mandatory_field(df,"valeurGlobale")
-        df = self.mark_mandatory_field(df,"montantSubventionPublique")
-        df = self.mark_mandatory_field(df,"datePublicationDonnees")
-        df = self.mark_mandatory_field(df,"autoriteConcedante.id")
-        df = self.mark_mandatory_field(df,"concessionnaire_id_1")
-        df = self.mark_mandatory_field(df,"concessionnaire_typeIdentifiant_1")
-        df = self.mark_mandatory_field(df,"depensesInvestissement")
-        df = self.mark_mandatory_field(df,"datePublicationDonneesExecution")
-        df = self.mark_mandatory_field(df,"intituleTarif")
-        df = self.mark_mandatory_field(df,"tarif")
-
-        df = self.mark_optional_field(df,"idModification")
-        df = self.mark_optional_field(df,"dureeMoisModification")
-        df = self.mark_optional_field(df,"valeurGlobaleModification")
-        df = self.mark_optional_field(df,"dateSignatureModification")
-        df = self.mark_optional_field(df,"datePublicationDonneesModification")
-
-        return df
 
     def enlever_nc_colonne(self,df: pd.DataFrame,nom_colonne:str) -> pd.DataFrame:
         if nom_colonne in df.columns:
@@ -866,8 +623,9 @@ class SourceProcess:
             df[nom_colonne] = df[nom_colonne].replace("NC",np.nan)
         
         return df
-    
-    def enlever_nc_colonne_(self,df: pd.DataFrame,nom_colonne:str,nom_noeud:str,nom_element:str) -> pd.DataFrame:
+
+
+    def enlever_nc_colonne_inside(self,df: pd.DataFrame,nom_colonne:str,nom_noeud:str,nom_element:str) -> pd.DataFrame:
         def replace_nc (content,noeud:str,sous_element:str,colonne:str):
             if isinstance(content,dict) and sous_element in content:
                 if isinstance(content[sous_element],list):
@@ -883,24 +641,27 @@ class SourceProcess:
         
         return df
     
-    def comment(self) -> None:
-        """
-        Cette étape permet de marquer les cases vides du
-        dataframe avec un indicateur ("MD", ou "CDL").
-        """
-        # séparation des marchés et des concessions, car traitement différent
-        df_marche = self.df.loc[~self.df['nature'].str.contains('concession', case=False, na=False)]
+    def force_floats(self,keys:list,marche:dict):
+        for key in keys:
+            if key in marche and marche[key] is not None and  marche[key] !='NC':
+                try:
+                    # Convertir la valeur en float
+                    marche[key] = float(marche[key])
+                except ValueError:
+                    logging.error(f"Erreur : la valeur de la clé '{key}' ne peut pas être convertie en entier.")
+                except TypeError:
+                    logging.error(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
 
-        df_concession1 = self.df.loc[self.df['nature'].str.contains('concession', case=False, na=False)]
-
-        # df_concession prend aussi en compte les lignes restantes ou la colonne "_type" contient "concession" dans le df_marche et concatène les deux dataframes
-        df_concession = pd.concat([self.df_concession1, df_marche.loc[df_marche['_type'].str.contains('concession', case=False, na=False)]])
-        # remove old df for memory
-        del df_concession1
-        df_marche = df_marche.loc[~df_marche['_type'].str.contains('concession', case=False, na=False)]
-
-        self.marche_mark_fields(df_marche)
-        self.concession_mark_fields(df_concession)
+    def force_ints(self,keys:list,marche:dict):
+        for key in keys:
+            if key in marche and marche[key] is not None and  marche[key] !='NC':
+                try:
+                    # Convertir la valeur en int
+                    marche[key] = int(marche[key])
+                except ValueError:
+                    logging.error(f"Erreur : la valeur de la clé '{key}' ne peut pas être convertie en entier.")
+                except TypeError:
+                    logging.error(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
 
     def get_nb_enregistrements(self,dico:dict) -> tuple[int,int]:
         """

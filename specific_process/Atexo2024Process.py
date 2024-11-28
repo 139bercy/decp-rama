@@ -20,6 +20,8 @@ class Atexo2024Process(SourceProcess):
 
     def fix(self):
         super().fix()
+
+    def old_code_no_more_need(self):
         if 'modifications' in self.df.columns:
             self.df['modifications'] = [x if str(x) == 'nan' or str(x) == '[]'
                                         else ([{'modification': [y for y in x]}] if len(x) > 1

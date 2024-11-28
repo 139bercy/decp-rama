@@ -21,6 +21,7 @@ class Aife2024Process(SourceProcess):
     def fix(self):
         super().fix()
     
+    def old_code_no_more_need(self):
         def normalize_list(node,element_name:str):
             lst = []
             if element_name in node and isinstance(node[element_name],list): 

@@ -262,7 +262,7 @@ class GlobalProcess:
         with open('dico.pkl', 'wb') as f:
             pickle.dump(dico, f)
         # Modification des champs titulaires et modifications
-        dico = self.dico_modifications(dico)
+        #dico = self.dico_modifications(dico)
 
         #Création des chemins des fichiers mensuel et annuel(global)
         suffix_month = self.get_current_date().strftime('%Y-%m')
@@ -309,7 +309,7 @@ class GlobalProcess:
             dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
                                 for m in df_curr_month.to_dict(orient='records')]}
             # Modification des champs titulaires et modifications
-            dico = self.dico_modifications(dico)
+            #dico = self.dico_modifications(dico)
 
             dico_ancien = self.file_load(path_result)
             dico_nouveau = self.file_load(path_result_last_month)
@@ -317,7 +317,7 @@ class GlobalProcess:
                 logging.error(f"Mise à jour du fichier {path_result_last_month}")
                 dico_prev_month = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
                                     for m in df_prev_month.to_dict(orient='records')]}
-                dico_prev_month = self.dico_modifications(dico_prev_month)
+                #dico_prev_month = self.dico_modifications(dico_prev_month)
                 dico_nouveau = self.dico_merge(dico_nouveau,dico_prev_month)
                 df_prev_month = pd.DataFrame.from_dict(dico_nouveau)
                 df_prev_month = self.dedoublonnage(df_prev_month)
@@ -362,79 +362,6 @@ class GlobalProcess:
                 self.file_dump(path_result_month,dico)
         self.file_dump(path_result_daily,dico)
         logging.info("Exportation JSON OK")
-
-    def dico_modifications(self,dico:dict) -> dict: 
-        """
-        La fonction dico_modifications permet de s'assurer que les champs titulaires et modifications
-        soient bien remplies afin que nous puissons manipuler le dictionnaire par la suite
-
-        Args:
-
-            dico: dictionnaire où on effectue les changements
-
-        """
-        for marche in dico['marches']:
-            if 'titulaires' in marche.keys() and marche['titulaires'] is not None and len(
-                    marche['titulaires']) > 0 and type( marche['titulaires'])== list:
-                modifs = []
-                for i in range(len((marche['titulaires']))):
-                    if type( marche['titulaires'][i])== dict and 'titulaire' in marche['titulaires'][i].keys():
-                        #On affecte au champ titulaires, le champ titulaire
-                        if type(marche['titulaires'][i]['titulaire']) == list:
-                            modifs += marche['titulaires'][i]['titulaire']
-                        else:
-                            modifs += [marche['titulaires'][i]['titulaire']]
-                marche['titulaires'] = modifs
-            elif 'titulaires' in marche.keys() and marche['titulaires'] is not None and len(
-                    marche['titulaires']) > 0 and type( marche['titulaires'])== dict:
-                marche['titulaires'] = marche['titulaires']['titulaire']
-            
-            if 'concessionnaires' in marche.keys() and marche['concessionnaires'] is not None and len(
-                    marche['concessionnaires']) > 0 and type( marche['concessionnaires'])== list:
-                modifs = []
-                for i in range(len((marche['concessionnaires']))):
-                    if type( marche['concessionnaires'][i])== dict and 'concessionnaire' in marche['concessionnaires'][i].keys():
-                        #On affecte au champ concessionnaires, le champ concessionaire
-                        if type(marche['concessionnaires'][i]['concessionnaire']) == list:
-                            modifs += marche['concessionnaires'][i]['concessionnaire']
-                        else:
-                            modifs += [marche['concessionnaires'][i]['concessionnaire']]
-                marche['concessionnaires'] = modifs
-            elif 'concessionnaires' in marche.keys() and marche['concessionnaires'] is not None and len(
-                    marche['concessionnaires']) > 0 and type( marche['concessionnaires'])== dict:
-                marche['concessionnaires'] = marche['concessionnaires']['concessionnaire']
-
-            if 'donneesExecution' in marche.keys() and marche['donneesExecution'] is not None and len(
-                    marche['donneesExecution']) > 0 and type( marche['donneesExecution'])== list:
-                modifs = []
-                for i in range(len((marche['donneesExecution']))):
-                    if type(marche['donneesExecution'][i])==dict and 'donneesAnnuelles' in marche['donneesExecution'][i].keys() :
-                        #On affecte au champ donneesExecution, le champ donneesAnnuelles
-                        if type(marche['donneesExecution'][i]['donneesAnnuelles']) == list:
-                            modifs += marche['donneesExecution'][i]['donneesAnnuelles']
-                        else:
-                            modifs += [marche['donneesExecution'][i]['donneesAnnuelles']]
-                marche['donneesExecution'] = modifs
-            elif 'donneesExecution' in marche.keys() and marche['donneesExecution'] is not None and len(
-                    marche['donneesExecution']) > 0 and type( marche['donneesExecution'])== dict:
-                marche['donneesExecution'] = marche['donneesExecution']['donneesAnnuelles']
-
-            if 'modifications' in marche.keys() and marche['modifications'] is not None and len(
-                    marche['modifications']) > 0 and type( marche['modifications'])== list:
-                modifs = []
-                for i in range(len((marche['modifications']))):
-                    if type( marche['modifications'][i])== dict and 'modification' in marche['modifications'][i].keys():
-                        #On affecte au champ modifications, le champ modification
-                        if type(marche['modifications'][i]['modification']) == list:
-                            modifs += marche['modifications'][i]['modification']
-                        else:
-                            modifs += [marche['modifications'][i]['modification']]
-                marche['modifications'] = modifs
-            elif 'modifications' in marche.keys() and marche['modifications'] is not None and len(
-                    marche['modifications']) > 0 and type( marche['modifications'])== list:
-                marche['modifications'] = marche['modifications']['modification']
-
-        return dico
 
     def file_load(self,path:str) ->dict:
         """
@@ -518,8 +445,8 @@ class GlobalProcess:
                 del marche["report__path"]
             if 'report__position' in marche:
                 del marche["report__position"]
-            #if 'source' in marche:
-            #    del marche["source"]
+            if 'source' in marche:
+                del marche["source"]
             if 'idAccordCadre' in marche and marche['idAccordCadre'] == '':
                 del marche["idAccordCadre"]
             self.force_int('dureeMois',marche)
@@ -529,52 +456,9 @@ class GlobalProcess:
             self.force_bool('actesSousTraitance',marche)
             self.force_bool('modificationsActesSousTraitance',marche)
 
-            # old if 'titulaires' in marche.keys() and marche['titulaires'] is not None and len(
-            # old        marche['titulaires']) == 0 :
-            # old    del marche['titulaires']
-            # old el
-            if 'titulaires' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'titulaires', 'titulaire'):
-                NodeFormat.normalize_list_node(marche,'titulaires', 'titulaire')
+            if 'modifications' in marche and isinstance(marche['modifications'],list) and len(marche['modifications'])==0:
+                del marche['modifications']                
 
-            if 'concessionnaires' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'concessionnaires', 'concessionnaire'):
-                NodeFormat.normalize_list_node(marche,'concessionnaires', 'concessionnaire')
-            
-            if 'donneesExecution' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'donneesExecution', 'donneesAnnuelles'):
-                NodeFormat.normalize_list_node(marche,'donneesExecution', 'donneesAnnuelles')
-
-            if 'modifications' in marche.keys() and marche['modifications'] is not None and len(
-                    marche['modifications']) == 0 :
-                del marche['modifications']
-            elif 'modifications' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'modifications', 'modification'):
-                NodeFormat.normalize_list_node(marche,'modifications', 'modification')
-            NodeFormat.convert_ints(marche,'modifications', 'modification')
-
-            if 'modificationsActesSousTraitance' in marche.keys() \
-                and 'modificationActesSousTraitance' in marche['modificationsActesSousTraitance'] \
-                and not NodeFormat.is_normalized_list_node(marche,'modificationsActesSousTraitance', 'modificationActesSousTraitance'):
-                NodeFormat.normalize_list_node(marche,'modificationsActesSousTraitance', 'modificationActesSousTraitance')
-            elif 'modificationsActesSousTraitance' in marche.keys() \
-                and 'modificationActeSousTraitance' in marche['modificationsActesSousTraitance'] \
-                and not NodeFormat.is_normalized_list_node(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance'):
-                NodeFormat.normalize_list_node(marche,'modificationsActesSousTraitance', 'modificationActeSousTraitance')
-
-            if 'actesSousTraitance' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'actesSousTraitance', 'acteSousTraitance'):
-                NodeFormat.normalize_list_node(marche,'actesSousTraitance', 'acteSousTraitance')
-
-            if 'modalitesExecution' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'modalitesExecution', 'modaliteExecution'):
-                NodeFormat.normalize_list_value(marche,'modalitesExecution', 'modaliteExecution')
-
-            if 'techniques' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'techniques', 'technique'):
-                NodeFormat.normalize_list_value(marche,'techniques', 'technique')
-
-            if 'typesPrix' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'typesPrix', 'typePrix'):
-                NodeFormat.normalize_list_value(marche,'typesPrix', 'typePrix')
-                
-            if 'considerationsSociales' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'considerationsSociales', 'considerationSociale'):
-                NodeFormat.normalize_list_value(marche,'considerationsSociales', 'considerationSociale')
-                
-            if 'considerationsEnvironnementales' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'considerationsEnvironnementales', 'considerationEnvironnementale'):
-                NodeFormat.normalize_list_value(marche,'considerationsEnvironnementales', 'considerationEnvironnementale')
         return dico
     
     def force_int(self,cle:str,marche:dict):

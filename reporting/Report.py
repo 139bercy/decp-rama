@@ -34,9 +34,10 @@ class Report:
     def __init__(self, application:str):
         self.application = application
         self.init()
-        self.db = Db()
         self_path = os.path.basename(os. getcwd()).lower()
-        self.session = self.db.add_session(self_path)
+        self.db = Db()
+        if self.db is not None:
+            self.session = self.db.add_session(self_path)
 
     # Init statistics
     def init(self):
@@ -53,7 +54,7 @@ class Report:
     def add(self,step:str,code_erreur:str,message:str,data):
         if isinstance(data, list):
             for i in range(0,len(data)):
-                file_name,source,position,error,path,idr = self.extract_report_data(data[i])
+                file_name,source,position,error,path,idr = self.extract_report_data(data[i])                
                 self.add_message(step,code_erreur,source,file_name,position,error,path,message,i,idr,data[i])
         else:
             dic = []
@@ -117,7 +118,8 @@ class Report:
         if code_erreur not in self.messages[source]:
             self.messages[source][code_erreur] = []
         self.messages[source][code_erreur].append({'index': index, 'error': error, 'path': path, 'position': position,'message': message, 'step': step, 'file': file_name, 'id': idr, 'date': datetime.now().strftime('%Y-%m-%d'),'data': data})
-        self.db_add_report(step,code_erreur,source,file_name,position,error,path,message,idr,data)
+        if self.db is not None:
+            self.db_add_report(step,code_erreur,source,file_name,position,error,path,message,idr,data)
 
     def db_add_report(self,step:str,code_erreur:str,source:str,file_name:str,position:int,error:str,path:str,message:str,idr:str,data):
         if step not in self.step_tmp:
@@ -143,17 +145,40 @@ class Report:
 
         self.db.add_report(self.session, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, idr, data)
         
+    def db_add_error_file(self,step:str,code_erreur:str,source:str,file_name:str,error:str):
+        if self.db is not None:
+            if source not in self.source_tmp:
+                source_id = self.db.find_or_add_source(source)
+                self.source_tmp[source] = source_id
+            else:
+                source_id = self.source_tmp[source]
+            file_id = self.db.find_or_add_file(file_name,source_id,0,0)
+            if step not in self.step_tmp:
+                step_id = self.db.find_or_add_step(step)
+                self.step_tmp[step] = step_id
+            else:
+                step_id = self.step_tmp[step]
+            if code_erreur not in self.exclusion_tmp:
+                exclusion_type_id = self.db.find_or_add_exclusion_type(code_erreur)
+                self.exclusion_tmp[code_erreur] = exclusion_type_id
+            else:
+                exclusion_type_id = self.exclusion_tmp[code_erreur]
+            self.db.add_report(self.session, step_id, source_id, file_id, exclusion_type_id, '', error, '', 0, '', '')
+
+
     def db_add_file(self,source:str,file_name:str, nb_marches:int, nb_concessions:int):
-        if source not in self.source_tmp:
-            source_id = self.db.find_or_add_source(source)
-            self.source_tmp[source] = source_id
-        else:
-            source_id = self.source_tmp[source]
-        self.db.find_or_add_file(file_name,source_id,nb_marches,nb_concessions)
-        
+        if self.db is not None:
+            if source not in self.source_tmp:
+                source_id = self.db.find_or_add_source(source)
+                self.source_tmp[source] = source_id
+            else:
+                source_id = self.source_tmp[source]
+            self.db.find_or_add_file(file_name,source_id,nb_marches,nb_concessions)
+
 
     def db_end_session(self,message:str):
-        self.db.end_session(self.session,message)
+        if self.db is not None:
+            self.db.end_session(self.session,message)
         
 
     # Save data report and statistics to files 

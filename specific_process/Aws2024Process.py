@@ -10,6 +10,8 @@ class Aws2024Process(SourceProcess):
 
     def fix(self):
         super().fix()
+
+    def old_code_no_more_need(self):
         # self.df['dureeMois'] = self.df['dureeMois'].astype(str)
         # self.df['montant'] = self.df['montant'].astype(str)
         # On se ramène au format souhaité pour titulaires, modifications et concessionnaires

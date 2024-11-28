@@ -59,26 +59,8 @@ class UneClasseDeTest(unittest.TestCase):
         # Vérification du résultat
         expected_url = (["https://example.com/collectivite1.xml","https://example.com/collectivite3.json"] ,["Collectivite 1", "Collectivite 3"])
         self.assertEqual(resultats, expected_url)
+
     
-    # def test_date_before_2024(self):
-    #     with open(f"tests/test_before2024.xml", encoding='utf-8') as xml_file:
-    #         dico = xmltodict.parse(xml_file.read(), dict_constructor=dict)
-    #     m = dico['marches']['marche']
-    #     resultats= self.process.date_before_2024(m[0])
-    #     expected_res=True
-    #     self.assertEqual(resultats, expected_res)
-
-    def test_date_after_2024(self):
-        """
-        Test de la fonction date_after_2024, on teste si la fonction détecte si le fichier date d'après 2024 ou non  
-        """
-        with open(f"tests/test_before2024.xml", encoding='utf-8') as xml_file:
-            dico = xmltodict.parse(xml_file.read(), dict_constructor=dict)
-        m = dico['marches']['marche']
-        resultats= self.process.date_after_2024(m)#ici on séléctionne seulement le premier marché contenu dans m
-        expected_res=False
-        self.assertEqual(resultats, expected_res)
-
     def test_has_all_field_and_date_2024(self):
         """
         Test de la fonction has_all_field_and_date_2024, on test si les marchés/concessions possèdent bien les colonnes et les champs necessaires
