@@ -271,14 +271,10 @@ class SourceProcess:
                     j = 0
                     for marche in dico['marches']['marche']:
                         if self.convert_nc:
-                            if 'sousTraitanceDeclaree' in marche.keys() and not isinstance(marche['sousTraitanceDeclaree'],bool):
-                                if marche['sousTraitanceDeclaree'] == '0':
-                                    marche['sousTraitanceDeclaree'] = False
-                                elif marche['sousTraitanceDeclaree'] == '1':
-                                    marche['sousTraitanceDeclaree'] = True
+                            NodeFormat.force_bools(['sousTraitanceDeclaree','marcheInnovant','attributionAvance'],marche)
 
-                        self.force_floats(['tauxAvance','origineUE','origineFrance','montant'],marche)
-                        self.force_ints(['offresRecues'],marche)
+                        NodeFormat.force_floats(['tauxAvance','origineUE','origineFrance','montant'],marche)
+                        NodeFormat.force_ints(['offresRecues','dureeMois'],marche)
 
                         if 'titulaires' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'titulaires', 'titulaire'):
                             NodeFormat.normalize_list_node(marche,'titulaires', 'titulaire')
@@ -304,7 +300,8 @@ class SourceProcess:
 
                         if 'actesSousTraitance' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'actesSousTraitance', 'acteSousTraitance'):
                             NodeFormat.normalize_list_node(marche,'actesSousTraitance', 'acteSousTraitance')
-
+                        NodeFormat.convert_ints(marche,'actesSousTraitance', 'acteSousTraitance')
+                        
                         if 'modalitesExecution' in marche.keys() and not NodeFormat.is_normalized_list_value(marche,'modalitesExecution', 'modaliteExecution'):
                             NodeFormat.normalize_list_value(marche,'modalitesExecution', 'modaliteExecution')
 
@@ -627,41 +624,18 @@ class SourceProcess:
 
     def enlever_nc_colonne_inside(self,df: pd.DataFrame,nom_colonne:str,nom_noeud:str,nom_element:str) -> pd.DataFrame:
         def replace_nc (content,noeud:str,sous_element:str,colonne:str):
-            if isinstance(content,dict) and sous_element in content:
-                if isinstance(content[sous_element],list):
-                    for element in content[sous_element]:
-                        if colonne in element and not element[colonne] and element[colonne] == "NC":
-                            element[colonne]= pd.NA
-                elif isinstance(content[sous_element],dict):
-                    if colonne in content[sous_element] and content[sous_element][colonne] == "NC":
-                        content[sous_element][colonne]= pd.NA
+            if isinstance(content,list):
+                for element in content:
+                    if sous_element in element and isinstance(element[sous_element],dict) \
+                        and colonne in element[sous_element] and element[sous_element][colonne] == "NC":
+                            element[sous_element][colonne] = None
+            return content
         if nom_noeud in df.columns:
             #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
             df[nom_noeud] = df[nom_noeud].apply(replace_nc,noeud=nom_noeud,sous_element=nom_element,colonne=nom_colonne)
         
         return df
-    
-    def force_floats(self,keys:list,marche:dict):
-        for key in keys:
-            if key in marche and marche[key] is not None and  marche[key] !='NC':
-                try:
-                    # Convertir la valeur en float
-                    marche[key] = float(marche[key])
-                except ValueError:
-                    logging.error(f"Erreur : la valeur de la clé '{key}' ne peut pas être convertie en entier.")
-                except TypeError:
-                    logging.error(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
 
-    def force_ints(self,keys:list,marche:dict):
-        for key in keys:
-            if key in marche and marche[key] is not None and  marche[key] !='NC':
-                try:
-                    # Convertir la valeur en int
-                    marche[key] = int(marche[key])
-                except ValueError:
-                    logging.error(f"Erreur : la valeur de la clé '{key}' ne peut pas être convertie en entier.")
-                except TypeError:
-                    logging.error(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
 
     def get_nb_enregistrements(self,dico:dict) -> tuple[int,int]:
         """

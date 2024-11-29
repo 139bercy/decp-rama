@@ -81,10 +81,36 @@ class NodeFormat:
             marche[parent_node]) > 0 and isinstance( marche[parent_node],list):
             for i in range(len((marche[parent_node]))):
                 if isinstance( marche[parent_node][i],dict) and child_node in marche[parent_node][i].keys():
-                    if 'id' in marche[parent_node][i][child_node]:
-                        marche[parent_node][i][child_node]['id'] = int(marche[parent_node][i][child_node]['id'])
-                    if 'montant' in marche[parent_node][i][child_node]:
-                        marche[parent_node][i][child_node]['montant'] = float(marche[parent_node][i][child_node]['montant'])
-                    if 'dureeMois' in marche[parent_node][i][child_node]:
-                        marche[parent_node][i][child_node]['dureeMois'] = int(marche[parent_node][i][child_node]['dureeMois'])
+                    NodeFormat.force_ints(['id','dureeMois'],marche[parent_node][i][child_node])
+                    NodeFormat.force_floats(['montant'],marche[parent_node][i][child_node])
 
+    def force_bools(keys:list,marche:dict):
+        for key in keys:
+            if key in marche and marche[key] is not None and  marche[key] !='NC':
+                if marche[key] == '0':
+                    marche[key] = False
+                elif marche[key] == '1':
+                    marche[key] = True
+
+
+    def force_floats(keys:list,marche:dict):
+        for key in keys:
+            if key in marche and marche[key] is not None and  marche[key] !='NC':
+                try:
+                    # Convertir la valeur en float
+                    marche[key] = float(marche[key])
+                except ValueError:
+                    logging.error(f"Erreur : la valeur de la clé '{key}' ne peut pas être convertie en entier.")
+                except TypeError:
+                    logging.error(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
+
+    def force_ints(keys:list,marche:dict):
+        for key in keys:
+            if key in marche and marche[key] is not None and  marche[key] !='NC':
+                try:
+                    # Convertir la valeur en int
+                    marche[key] = int(marche[key])
+                except ValueError:
+                    logging.error(f"Erreur : la valeur de la clé '{key}' ne peut pas être convertie en entier.")
+                except TypeError:
+                    logging.error(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
