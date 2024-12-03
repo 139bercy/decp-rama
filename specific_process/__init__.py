@@ -11,6 +11,7 @@ from .Emar2024Process import Emar2024Process
 from .LyonProcess import LyonProcess
 from .MaxiProcess import MaxiProcess
 from .MegaProcess import MegaProcess
+from .Megalis2024Process import Megalis2024Process
 from .PesProcess import PesProcess
 from .Pes2024Process import Pes2024Process
 from .SampleXmlProcess import SampleXmlProcess
