@@ -291,7 +291,7 @@ class GlobalProcess:
 
             # Si l'execution de l'application ne s'est pas faite depuis plusieurs jours 
             # il faut scinder le dico en 2: les données du mois précédent et celle du mois en cours
-            self.df['datePublicationDonnees_comp'] = pd.to_datetime(self.df['datePublicationDonnees'])
+            self.df['datePublicationDonnees_comp'] = pd.to_datetime(self.df['datePublicationDonnees'],format='mixed',errors='coerce')
             self.df['dateModifications_tmp'] = self.df['modifications'].apply(self.extract_publication_dates)
             self.df['dateModifications_comp'] = self.df['dateModifications_tmp'].apply(lambda x: max(pd.to_datetime(x, errors='coerce')) if x else None)
             self.df['datePublication__max'] = self.df[['datePublicationDonnees_comp', 'dateModifications_comp']].max(axis=1)
@@ -300,7 +300,7 @@ class GlobalProcess:
             del self.df['dateModifications_comp']
 
             month_first_day = self.get_month_first_day(self.get_current_date())
-            df_prev_month = self.df[(self.df['datePublication__max'] < month_first_day)]
+            df_prev_month = self.df[(self.df['datePublication__max'] < month_first_day) | self.df['datePublication__max'].isna()]
             df_curr_month = self.df[(self.df['datePublication__max'] >= month_first_day)]
             del df_prev_month['datePublication__max']
             del df_curr_month['datePublication__max']
@@ -313,7 +313,7 @@ class GlobalProcess:
             dico_ancien = self.file_load(path_result)
             dico_nouveau = self.file_load(path_result_last_month)
             if not df_prev_month.empty:
-                logging.error(f"Mise à jour du fichier {path_result_last_month}")
+                logging.info(f"Mise à jour du fichier {path_result_last_month}")
                 dico_prev_month = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
                                     for m in df_prev_month.to_dict(orient='records')]}
                 #dico_prev_month = self.dico_modifications(dico_prev_month)
@@ -379,7 +379,12 @@ class GlobalProcess:
                 with open(path, encoding="utf-8") as f:
                     dico = json.load(f)
                 if self.dico_exists_marche_in_marches(dico):
-                    dico['marches'] = dico['marches']['marche'] +dico['marches']['contrat-concession']
+                    dico['marches'] = dico['marches']['marche'] 
+                    if 'contrat-concession' in dico['marches']:
+                        dico['marches'].append(dico['marches']['contrat-concession'])
+                else:
+                    if 'contrat-concession' in dico['marches']:
+                        dico['marches'] = dico['marches']['contrat-concession']
             #Cas où le fichier est vide
             except ValueError:
                 dico={}
@@ -626,74 +631,64 @@ class GlobalProcess:
 
         suffix_month = self.get_current_date().strftime('%Y-%m')
 
-        # Nousavons changé de mois, on doit donc mettre à jour le fichier decp_<Annee> sur datagouv 
+        # Nous avons changé de mois, on doit donc mettre à jour le fichier decp_<Annee> sur datagouv 
         # et créer la ressource pour le fichier mensuel et l'uploader
         if ((self.get_current_date().month)!=config["resource_month"]):
-
+            resource_id_prev_month = config["resource_id_month"]
             resource_id_global = config["resource_id_global"]
-            url = f"{api}/datasets/{dataset_id}/resources/{resource_id_global}/upload/"
-            url_month = f"{api}/datasets/{dataset_id}/upload/"
+            
+            suffix_prev_month = self.get_current_date().strftime('%Y') + '-' + config["resource_month"]
+            _ = self.upload_file(headers,api,dataset_id,resource_id_prev_month,suffix_prev_month)
 
             suffix_year = self.get_current_date().strftime('%Y')
-            try:
-                # On charge le fichier annuel existant
-                files = {
-                    "file": (f"decp-{suffix_year}.json", open(f"results/decp-{suffix_year}.json", "rb"))
-                }
-            except Exception:
-                files = {
-                    "file": (f"decp-{suffix_year}.json", None)
-                }
+            resource_id_global = self.upload_file(headers,api,dataset_id,resource_id_global,suffix_year)
 
-            try:
-                # On charge le fichier mensuel existant
-                files_month = {
-                    "file": (f"decp-{suffix_month}.json", open(f"results/decp-{suffix_month}.json", "rb"))
-                }
-            except Exception as err:
-                files_month = {
-                    "file": (f"decp-{suffix_month}.json", None)
-                }
-
-            response = requests.post(url, headers=headers, files=files)
-            if response.status_code==200:
-                logging.info(f"Upload du fichier decp-{suffix_year} réussi")
-            else:
-                print(response.status_code)
+            resource_id_month = self.upload_file(headers,api,dataset_id,None,suffix_month)
             
-            #On créer le fichier mensuel sur datagouv
-            response_month = requests.post(url_month, headers=headers, files=files_month)
-            if response_month.status_code==201:
-                logging.info(f"Création du fichier decp-{suffix_month}.json réussie")
-                data = response_month.json()
-                resource_id = data['id']
+            with open(config_file, "r") as file:
+                data = json.load(file)
 
-                with open(config_file, "r") as file:
-                    data = json.load(file)
+            data['resource_id_month'] = resource_id_month
+            data['resource_month'] = self.get_current_date().month
+            data['resource_id_global'] = resource_id_global
+            if self.get_current_date().month == 1:
+                data['resource_id_global'] = None
 
-                data['resource_id_month'] = resource_id
-                data['resource_month'] = self.get_current_date().month
-
-                with open(config_file, "w") as file:
+            with open(config_file, "w") as file:
                     json.dump(data, file, indent=4)
-            else:
-                print("Erreur ",response_month.status_code)
         
         #Cas quand le mois n'a pas changé depuis la dernière exécution
         else:
-            # Preparation des données de l'appel à l'API
-            ressource_id_month = config["resource_id_month"]
-            url_upload = f"{api}/datasets/{dataset_id}/resources/{ressource_id_month}/upload/"
-            files_month = {
-                "file": (f"decp-{suffix_month}.json", open(f"results/decp-{suffix_month}_data_gouv.json", "rb"))
+            result_resource_id = self.upload_file(headers,api,dataset_id,config["resource_id_month"],suffix_month)
+
+
+    def upload_file(self,headers,api,dataset_id,resource_id:str,suffix:str) -> str:
+        if resource_id is None:
+            url = f"{api}/datasets/{dataset_id}/upload/"
+        else:
+            url = f"{api}/datasets/{dataset_id}/resources/{resource_id}/upload/"
+        
+        try:
+            # On charge le fichier annuel existant
+            file = {
+                "file": (f"decp-{suffix}.json", open(f"results/decp-{suffix}_data_gouv.json", "rb"))
+            }
+        except Exception:
+            file = {
+                "file": (f"decp-{suffix}.json", None)
             }
 
-            #On met à jour le fichier mensuel sur datagouv
-            response = requests.post(url_upload, headers=headers, files=files_month)
-            if response.status_code==200:
-                logging.info(f"Upload du fichier decp-{self.get_current_date().year}-{self.get_current_date().month}.json réussi")
-            else:
-                print("Erreur ",response.status_code)
+        response = requests.post(url, headers=headers, files=file)
+        if response.status_code==200:
+            logging.info(f"Upload du fichier decp-{suffix} réussi")
+        elif response.status_code==201:
+                logging.info(f"Création du fichier decp-{suffix}.json réussie")
+                data = response.json()
+                resource_id = data['id']
+        else:
+            logging.error(f'Error uploading file decp-{suffix}.json3')
+        
+        return resource_id
 
     def get_current_date(self) -> datetime:
         return datetime.now()
@@ -703,3 +698,4 @@ class GlobalProcess:
         
     def save_report(self):
         self.report.save()
+

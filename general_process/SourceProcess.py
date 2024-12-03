@@ -408,7 +408,7 @@ class SourceProcess:
         elif 'contrat-concession' in dico:
             dico_ignored_concession.append(complete_util_info(dico['contrat-concession'],self.source,file_name,0,'Une liste de concessions est attendue',''))
         elif aucun_marches:
-            self.report.db_add_error_file(self.source,'Clean',self.report.E_VALIDATION,file_name,'Aucun marchés ni concessions n\'ont été retrouvé dans le fichier')
+            self.report.db_add_error_file('Clean',self.report.E_VALIDATION,self.source,file_name,'Aucun marchés ni concessions n\'ont été retrouvé dans le fichier')
 
         # Mise a jour du nombre de concessions ignorées  
         self.report.nb_in_bad_concessions += len(dico_ignored_concession)
