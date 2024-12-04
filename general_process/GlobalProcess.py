@@ -634,13 +634,13 @@ class GlobalProcess:
         # Nous avons changé de mois, on doit donc mettre à jour le fichier decp_<Annee> sur datagouv 
         # et créer la ressource pour le fichier mensuel et l'uploader
         if ((self.get_current_date().month)!=config["resource_month"]):
-            resource_id_prev_month = config["resource_id_month"]
-            resource_id_global = config["resource_id_global"]
             
-            suffix_prev_month = self.get_current_date().strftime('%Y') + '-' + config["resource_month"]
+            resource_id_prev_month = config["resource_id_month"]
+            suffix_prev_month = config["resource_year"] + '-' + config["resource_month"]
             _ = self.upload_file(headers,api,dataset_id,resource_id_prev_month,suffix_prev_month)
 
-            suffix_year = self.get_current_date().strftime('%Y')
+            resource_id_global = config["resource_id_global"]
+            suffix_year = config["resource_year"]
             resource_id_global = self.upload_file(headers,api,dataset_id,resource_id_global,suffix_year)
 
             resource_id_month = self.upload_file(headers,api,dataset_id,None,suffix_month)
@@ -653,6 +653,7 @@ class GlobalProcess:
             data['resource_id_global'] = resource_id_global
             if self.get_current_date().month == 1:
                 data['resource_id_global'] = None
+                data['resource_year'] = self.get_current_date().year
 
             with open(config_file, "w") as file:
                     json.dump(data, file, indent=4)
