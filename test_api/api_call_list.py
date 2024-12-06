@@ -4,8 +4,8 @@ import json
 # Script d'appel à l'API pour récupére les resources d'un dataset
 
 api_host = "https://www.data.gouv.fr/api/1"
-dataset_id = "5bd0b6fd8b4c413d0801dc57"
-url = f"{api_host}/datasets/?q=Avenue%20Web%20Systèmes&page=1&page_size=100"
+
+url = f"{api_host}/datasets/?q=galis%20Bretagne%20-%20sch&page=1&page_size=100"
 
 config_file = "config.json"
 # read info from config.son

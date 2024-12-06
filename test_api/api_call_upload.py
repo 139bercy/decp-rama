@@ -16,6 +16,7 @@ def calculate_sha1(file_path):
 #resource_id = "4fafdaff-b697-4494-9523-e9f56916fea8"
 #nom_fichier = "results/LAST_REAL_DATA/decp-2024_data_gouv.json"
 #renommage_fichier = "decp-2024.json"
+
 resource_id = "398e075e-5dc2-4797-86d7-21d04e39111f"
 nom_fichier = "results/decp-2024-11_data_gouv.json"
 renommage_fichier = "decp-2024-11.json"

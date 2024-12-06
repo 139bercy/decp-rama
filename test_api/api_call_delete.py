@@ -6,7 +6,7 @@ import json
 # Renseigner le dataset_id et le resource_id
 
 dataset_id = "5cd57bf68b4c4179299eb0e9"
-resource_id = "8b57f316-b61f-4033-9ca6-48b08e618b85"
+resource_id = '7035742c-5550-4675-9b4c-011b3ec4534b'
 
 config_file = "config.json"
 # read info from config.son
