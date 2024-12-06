@@ -232,11 +232,10 @@
   {
     "code": "megalis_2024",
     "description": "Données essentielles du profil acheteur Mégalis Bretagne - schéma arrêtés 2022",
-    "url_source": "https://www.data.gouv.fr/fr/datasets/r/8819678b-f091-4210-b543-0741f1862dde",
+    "url_source": "https://static.data.gouv.fr/resources/donnees-essentielles-du-profil-acheteur-megalis-bretagne-schema-arretes-2022/20241205-070434/decp-2024.json",
     "format": "json",
     "cle_api": [],
     "cle_api_OLD": ["65f18014e9923e9e71f5f258"],
-    "ressource_id": "8819678b-f091-4210-b543-0741f1862dde",
     "url": "",
     "validate" : true,
     "convert_nc": false
