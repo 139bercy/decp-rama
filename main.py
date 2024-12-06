@@ -2,6 +2,8 @@ from general_process.ProcessFactory import ProcessFactory
 from general_process.GlobalProcess import GlobalProcess
 from reporting.Report import Report
 import logging
+from utils.StepMngmt import StepMngmt
+from utils.Step import Step
 import argparse
 import os
 
@@ -17,6 +19,8 @@ def main(data_format:str = 2022):
 
     # Init reporting
     report = Report('decp-rama')
+    # Init resume
+    step = StepMngmt()
     # get arguments from command line to know which process to run, if there is no arguments run all processes
     if args.process:
         p = ProcessFactory(args.process,data_format,report)
@@ -26,7 +30,7 @@ def main(data_format:str = 2022):
         p.run_processes()
     gp = GlobalProcess(data_format,report)
     gp.dataframes = p.dataframes
-    gp.merge_all()
+    gp.merge_all() # on a l'équivalent de return DataProcessor().decorator("MonParamètre")(self.process_data)()
     gp.fix_all()
     #gp.drop_by_date_2024()
     gp.drop_duplicate()

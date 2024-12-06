@@ -16,6 +16,8 @@ import jsonschema
 from jsonschema import validate,Draft7Validator,Draft202012Validator
 from reporting.Report import Report
 from utils.NodeFormat import NodeFormat
+from utils.StepMngmt import StepMngmt
+from utils.Step import Step
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
@@ -36,6 +38,7 @@ class GlobalProcess:
         self.dataframes = []
         self.data_format = data_format
 
+    @StepMngmt().decorator(StepMngmt.SOURCE_ALL,Step.MERGE_ALL,StepMngmt.FORMAT_DATAFRAME)
     def merge_all(self) -> None:
         """Étape merge all qui permet la fusion des DataFrames de chacune des sources en un seul."""
         logging.info("  ÉTAPE MERGE ALL")
@@ -48,6 +51,7 @@ class GlobalProcess:
             logging.info("Aucune données à traiter")
         logging.info(f"Nombre de marchés dans le DataFrame fusionné après merge : {len(self.df)}")
 
+    @StepMngmt().decorator(StepMngmt.SOURCE_ALL,Step.FIX_ALL,StepMngmt.FORMAT_DATAFRAME)
     def fix_all(self):
         """
         Étape fix all qui permet l'uniformisation du DataFrame.
@@ -148,6 +152,7 @@ class GlobalProcess:
             self.df = self.df[~(((~self.df['nature'].str.contains('concession', case=False, na=False)) & (self.df['dateNotification']>='2024-01-01') |
                             ((self.df['nature'].str.contains('concession', case=False, na=False)) & (self.df['dateDebutExecution']>='2024-01-01'))))]
 
+    @StepMngmt().decorator(StepMngmt.SOURCE_ALL,Step.DUPLICATE,StepMngmt.FORMAT_DATAFRAME)
     def drop_duplicate(self):
         """
         L'étape drop_duplicate supprime les duplicats purs après avoir 
