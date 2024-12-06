@@ -474,7 +474,7 @@ class UneClasseDeTest(unittest.TestCase):
         df_modele = pd.DataFrame.from_dict(dico_modele['marches']['marche'])
         
         #Création du dataframe à tester
-        with open (f"tests/test_fix.json", encoding='utf-8') as json_file1:
+        with open ("tests/test_fix.json", encoding='utf-8') as json_file1:
             json_data = json.load(json_file1)
         self.process.df = pd.DataFrame.from_dict(json_data['marches']['marche'])
 

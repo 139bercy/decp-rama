@@ -325,14 +325,14 @@ class SourceProcess:
                 except Exception as err:
                     logging.error(f"Exception lors du chargement du fichier json {self.title[i]} - {err}")
             try:
-                self.validation_format(dico['marches'], self.title[i])    #On obtient 2 fichiers qui sont mis jour à chaque tour de boucle
+                self._validation_format(dico['marches'], self.title[i])    #On obtient 2 fichiers qui sont mis jour à chaque tour de boucle
             except Exception as err:
                 logging.error(f"Exception lors de la validation du format des données: {err}")
 
         logging.info("Fin du nettoyage des nouveaux fichier")
 
 
-    def validation_format(self, dico:dict, file_name:str) -> None:
+    def _validation_format(self, dico:dict, file_name:str) -> None:
         """
         Cette fonction permet de vérifier la structure du dictionnaire fournit en
         entrée. Si le schéma est respecté, les marchés et concessions correctes
@@ -491,7 +491,7 @@ class SourceProcess:
         logging.info(f"Nombre de marchés dans {self.source} après convert : {len(self.df)}")
 
 
-    def validate_json(self, json_data:dict,json_scheme:dict) -> tuple[bool,str,str]:
+    def _validate_json(self, json_data:dict,json_scheme:dict) -> tuple[bool,str,str]:
         """
         Fonction vérifiant si le fichier jsn "json_data" respecte
         le schéma spécifié dans le  schéma en paramètre "json_scheme". 
@@ -522,10 +522,10 @@ class SourceProcess:
             json_data : donnée json en entrée
 
         """
-        return self.validate_json(json_data,self.json_scheme)
+        return self._validate_json(json_data,self.json_scheme)
     
 
-    def convert_boolean(self,col_name:str) -> None:
+    def convert_boolean_DEPRECATED(self,col_name:str) -> None:
         """
         Permet de remplacer les valeurs booléennes "Vrai" ou "Faux" par "oui" ou "non"
 
@@ -539,6 +539,21 @@ class SourceProcess:
             self.df[col_name] = self.df[col_name].astype(str).replace({'1': 'oui', 'true': 'oui', '0': 'non', 'false': 'non','True': 'oui', 'False': 'non'})
         else:
             self.df[col_name] = self.df[col_name].astype(str).replace({'True': 'oui', 'False': 'non' }) 
+
+    def convert_boolean(self,col_name:str) -> None:
+        """
+        Permet de remplacer les valeurs booléennes "1" ou "0", "Vrai" ou "Faux", "True" ou "False" par True ou False
+
+        Args:
+
+            col_name: colonne où s'effectue le changement
+
+        """
+        #Conversion si il s'agit de string
+        if self.df[col_name].dtypes == 'object':  
+            self.df[col_name] = self.df[col_name].astype(str).replace({'1': True, 'true': True, 'True': True, '0': False, 'false': False, 'False': False})
+        else:
+            self.df[col_name] = self.df[col_name].astype(str).replace({'True': True, 'False': False }) 
 
 
     def fix(self) -> None:
@@ -591,6 +606,9 @@ class SourceProcess:
         if "sousTraitanceDeclaree" in self.df.columns:
             #print("TYPE COLONNE sous traitance:", self.df['sousTraitanceDeclaree'].dtype)
             self.convert_boolean('sousTraitanceDeclaree')
+        
+        if "dureeMois" in self.df.columns:
+            self.df['dureeMois'] = self.df['dureeMois'].astype(int)
 
         # Suppression des doublons
         df_str = self.df.astype(str)

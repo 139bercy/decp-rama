@@ -95,7 +95,6 @@ class GlobalProcess:
                                     if str(x) != 'nan' and len(x.split("-")) >= 3 else x)
         logging.info(f"Nombre de marchés dans le DataFrame fusionné après merge : {len(self.df)}")
         if 'dureeMois' in self.df.columns:
-        # DureeMois doit être un float
             self.df['dureeMois'] = self.df['dureeMois'].apply(lambda x: 0 if x == '' or
                                                             str(x) in ['nan', 'None'] else x)
         else:
@@ -317,20 +316,20 @@ class GlobalProcess:
                 dico_prev_month = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
                                     for m in df_prev_month.to_dict(orient='records')]}
                 #dico_prev_month = self.dico_modifications(dico_prev_month)
-                dico_nouveau = self.dico_merge(dico_nouveau,dico_prev_month)
+                dico_nouveau = self._dico_merge(dico_nouveau,dico_prev_month)
                 df_prev_month = pd.DataFrame.from_dict(dico_nouveau)
                 df_prev_month = self.dedoublonnage(df_prev_month)
-                dico_nouveau = self.nan_correction(df_prev_month)
+                dico_nouveau = self._nan_correction(df_prev_month)
                 try:
                     self.file_dump(path_result_last_month,dico_nouveau) 
                 except:
                     logging.error(f"Erreur d'écriture dans le fichier {path_result_last_month}")
-            dico_global = self.dico_merge(dico_ancien,dico_nouveau)
+            dico_global = self._dico_merge(dico_ancien,dico_nouveau)
             #On transforme les dictionnaires en dataframes pour les dédoublonner
             if dico_global!={}:
                 df_global = pd.DataFrame.from_dict(dico_global)
                 df_global = self.dedoublonnage(df_global)
-                dico_final = self.nan_correction(df_global)
+                dico_final = self._nan_correction(df_global)
                 try:
                     self.file_dump(path_result,dico_final) 
                 except:
@@ -355,7 +354,7 @@ class GlobalProcess:
                     #On transforme les dictionnaires en dataframes pour les dédoublonner
                     df_global = pd.DataFrame.from_dict(dico_global)
                     df_global = self.dedoublonnage(df_global)
-                    dico_final = self.nan_correction(df_global)
+                    dico_final = self._nan_correction(df_global)
                     self.file_dump(path_result_month,dico_final)                   
             else:
                 self.file_dump(path_result_month,dico)
@@ -408,13 +407,7 @@ class GlobalProcess:
             dico: dictionnaire contenant les données qui vont être écrite dans le fichier  
         """
         if is_for_data_gouv:
-            dico = self.dico_purge(dico)
-            if not self.dico_exists_marche_in_marches(dico):
-                dico = {
-                    'marches': {
-                        'marche': dico.get('marches', [])
-                    }
-                }
+            dico = self._dico_purge(dico)
         
         try:
             with open(path, 'w', encoding="utf-8") as f:
@@ -427,7 +420,7 @@ class GlobalProcess:
         json_size = os.path.getsize(path)
         logging.info(f"Taille de {path} : {json_size}")
     
-    def dico_purge(self,dico:dict) -> dict: 
+    def _dico_purge(self,dico_in:dict) -> dict: 
         """
         La fonction dico_transtypage modifie le type des données du dictionnaire afin de produire en sortie
         des fichiers json au format valide 
@@ -437,8 +430,11 @@ class GlobalProcess:
             dico: dictionnaire où on effectue les changements
 
         """
-        dico = dico.copy()
-        for marche in dico['marches']:
+        marches = []
+        concessions = []
+        for marche_in in dico_in['marches']:
+            marche = marche_in.copy()
+
             if 'report__file' in marche:
                 del marche["report__file"]
             if 'report__nbtotal' in marche:
@@ -458,13 +454,35 @@ class GlobalProcess:
             self.force_bool('marcheInnovant',marche)
             self.force_bool('attributionAvance',marche)
             self.force_bool('sousTraitanceDeclaree',marche)
-            self.force_bool('actesSousTraitance',marche)
-            self.force_bool('modificationsActesSousTraitance',marche)
 
             if 'modifications' in marche and isinstance(marche['modifications'],list) and len(marche['modifications'])==0:
                 del marche['modifications']                
+            if 'actesSousTraitance' in marche \
+                and ((isinstance(marche['actesSousTraitance'],list) and len(marche['actesSousTraitance'])==0) \
+                    or (isinstance(marche['actesSousTraitance'],str) and marche['actesSousTraitance']=='')):
+                del marche['actesSousTraitance']  
+            if 'modificationsActesSousTraitance' in marche \
+                and ((isinstance(marche['modificationsActesSousTraitance'],list) and len(marche['modificationsActesSousTraitance'])==0) \
+                    or (isinstance(marche['modificationsActesSousTraitance'],str) and marche['modificationsActesSousTraitance']=='')):
+                del marche['modificationsActesSousTraitance']  
 
-        return dico
+            if '_type' in marche and not marche['_type'] == 'Marché':
+                if 'montant' in marche:
+                    del marche["montant"]
+                if 'offresRecues' in marche:
+                    del marche["offresRecues"]
+                if '_type' in marche:
+                    del marche["_type"]
+                concessions.append(marche)
+            else:
+                marches.append(marche)
+            
+        return {
+                'marches': {
+                    'marche': marches,
+                    'contrat-concession': concessions
+                }
+        }
     
     def force_int(self,cle:str,marche:dict):
         if cle in marche.keys() :
@@ -536,17 +554,7 @@ class GlobalProcess:
             print("Le fichier JSON est valide.")
             return True     
 
-    def json_validation(self,jsonPath,jsonData):
-        scheme_path = 'schemes/schema_decp_v2.0.2.json'
-        with open(scheme_path, "r",encoding='utf-8') as jsonfile1:
-            jsonScheme = json.load(jsonfile1)
-            jsonfile1.close
-        result = self.validate_json(jsonPath,jsonData,jsonScheme)
-        with open("json_validation_errors", "w") as file:
-            json.dump(result, file, indent=4)
-        return result
-
-    def dico_merge(self,dico_ancien: dict,dico_nouveau: dict) -> dict:
+    def _dico_merge(self,dico_ancien: dict,dico_nouveau: dict) -> dict:
         """"
         La fonction dico_merge permet de fusionner deux dictionnaires passés en paramètres
         Elle gère de plus les cas où un des deux dictionnaires ou les deux dictionnaires sont vides.
@@ -569,7 +577,7 @@ class GlobalProcess:
             dico_global = dico_ancien['marches'] + dico_nouveau['marches']
         return dico_global
     
-    def nan_correction(self,df:pd.DataFrame) -> dict:
+    def _nan_correction(self,df:pd.DataFrame) -> dict:
         """
         La fonction nan_correction remplit les valeurs manquantes du dataframe passé en paramètre 
         en fonction du type de données de chaque colonne.
@@ -637,13 +645,13 @@ class GlobalProcess:
             
             resource_id_prev_month = config["resource_id_month"]
             suffix_prev_month = config["resource_year"] + '-' + config["resource_month"]
-            _ = self.upload_file(headers,api,dataset_id,resource_id_prev_month,suffix_prev_month)
+            _ = self._upload_file(headers,api,dataset_id,resource_id_prev_month,suffix_prev_month)
 
             resource_id_global = config["resource_id_global"]
             suffix_year = config["resource_year"]
-            resource_id_global = self.upload_file(headers,api,dataset_id,resource_id_global,suffix_year)
+            resource_id_global = self._upload_file(headers,api,dataset_id,resource_id_global,suffix_year)
 
-            resource_id_month = self.upload_file(headers,api,dataset_id,None,suffix_month)
+            resource_id_month = self._upload_file(headers,api,dataset_id,None,suffix_month)
             
             with open(config_file, "r") as file:
                 data = json.load(file)
@@ -660,10 +668,10 @@ class GlobalProcess:
         
         #Cas quand le mois n'a pas changé depuis la dernière exécution
         else:
-            result_resource_id = self.upload_file(headers,api,dataset_id,config["resource_id_month"],suffix_month)
+            result_resource_id = self._upload_file(headers,api,dataset_id,config["resource_id_month"],suffix_month)
 
 
-    def upload_file(self,headers,api,dataset_id,resource_id:str,suffix:str) -> str:
+    def _upload_file(self,headers,api,dataset_id,resource_id:str,suffix:str) -> str:
         if resource_id is None:
             url = f"{api}/datasets/{dataset_id}/upload/"
         else:
