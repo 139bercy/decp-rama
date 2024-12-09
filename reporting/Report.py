@@ -31,11 +31,14 @@ class Report:
     exclusion_tmp = {}
     
     # Constructor
-    def __init__(self, application:str):
+    def __init__(self, application:str,use_db:bool=False):
         self.application = application
         self.init()
         self_path = os.path.basename(os. getcwd()).lower()
-        self.db = Db()
+        if use_db:
+            self.db = Db()
+        else:
+            self.db = None
         if self.db is not None:
             self.session = self.db.add_session(self_path)
 
