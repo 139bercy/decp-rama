@@ -1,17 +1,20 @@
 import json
+import os
 import pandas as pd
+import shutil
 from utils.Step import Step
 
 class StepMngmt:
     _instance = None
 
-    BASE_PATH = 'process/'
-    STATUS_FILEPATH = 'process/run_status.json'
+    BASE_PATH = 'processing/'
+    STATUS_FILEPATH = 'processing/run_status.json'
     
-    FORMAT_DICT = 'dict'
+    FORMAT_DICTS = 'dicts'
     FORMAT_DATAFRAME = 'dataframe'
 
     SOURCE_ALL = 'ALL'
+    SOURCE = 'SOURCE'
 
     init_status = {}
     current_status = {}
@@ -23,8 +26,11 @@ class StepMngmt:
             cls._instance.load_data()  # Charger les données lors de l'initialisation
         return cls._instance
 
+
     def load_data(self):
-        # Charger les données depuis un fichier JSON
+        if not os.path.exists(StepMngmt.BASE_PATH):
+            os.makedirs(StepMngmt.BASE_PATH)
+
         try:
             with open(self.STATUS_FILEPATH, 'r') as json_file:
                 self.init_status = json.load(json_file)
@@ -32,12 +38,15 @@ class StepMngmt:
             with open(self.STATUS_FILEPATH, 'r') as json_file:
                 self.current_status = json.load(json_file)
 
-            print("Données chargées :", self.current_status)
         except FileNotFoundError:
-            print("Le fichier data.json n'a pas été trouvé.")
             self.current_status = {}
+            with open(self.STATUS_FILEPATH, 'w') as json_file:
+                json.dump(self.current_status, json_file)
 
-    def __init__DEPRECATED(self):
+
+    def __init__deprecaded(self):
+        if not os.path.exists(StepMngmt.BASE_PATH):
+            os.makedirs(StepMngmt.BASE_PATH)
         with open(self.STATUS_FILEPATH, 'r') as json_file:
             self.init_status = json.load(json_file)
 
@@ -45,14 +54,19 @@ class StepMngmt:
             self.current_status = json.load(json_file)
 
 
-    def decorator(self, source:str,step:Step,format:str):
+    def decorator(self, step:Step, format:str):
         def wrapper(func):
             def inner_wrapper(self_wrapper, *args, **kwargs):
 
-                if not self.bypass(source,step,format):
+                if hasattr(self_wrapper, 'source'):
+                    source = getattr(self_wrapper, 'source')
+                else:
+                    source = self.SOURCE_ALL
+                    
+                if not self.bypass(source,step):
                     
                     # Opération avant l'appel à la méthode
-                    print(f"Avant l'appel à {func.__name__} avec paramètre: {source},{step},{format}, données classe: {self.bypass(source,step,format)}")
+                    print(f"Avant l'appel à {func.__name__} avec paramètre: {source},{step},{format}, données classe: {self.bypass(source,step)}")
 
                     # Appel à la méthode de classe
                     result = func(self_wrapper, *args, **kwargs)
@@ -63,19 +77,24 @@ class StepMngmt:
                     # Accéder aux données de l'instance de MyClass
                     if format == self.FORMAT_DATAFRAME:
                         self.snapshot_dataframe(source,step,self_wrapper.df)
-                    else:
-                        self.snapshot_dict(source,step,self_wrapper.dico)
+                    elif format == self.FORMAT_DICTS:
+                        self.snapshot_dicts(source,step,self_wrapper.dico_2022_marche,self_wrapper.dico_2022_concession)
                 else:
                     result = None
                     if format == self.FORMAT_DATAFRAME:
                         self_wrapper.df = self.resume(source,step,format)
-                    else:
-                        self_wrapper.dico = self.snapshot(source,step,format)
+                    elif format == self.FORMAT_DICTS:
+                        self_wrapper.dico_2022_marche,self_wrapper.dico_concession = self.resume_dicts(source,step,format)
 
                 return result
             return inner_wrapper
         return wrapper
-    
+
+
+    def snapshot(self,source:str,step:Step):
+        self._update_status(source,step)
+
+
     def snapshot_dataframe(self,source:str,step:Step,df:pd.DataFrame):
         path = self._get_snapshot_path(source,step,self.FORMAT_DATAFRAME)
         df.to_pickle(path)
@@ -89,6 +108,16 @@ class StepMngmt:
         self._update_status(source,step)
 
 
+    def snapshot_dicts(self,source:str,step:Step,dc_marche:dict,dc_concession:dict):
+        path = self._get_snapshot_path(source,step,self.FORMAT_DICTS+'_marche')
+        with open(path, 'w', encoding="utf-8") as f:
+            json.dump(dc_marche, f, indent=2, ensure_ascii=False)
+        path = self._get_snapshot_path(source,step,self.FORMAT_DICTS+'_concession')
+        with open(path, 'w', encoding="utf-8") as f:
+            json.dump(dc_concession, f, indent=2, ensure_ascii=False)
+        self._update_status(source,step)
+
+
     def resume(self,source:str,step:Step,format:str) -> pd.DataFrame|dict:
         path = self._get_snapshot_path(source,step,format)
         if format == self.FORMAT_DATAFRAME:
@@ -98,22 +127,32 @@ class StepMngmt:
                 return json.load(json_file)
 
 
-    def bypass(self,source:str,step:Step,format:str) -> pd.DataFrame|dict:
+    def resume_dicts(self,source:str,step:Step,format:str) -> tuple[dict,dict]:
+        path = self._get_snapshot_path(source,step,format+'_marche')
+        with open(path, encoding="utf-8") as json_file:
+            dico_marche = json.load(json_file)
+        path = self._get_snapshot_path(source,step,format+'_concession')
+        with open(path, encoding="utf-8") as json_file:
+            dico_concession = json.load(json_file)
+        return dico_marche, dico_concession
+
+
+    def bypass(self,source:str,step:Step) -> pd.DataFrame|dict:
         init_status = self._check_init_status(source)
-        if init_status == Step.NONE:
+        if init_status == Step.NONE:                # Previous launch end here, need to process operation
             return False
-        elif init_status.value == step.value:   # Previous launch end here, need to process operation
+        elif init_status.value == step.value:       # Previous launch end here, need to process operation
             return True
-        elif init_status.value < step.value:    # Previous launch ended earlier, need to process operation
+        elif init_status.value < step.value:        # Previous launch ended earlier, need to process operation
             return False
-        elif init_status.value > Step.value:    # Previous launch ended further, just continue
+        elif init_status.value > step.value:        # Previous launch ended further, just continue
             return True
 
 
     def restore_point(self,source:str,step:Step,format:str,data:pd.DataFrame|dict) -> pd.DataFrame|dict:
         init_status = self._check_init_status(source)
         if init_status == Step.NONE:
-            self.snapshot(source,step,data)
+            self.snapshot(source,step)
             return data
         elif init_status.value == Step.value:
             return self.resume(source,step,format)
@@ -122,8 +161,17 @@ class StepMngmt:
         elif init_status.value > Step.value:    # Previous launch ended further, just continue
             return None
 
+
+    def reset(self):
+        self.current_status = {}
+        with open(self.STATUS_FILEPATH, 'w') as json_file:
+            json.dump(self.current_status, json_file)
+        self._empty_directory(self.BASE_PATH)
+
+
     def _get_snapshot_path(self,source:str,step:Step,format:str) -> str:
         return self.BASE_PATH + source + '_'+ step.name + '_' + format + '.pkl'
+
 
     def _check_init_status(self,source:str):
         if source in self.init_status:
@@ -139,7 +187,15 @@ class StepMngmt:
         with open(self.STATUS_FILEPATH, 'w') as json_file:
             json.dump(self.current_status, json_file)
 
-
+    def _empty_directory(self,path):
+        # Vérifie si le répertoire existe
+        if os.path.exists(path):
+            for fichier in os.listdir(path):
+                chemin_complet = os.path.join(path, fichier)
+                if os.path.isdir(chemin_complet):
+                    shutil.rmtree(chemin_complet)
+                else:
+                    os.remove(chemin_complet)
 
 
 if __name__ == '__main__':
