@@ -3,6 +3,8 @@ from specific_process import *
 import logging
 
 from reporting.Report import Report
+from utils.Step import Step
+from utils.StepMngmt import StepMngmt
 
 class ProcessFactory:
 
@@ -28,6 +30,7 @@ class ProcessFactory:
         self.dataframes = []
         self.data_format = data_format
         self.report = report
+        self.step = StepMngmt()
 
         # si on lance main avec un process spécifié :
         if process:
@@ -43,13 +46,27 @@ class ProcessFactory:
             try:
                 logging.info(f"------------------------------{process.__name__}------------------------------")
                 p = process(self.data_format,self.report)
-                p.get()
+                if not self.step.bypass(p.source,Step.GET):
+                    p.get()
+                    self.step.snapshot(p.source,Step.GET)
                 loaded = 'get'
-                p.clean()
+                if not self.step.bypass(p.source,Step.CLEAN):
+                    p.clean()
+                    self.step.snapshot_dicts(p.source,Step.CLEAN,p.dico_2022_marche,p.dico_2022_concession)
+                else:
+                    p.dico_2022_marche,p.dico_2022_concession = self.step.resume_dicts(p.source,Step.CLEAN,StepMngmt.FORMAT_DICTS)
                 loaded = 'clean'
-                p.convert()
+                if not self.step.bypass(p.source,Step.CONVERT):
+                    p.convert()
+                    self.step.snapshot_dataframe(p.source,Step.CONVERT,p.df)
+                else:
+                    p.df = self.step.resume(p.source,Step.CONVERT,StepMngmt.FORMAT_DATAFRAME)
                 loaded = 'convert'
-                p.fix()
+                if not self.step.bypass(p.source,Step.FIX):
+                    p.fix()
+                    self.step.snapshot_dataframe(p.source,Step.FIX,p.df)
+                else:
+                    p.df = self.step.resume(p.source,Step.FIX,StepMngmt.FORMAT_DATAFRAME)
                 loaded = 'fix'
                 p.fix_statistics()
                 logging.info (f"Ajout des données de la source {process.__name__}")
@@ -65,9 +82,23 @@ class ProcessFactory:
         """Lance un seul processus"""
         logging.info(f"------------------------------{self.process.__name__}------------------------------")
         p = self.process()
-        p.get()
-        p.clean()
-        p.convert()
-        p.fix()
+        if not self.step.bypass(p.source,Step.GET):
+            p.get()
+            self.step.snapshot(p.source,Step.GET)
+        if not self.step.bypass(p.source,Step.CLEAN):
+            p.clean()
+            self.step.snapshot_dicts(p.source,Step.GET,p.dico_2022_marche,p.dico_2022_concession)
+        else:
+            p.dico_2022_marche,p.dico_2022_concession = self.step.resume_dicts(p.source,Step.GET,StepMngmt.FORMAT_DICTS)
+        if not self.step.bypass(p.source,Step.CONVERT):
+            p.convert()
+            self.step.snapshot_dataframe(p.source,Step.CONVERT,p.df)
+        else:
+            p.df = self.step.resume(p.source,Step.CONVERT,StepMngmt.FORMAT_DATAFRAME)
+        if not self.step.bypass(p.source,Step.FIX):
+            p.fix()
+            self.step.snapshot_dataframe(p.source,Step.FIX,p.df)
+        else:
+            p.df = self.step.resume(p.source,Step.FIX,StepMngmt.FORMAT_DATAFRAME)
         self.dataframes.append(p.df)
         

@@ -26,6 +26,8 @@ pd.set_option('display.max_rows', None)
 # pd.set_option('display.max_colwidth', None)
 from reporting.Report import Report
 from utils.NodeFormat import NodeFormat
+from utils.StepMngmt import StepMngmt
+from utils.Step import Step
 
 class SourceProcess:
 
@@ -93,12 +95,12 @@ class SourceProcess:
         if self.cle_api==[]:
             self.url = [self.url_source]
         else:
-            self.url, self.title = self.create_metadata_file(len(self.cle_api))
+            self.url, self.title = self._create_metadata_file(len(self.cle_api))
         
         logging.info("Initialisation finie")
     
 
-    def create_metadata_file(self,n:int)->tuple[list,list]:
+    def _create_metadata_file(self,n:int)->tuple[list,list]:
         """
         Fonction réalisant le téléchargement des métadatas, la copie des
         fichiers métadatas et la création des listes contenant les titres
@@ -199,7 +201,7 @@ class SourceProcess:
         # print("SELF.URL:" , self.url)
         if self.cle_api==[]:
             print("Pas  de clé api")
-            self.download_without_metadata()
+            self._download_without_metadata()
         else:
             # Verification de l'existence d'un eventuel doublon + nettoyage + 
             # Téléchargement du nouveau fichier
@@ -214,7 +216,7 @@ class SourceProcess:
         logging.info(f"Téléchargement : {len(self.url)} fichier(s) OK")
 
 
-    def download_without_metadata(self) -> None:
+    def _download_without_metadata(self) -> None:
         """
         Fonction téléchargeant un fichier n'ayant pas de clé api. Par 
         conséquent, le téléchargement s'effectue grâce à l'url dans 

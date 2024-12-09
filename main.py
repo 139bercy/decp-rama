@@ -41,6 +41,7 @@ def main(data_format:str = 2022):
         # gp.upload_s3()
         gp.upload_datagouv()
     report.db_end_session('OK')
+    step.reset()
     logging.info ("Execution de l'application terminée")
 
 if __name__ == "__main__":
