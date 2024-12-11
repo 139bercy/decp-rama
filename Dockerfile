@@ -1,5 +1,5 @@
 # Étape 1: Image temporaire pour installer les dépendances
-FROM python:3.12.8 as builder
+FROM python:3.12.8 AS builder
 
 WORKDIR /build
 
@@ -24,4 +24,4 @@ COPY . /app
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Démarrer le projet
-CMD [ "python", "app.py" ]
+CMD [ "python", "main.py" ]
