@@ -445,8 +445,8 @@ class GlobalProcess:
         for marche_in in dico_in['marches']:
             marche = marche_in.copy()
 
-            self.restore_attributes_by_prefix(marche,'backup__')
-            self.restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
+            self._restore_attributes_by_prefix(marche,'backup__')
+            self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
 
             if '_type' in marche and marche['_type'] != 'Marché':
                 concessions.append(marche)
@@ -514,8 +514,8 @@ class GlobalProcess:
                     or (isinstance(marche['modificationsActesSousTraitance'],str) and marche['modificationsActesSousTraitance']=='')):
                 del marche['modificationsActesSousTraitance']  
 
-            self.restore_attributes_by_prefix(marche,'backup__')
-            self.restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
+            self._restore_attributes_by_prefix(marche,'backup__')
+            self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
 
             if '_type' in marche and marche['_type'] != 'Marché':
                 if 'montant' in marche:
