@@ -413,32 +413,88 @@ class GlobalProcess:
         """
         if is_for_data_gouv:
             dico = self._dico_purge(dico)
-        
+        else:
+            dico_ref = dico
+            dico = self._dico_restore_nc(dico)
+
         try:
             with open(path, 'w', encoding="utf-8") as f:
                 json.dump(dico, f, indent=2, ensure_ascii=False)
             
             if not is_for_data_gouv:
-                self.file_dump(path.replace(".json","_data_gouv.json"),dico,True)
+                self.file_dump(path.replace(".json","_data_gouv.json"),dico_ref,True)
+                
         except Exception as err:
             logging.error(f"Exception lors de l'ecriture du fichier json {path} - {err}")
         json_size = os.path.getsize(path)
         logging.info(f"Taille de {path} : {json_size}")
-    
-    def _dico_purge(self,dico_in:dict) -> dict: 
+
+
+    def _dico_restore_nc(self,dico_in:dict) -> dict: 
         """
-        La fonction dico_transtypage modifie le type des données du dictionnaire afin de produire en sortie
-        des fichiers json au format valide 
+        La fonction _dico_restore_nc modifie les valeurs des données du dictionnaire 
+        pour restorer les valeurs NC  
 
         Args:
 
             dico: dictionnaire où on effectue les changements
 
         """
+        def restore_attributes_by_prefix(marche_in,prefix):
+            keys_to_delete = [clé for clé in marche_in.keys() if clé.startswith(prefix)]
+            for key in keys_to_delete:
+                if marche_in[key] == 'NC':
+                    marche_in[key[len(prefix):]] = marche_in[key]
+                    del marche_in[key]
+        
         marches = []
         concessions = []
         for marche_in in dico_in['marches']:
             marche = marche_in.copy()
+
+            restore_attributes_by_prefix(marche,'backup__')
+
+            if '_type' in marche and marche['_type'] != 'Marché':
+                concessions.append(marche)
+            else:
+                marches.append(marche)
+        
+        return {
+                'marches': {
+                    'marche': marches,
+                    'contrat-concession': concessions
+                }
+        }
+    
+
+    def _dico_purge(self,dico_in:dict) -> dict: 
+        """
+        La fonction _dico_purge modifie le type des données et certains attributs du dictionnaire 
+        afin de produire en sortie des fichiers json au format valide 
+
+        Args:
+
+            dico: dictionnaire où on effectue les changements
+
+        """
+        def restore_attributes_by_prefix(marche_in,prefix):
+            keys_to_delete = [clé for clé in marche_in.keys() if clé.startswith(prefix)]
+            for key in keys_to_delete:
+                if marche_in[key] == 'NC':
+                    marche_in[key[len(prefix):]] = marche_in[key]
+                    del marche_in[key]
+
+        def delete_attributes_by_prefix(marche_in,prefix):
+            keys_to_delete = [clé for clé in marche_in.keys() if clé.startswith(prefix)]
+            for key in keys_to_delete:
+                del marche_in[key]
+        
+        marches = []
+        concessions = []
+        for marche_in in dico_in['marches']:
+            marche = marche_in.copy()
+
+            delete_attributes_by_prefix(marche,'report__')
 
             if 'report__file' in marche:
                 del marche["report__file"]
@@ -471,7 +527,9 @@ class GlobalProcess:
                     or (isinstance(marche['modificationsActesSousTraitance'],str) and marche['modificationsActesSousTraitance']=='')):
                 del marche['modificationsActesSousTraitance']  
 
-            if '_type' in marche and not marche['_type'] == 'Marché':
+            restore_attributes_by_prefix(marche,'backup__')
+
+            if '_type' in marche and marche['_type'] != 'Marché':
                 if 'montant' in marche:
                     del marche["montant"]
                 if 'offresRecues' in marche:

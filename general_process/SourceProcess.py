@@ -636,6 +636,7 @@ class SourceProcess:
 
     def enlever_nc_colonne(self,df: pd.DataFrame,nom_colonne:str) -> pd.DataFrame:
         if nom_colonne in df.columns:
+            df['backup__' + nom_colonne] = df[nom_colonne]
             #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
             df[nom_colonne] = df[nom_colonne].replace("NC",np.nan)
         
@@ -648,6 +649,7 @@ class SourceProcess:
                 for element in content:
                     if sous_element in element and isinstance(element[sous_element],dict) \
                         and colonne in element[sous_element] and element[sous_element][colonne] == "NC":
+                            element[sous_element]['backup__'+colonne] = element[sous_element][colonne]
                             element[sous_element][colonne] = None
             return content
         if nom_noeud in df.columns:

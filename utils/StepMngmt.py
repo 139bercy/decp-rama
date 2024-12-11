@@ -44,16 +44,6 @@ class StepMngmt:
                 json.dump(self.current_status, json_file)
 
 
-    def __init__deprecaded(self):
-        if not os.path.exists(StepMngmt.BASE_PATH):
-            os.makedirs(StepMngmt.BASE_PATH)
-        with open(self.STATUS_FILEPATH, 'r') as json_file:
-            self.init_status = json.load(json_file)
-
-        with open(self.STATUS_FILEPATH, 'r') as json_file:
-            self.current_status = json.load(json_file)
-
-
     def decorator(self, step:Step, format:str):
         def wrapper(func):
             def inner_wrapper(self_wrapper, *args, **kwargs):
