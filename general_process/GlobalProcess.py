@@ -423,7 +423,7 @@ class GlobalProcess:
             
             if not is_for_data_gouv:
                 self.file_dump(path.replace(".json","_data_gouv.json"),dico_ref,True)
-                
+
         except Exception as err:
             logging.error(f"Exception lors de l'ecriture du fichier json {path} - {err}")
         json_size = os.path.getsize(path)
@@ -443,9 +443,8 @@ class GlobalProcess:
         def restore_attributes_by_prefix(marche_in,prefix):
             keys_to_delete = [clé for clé in marche_in.keys() if clé.startswith(prefix)]
             for key in keys_to_delete:
-                if marche_in[key] == 'NC':
-                    marche_in[key[len(prefix):]] = marche_in[key]
-                    del marche_in[key]
+                marche_in[key[len(prefix):]] = marche_in[key]
+                del marche_in[key]
         
         marches = []
         concessions = []
@@ -477,17 +476,22 @@ class GlobalProcess:
             dico: dictionnaire où on effectue les changements
 
         """
-        def restore_attributes_by_prefix(marche_in,prefix):
-            keys_to_delete = [clé for clé in marche_in.keys() if clé.startswith(prefix)]
+        def restore_attributes_by_prefix(marche,prefix):
+            keys_to_delete = [clé for clé in marche.keys() if clé.startswith(prefix)]
             for key in keys_to_delete:
-                if marche_in[key] == 'NC':
-                    marche_in[key[len(prefix):]] = marche_in[key]
-                    del marche_in[key]
+                marche[key[len(prefix):]] = marche[key]
+                del marche[key]
 
-        def delete_attributes_by_prefix(marche_in,prefix):
-            keys_to_delete = [clé for clé in marche_in.keys() if clé.startswith(prefix)]
+        def restore_attributes_by_prefix_in_node(marche,node_parent:str,node_child:str):
+            if node_parent in marche and isinstance(marche[node_parent],list):
+                for element in marche[node_parent]:
+                    if node_child in element and isinstance(element[node_child],dict):
+                        restore_attributes_by_prefix(element[node_child],'backup__')
+
+        def delete_attributes_by_prefix(marche,prefix):
+            keys_to_delete = [clé for clé in marche.keys() if clé.startswith(prefix)]
             for key in keys_to_delete:
-                del marche_in[key]
+                del marche[key]
         
         marches = []
         concessions = []
@@ -528,6 +532,7 @@ class GlobalProcess:
                 del marche['modificationsActesSousTraitance']  
 
             restore_attributes_by_prefix(marche,'backup__')
+            restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
 
             if '_type' in marche and marche['_type'] != 'Marché':
                 if 'montant' in marche:
