@@ -439,19 +439,14 @@ class GlobalProcess:
 
             dico: dictionnaire où on effectue les changements
 
-        """
-        def restore_attributes_by_prefix(marche_in,prefix):
-            keys_to_delete = [clé for clé in marche_in.keys() if clé.startswith(prefix)]
-            for key in keys_to_delete:
-                marche_in[key[len(prefix):]] = marche_in[key]
-                del marche_in[key]
-        
+        """        
         marches = []
         concessions = []
         for marche_in in dico_in['marches']:
             marche = marche_in.copy()
 
-            restore_attributes_by_prefix(marche,'backup__')
+            self.restore_attributes_by_prefix(marche,'backup__')
+            self.restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
 
             if '_type' in marche and marche['_type'] != 'Marché':
                 concessions.append(marche)
@@ -476,18 +471,6 @@ class GlobalProcess:
             dico: dictionnaire où on effectue les changements
 
         """
-        def restore_attributes_by_prefix(marche,prefix):
-            keys_to_delete = [clé for clé in marche.keys() if clé.startswith(prefix)]
-            for key in keys_to_delete:
-                marche[key[len(prefix):]] = marche[key]
-                del marche[key]
-
-        def restore_attributes_by_prefix_in_node(marche,node_parent:str,node_child:str):
-            if node_parent in marche and isinstance(marche[node_parent],list):
-                for element in marche[node_parent]:
-                    if node_child in element and isinstance(element[node_child],dict):
-                        restore_attributes_by_prefix(element[node_child],'backup__')
-
         def delete_attributes_by_prefix(marche,prefix):
             keys_to_delete = [clé for clé in marche.keys() if clé.startswith(prefix)]
             for key in keys_to_delete:
@@ -531,8 +514,8 @@ class GlobalProcess:
                     or (isinstance(marche['modificationsActesSousTraitance'],str) and marche['modificationsActesSousTraitance']=='')):
                 del marche['modificationsActesSousTraitance']  
 
-            restore_attributes_by_prefix(marche,'backup__')
-            restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
+            self.restore_attributes_by_prefix(marche,'backup__')
+            self.restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
 
             if '_type' in marche and marche['_type'] != 'Marché':
                 if 'montant' in marche:
@@ -766,6 +749,19 @@ class GlobalProcess:
             logging.error(f'Error uploading file decp-{suffix}.json3')
         
         return resource_id
+
+    def _restore_attributes_by_prefix(self,marche,prefix):
+        keys_to_delete = [clé for clé in marche.keys() if clé.startswith(prefix)]
+        for key in keys_to_delete:
+            marche[key[len(prefix):]] = marche[key]
+            del marche[key]
+
+    def _restore_attributes_by_prefix_in_node(self,marche,node_parent:str,node_child:str):
+        if node_parent in marche and isinstance(marche[node_parent],list):
+            for element in marche[node_parent]:
+                if node_child in element and isinstance(element[node_child],dict):
+                    self._restore_attributes_by_prefix(element[node_child],'backup__')
+
 
     def get_current_date(self) -> datetime:
         return datetime.now()
