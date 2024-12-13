@@ -18,7 +18,7 @@ def main(data_format:str = 2022):
     étapes du Global Process (GlobalProcess.py)."""
 
     # Init reporting
-    report = Report('decp-rama')
+    report = Report('decp-rama',True)
     # Init resume
     step = StepMngmt()
     # get arguments from command line to know which process to run, if there is no arguments run all processes

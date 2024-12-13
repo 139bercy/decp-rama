@@ -441,23 +441,16 @@ class GlobalProcess:
 
         """        
         marches = []
-        concessions = []
         for marche_in in dico_in['marches']:
             marche = marche_in.copy()
 
             self._restore_attributes_by_prefix(marche,'backup__')
             self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
 
-            if '_type' in marche and marche['_type'] != 'Marché':
-                concessions.append(marche)
-            else:
-                marches.append(marche)
-        
+            marches.append(marche)
+            
         return {
-                'marches': {
-                    'marche': marches,
-                    'contrat-concession': concessions
-                }
+                'marches': marches 
         }
     
 
@@ -753,7 +746,8 @@ class GlobalProcess:
     def _restore_attributes_by_prefix(self,marche,prefix):
         keys_to_delete = [clé for clé in marche.keys() if clé.startswith(prefix)]
         for key in keys_to_delete:
-            marche[key[len(prefix):]] = marche[key]
+            if marche[key] == 'NC':
+                marche[key[len(prefix):]] = marche[key]
             del marche[key]
 
     def _restore_attributes_by_prefix_in_node(self,marche,node_parent:str,node_child:str):

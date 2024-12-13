@@ -290,6 +290,8 @@ class SourceProcess:
                         if 'modifications' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'modifications', 'modification'):
                             NodeFormat.normalize_list_node(marche,'modifications', 'modification')
                         NodeFormat.convert_ints(marche,'modifications', 'modification')
+                        NodeFormat.normalize_list_node_inside(marche,'titulaires','titulaire','modifications', 'modification')
+                        
 
                         if self.format == "xml":
                             if 'modificationsActesSousTraitance' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'modificationsActesSousTraitance', 'modificationActesSousTraitance'):

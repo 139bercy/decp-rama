@@ -11,4 +11,3 @@ jsonschema
 lxml
 xmlschema
 tqdm
-psycopg2
