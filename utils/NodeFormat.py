@@ -1,3 +1,4 @@
+import logging
 
 class NodeFormat:
     def is_normalized_list_node(dico, parent_node, child_node) -> bool:
@@ -112,9 +113,9 @@ class NodeFormat:
                     # Convertir la valeur en float
                     marche[key] = float(marche[key])
                 except ValueError:
-                    logging.error(f"Erreur : la valeur de la clé '{key}' ne peut pas être convertie en entier.")
+                    logging.warning(f"Erreur : la valeur de la clé '{key}' ne peut pas être convertie en entier.")
                 except TypeError:
-                    logging.error(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
+                    logging.warning(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
 
     def force_ints(keys:list,marche:dict):
         for key in keys:
@@ -123,6 +124,6 @@ class NodeFormat:
                     # Convertir la valeur en int
                     marche[key] = int(marche[key])
                 except ValueError:
-                    logging.error(f"Erreur : la valeur de la clé '{key}' ne peut pas être convertie en entier.")
+                    logging.warning(f"Erreur : la valeur de la clé '{key}' ne peut pas être convertie en entier.")
                 except TypeError:
-                    logging.error(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
+                    logging.warning(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
