@@ -263,7 +263,29 @@ ORDER BY name;
 
 --SELECT * FROM decp_report.v_stats_all;
 
+CREATE OR REPLACE FUNCTION update_code_from_name()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.code := 
+	CASE
+        -- Vérifie si la chaîne contient au moins deux '_'
+        WHEN POSITION('_' IN NEW.name) <> (LENGTH(NEW.name) - POSITION('_' IN REVERSE(NEW.name)))+1 THEN
+            SUBSTRING(NEW.name,POSITION('_' IN NEW.name)+1, (LENGTH(NEW.name) - POSITION('_' IN REVERSE(NEW.name)))-POSITION('_' IN NEW.name))
+        -- Vérifie si la chaîne contient au moins un '_'
+        WHEN POSITION('_' IN NEW.name) > 0 THEN
+            SUBSTRING(NEW.name FROM 1 FOR POSITION('_' IN NEW.name) - 1)
+        ELSE
+            NEW.name -- Si aucun '_', renvoie la chaîne complète
+    END;
 
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER set_code_trigger
+BEFORE INSERT OR UPDATE ON decp_report.source
+FOR EACH ROW
+EXECUTE FUNCTION update_code_from_name();
 
 DROP FUNCTION IF EXISTS decp_report.get_query_stats_global();
 CREATE OR REPLACE FUNCTION decp_report.get_query_stats_global()
@@ -272,7 +294,36 @@ DECLARE
     sql_query TEXT;
 BEGIN
     SELECT
-    'SELECT r.session_id, (SELECT s.message FROM decp_report.session s WHERE s.session_id = r.session_id) as donnees,' ||
+    'SELECT ' ||
+    ' (SELECT end_date FROM decp_report."session" si WHERE si.session_id = r.session_id) AS session_date,' ||
+    string_agg(
+        'MAX(CASE WHEN s.source_id = ' || s.source_id || ' THEN r.nb_records END) AS "' || s.code || '_nb_records"',
+        ', '
+    ) ||
+    ','||
+    string_agg(
+        'MAX(CASE WHEN s.source_id = ' || s.source_id || ' THEN r.nb_errors END) AS "' || s.code || '_nb_errors"',
+        ', '
+    ) ||
+    ' FROM decp_report.v_nb_by_source_session r' ||
+    ' INNER JOIN decp_report.source s'||
+	' ON s.source_id = r.source_id' ||
+    ' GROUP BY r.session_id' ||
+    ' ORDER BY r.session_id'
+    INTO sql_query
+	FROM decp_report.source s;
+
+    return sql_query;
+END $$ LANGUAGE plpgsql;
+
+DROP FUNCTION IF EXISTS decp_report.get_query_stats_global_per();
+CREATE OR REPLACE FUNCTION decp_report.get_query_stats_global_per()
+RETURNS varchar AS $$
+DECLARE
+    sql_query TEXT;
+BEGIN
+    SELECT
+    'SELECT r.session_id, (SELECT s.message FROM decp_report.session s WHERE s.session_id = r.session_id) as etat,' ||
     ' (SELECT end_date FROM decp_report."session" si WHERE si.session_id = r.session_id) AS session_date,' ||
     string_agg(
         'MAX(CASE WHEN s.source_id = ' || s.source_id || ' THEN r.nb_records END) AS "' || s.code || '_nb_records"',
@@ -296,7 +347,5 @@ BEGIN
     INTO sql_query
 	FROM decp_report.source s;
 
-    -- Exécute la requête dynamique
     return sql_query;
 END $$ LANGUAGE plpgsql;
-
