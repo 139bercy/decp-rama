@@ -1,4 +1,5 @@
 # decp-rama-v2
+
 Decp-rama-v2 a pour objectif de recoder decp-rama (https://github.com/139bercy/decp-rama) en langage Python. Il s'agit encore d'un projet et le code présenté n'est donc pas celui aujourd'hui utilisé lors de la publication de base de données sur data.gouv.
 
 Rappel de ce que sont les données essentielles de la commande publique (ou DECP) sur [le blog de data.gouv.fr](https://www.data.gouv.fr/fr/posts/le-point-sur-les-donnees-essentielles-de-la-commande-publique/).
@@ -34,17 +35,22 @@ et publiée grâce au script publish_docker.sh
 - Récuperer le dossier github via actions/checkout@v2
 - Installer les dépendances nécessaires aux scripts de decp-rama-v2
 - Lancer main.py
-- Publier sur le serveur FTP de data.economie.gouv dans le dossier decp/test le résultat du script : results/decp.json
 
 ## **INSTRUCTIONS POUR FAIRE TOURNER EN LOCAL**
 
-Pour faire tourner en local decp-rama-v2 et obtenir le fichier decp.json aggrégé directement sur votre machine il faut :
+Pour faire tourner en local decp-rama et obtenir les fichiers decp-daily.json et decp-AAAA-MM.json aggrégé 
+sur le mois sur votre machine il faut :
 - Installer les dépendances présentes dans requirements.txt
 - Disposer d'une connexion Internet satisfaisante
 - Lancer ```python main.py``` dans le dossier principal
 - Le fichier final decp.json se trouvera dans le fichier resultats/
 
 Possibilité de lancer un seul process pour les tests : ```python main.py -P [process_name]```
+
+## **MODE TEST**
+
+Pour lancer l'application decp-rama-v2 en mode test, c.à.d. sans l'upload du fichier agrégé sur data.gouv
+il faut lancer le script python main.py avec l'option "-l". 
 
 ## **FIX A EFFECTUER ET PISTES D'AMÉLIORATION**
 
