@@ -11,4 +11,5 @@ jsonschema
 lxml
 xmlschema
 tqdm
+pypdl
 psycopg2

@@ -10,6 +10,7 @@ import jsonschema
 from jsonschema import validate,Draft7Validator,Draft202012Validator
 from lxml import etree
 from datetime import datetime
+from pypdl import Pypdl
 import pandas as pd
 import numpy as np
 import xmltodict
@@ -68,7 +69,7 @@ class SourceProcess:
         self.dico_2022_concession = []
 
         # Chargement du schemas json
-        scheme_path = 'schemes/schema_decp_v2.0.2.json'
+        scheme_path = 'schemes/schema_decp_v2.0.3.json'
         with open(scheme_path, "r",encoding='utf-8') as json_file:
             self.json_scheme = json.load(json_file)
             json_file.close
@@ -205,12 +206,14 @@ class SourceProcess:
         else:
             # Verification de l'existence d'un eventuel doublon + nettoyage + 
             # Téléchargement du nouveau fichier
+            dl = Pypdl(allow_reuse=True)
             for i in range(len(self.url)):
                 try:
                     if os.path.exists(f"sources/{self.source}/{self.title[i]}"):
                         os.remove(f"sources/{self.source}/{self.title[i]}")
                         logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
-                    wget.download(self.url[i], f"sources/{self.source}/{self.title[i]}")
+                    #wget.download(self.url[i], f"sources/{self.source}/{self.title[i]}")
+                    dl.start(url=self.url[i],file_path=f"sources/{self.source}/{self.title[i]}",retries=10,display=False)
                 except:
                     logging.error(f"Problème de téléchargement du fichier {self.url[i]}")
         logging.info(f"Téléchargement : {len(self.url)} fichier(s) OK")

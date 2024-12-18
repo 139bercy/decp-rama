@@ -13,12 +13,11 @@ parser.add_argument("-l", dest='local', action='store_true', help="run script lo
 #parser.add_argument("-f", dest='format', type=str, help="run script for format 2019")
 args = parser.parse_args()
 
-def main(data_format:str = 2022):
+def main(report,data_format:str = 2022):
     """La fonction main() appelle tour à tour les processus spécifiques (ProcessFactory.py/SourceProcess.py) et les
     étapes du Global Process (GlobalProcess.py)."""
 
     # Init reporting
-    report = Report('decp-rama',True)
     # Init resume
     step = StepMngmt()
     # get arguments from command line to know which process to run, if there is no arguments run all processes
@@ -40,7 +39,6 @@ def main(data_format:str = 2022):
     if not args.local:
         # gp.upload_s3()
         gp.upload_datagouv()
-    report.db_end_session('OK')
     step.reset()
     logging.info ("Execution de l'application terminée")
 
@@ -76,7 +74,10 @@ if __name__ == "__main__":
     for data_format in all_data_format:
         print("---------------------------------------------------------------")
         print(f"Traitement pour le format {data_format}")
-        # try:
-        main(data_format)
-        # except Exception as err:
-        #     print(f"Une erreur est survenue lors du traitement pour le format {data_format} - {err}")
+        report = Report('decp-rama',False)
+        try:
+            main(report,data_format)
+            report.db_end_session('OK')
+        except Exception as err:
+            report.db_end_session('KO ')
+            print(f"Une erreur est survenue lors du traitement pour le format {data_format} - {err}")
