@@ -535,9 +535,9 @@ class GlobalProcess:
                 marche[cle] = int(marche[cle])
                 #print(f"La durée en mois pour la clé '{cle}' a été convertie en entier.")
             except ValueError:
-                print(f"Erreur : la valeur de la clé '{cle}' ne peut pas être convertie en entier.")
+                logging.warning(f"Erreur : la valeur de la clé '{cle}' ne peut pas être convertie en entier.")
             except TypeError:
-                print(f"Erreur : la valeur de la clé '{cle}' est de type incompatible pour la conversion.")
+                logging.warning(f"Erreur : la valeur de la clé '{cle}' est de type incompatible pour la conversion.")
 
     def force_bool(self,cle:str,marche:dict):
         if cle in marche.keys() :
@@ -685,10 +685,9 @@ class GlobalProcess:
 
         # Nous avons changé de mois, on doit donc mettre à jour le fichier decp_<Annee> sur datagouv 
         # et créer la ressource pour le fichier mensuel et l'uploader
-        if ((self.get_current_date().month)!=config["resource_month"]):
+        if ((self.get_current_date().month)!=config["resource_month"]) and config["resource_month"] is not None:
             
             resource_id_prev_month = config["resource_id_month"]
-            suffix_prev_month = config["resource_year"] + '-' + config["resource_month"]
             _ = self._upload_file(headers,api,dataset_id,resource_id_prev_month,suffix_prev_month)
 
             resource_id_global = config["resource_id_global"]
@@ -708,11 +707,18 @@ class GlobalProcess:
                 data['resource_year'] = self.get_current_date().year
 
             with open(config_file, "w") as file:
-                    json.dump(data, file, indent=4)
-        
-        #Cas quand le mois n'a pas changé depuis la dernière exécution
+                json.dump(data, file, indent=4)        
+        #Cas quand le mois n'a pas changé depuis la dernière exécution (ou lors de la première execution)
         else:
             result_resource_id = self._upload_file(headers,api,dataset_id,config["resource_id_month"],suffix_month)
+
+            if config["resource_id_month"] is None:
+                config["resource_id_month"] = result_resource_id
+            if config["resource_month"] is None:
+                config["resource_month"] = self.get_current_date().month
+                config["resource_year"] = self.get_current_date().year
+            with open(config_file, "w") as file:
+                json.dump(config, file, indent=4) 
 
 
     def _upload_file(self,headers,api,dataset_id,resource_id:str,suffix:str) -> str:
