@@ -251,6 +251,7 @@ class GlobalProcess:
                 return self.extract_publication_dates(modification['modification'])
         return dates_publication
 
+    @StepMngmt().decorator(Step.EXPORT,None)
     def export(self):
         # if df is empty then return
         if len(self.df) == 0:
@@ -646,6 +647,7 @@ class GlobalProcess:
         client.upload_file(os.path.join("results", f"decp_{self.data_format}.json"), BUCKET_NAME, f"data/decp_{self.data_format}.json")
 
 
+    @StepMngmt().decorator(Step.UPLOAD_DATA_GOUV,None)
     def upload_datagouv(self):
         """
         Cette fonction exporte les données journalières, 

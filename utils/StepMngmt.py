@@ -69,6 +69,8 @@ class StepMngmt:
                         self.snapshot_dataframe(source,step,self_wrapper.df)
                     elif format == self.FORMAT_DICTS:
                         self.snapshot_dicts(source,step,self_wrapper.dico_2022_marche,self_wrapper.dico_2022_concession)
+                    elif format is None:
+                        self.snapshot(source,step)
                 else:
                     result = None
                     if format == self.FORMAT_DATAFRAME:

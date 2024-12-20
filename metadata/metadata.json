@@ -239,5 +239,55 @@
     "url": "",
     "validate" : true,
     "convert_nc": false
+  },
+  "geoflar":
+  {
+	  "description": "Fichier permettant d'enrichir les champs : INSEE COM, Geo point, SUPERFICIE, POPULATION",
+	  "url_source": "https://public.opendatasoft.com/explore/dataset/geoflar-communes-2015/download/?format=csv&timezone=Europe/Berlin&lang=fr&use_labels_for_header=true&csv_separator=%3B",
+	  "cle_api": "",
+	  "format": ".csv"
+  },
+  "cpv":
+  {
+      "description": "Liste des codes CPV       (FICHIER DIFFERENT DE CELUI DU PRESTATAIRE)",
+      "url_source": "https://www.economie.gouv.fr/files/files/directions_services/daj/marches_publics/oeap/recensement/cpv_2008_fr.xls",
+      "cle_api": "",
+      "format": ".xls"
+  },
+  "departement": {
+        "description": "Liste des départements",
+        "url_source": "https://www.insee.fr/fr/statistiques/fichier/4316069/departement2020-csv.zip",
+        "cle_api": "",
+        "format": ".csv"
+  },
+  "region": {
+        "description": "Liste des régions",
+        "url_source": "https://www.insee.fr/fr/statistiques/fichier/4316069/region2020-csv.zip",
+        "cle_api": "",
+        "format": ".csv"
+  },
+  "commune": {
+        "description": "Liste des communes",
+        "url_source": "https://www.insee.fr/fr/statistiques/fichier/5057840/commune2021-csv.zip",
+        "cle_api": "",
+        "format": ".csv"
+  },
+  "arrondissement": {
+        "description": "Liste des arrondissement",
+        "url_source": "https://www.insee.fr/fr/statistiques/fichier/5057840/arrondissement2021-csv.zip",
+        "cle_api": "",
+        "format": ".csv"
+  },
+  "stockEtablissement": {
+        "description": "Fichier stock des établissements (établissements actifs et fermés dans leur état courant au répertoire)",
+        "url_source": "https://files.data.gouv.fr/insee-sirene/StockEtablissement_utf8.zip",
+        "cle_api": "0651fb76-bcf3-4f6a-a38d-bc04fa708576",
+        "format": "_utf8.csv"
+  },
+  "stockUniteLegale": {
+        "description": "Fichier stock des unités légales (unités légales actives et cessées dans leur état courant au répertoire)",
+        "url_source": "https://files.data.gouv.fr/insee-sirene/StockUniteLegale_utf8.zip",
+        "cle_api": "825f4199-cadd-486c-ac46-a65a8ea1a047",
+        "format": "_utf8.csv"
   }
 }

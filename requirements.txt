@@ -1,5 +1,6 @@
 pandas
 datetime
+
 wget
 xmltodict
 regex
@@ -12,4 +13,18 @@ lxml
 xmlschema
 tqdm
 pypdl
-psycopg2
+psycopg2-binary
+numpy
+
+requests
+selenium
+scikit-learn
+scipy
+matplotlib
+folium
+geopy
+openpyxl
+pytest
+argparse 
+python-stdnum
+xlrd

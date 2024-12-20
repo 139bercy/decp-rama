@@ -12,9 +12,11 @@ class Step (Enum):
     FIX_ALL = 7
     DUPLICATE = 8
     EXPORT = 9
-    UPLOAD = 10
-
-
+    UPLOAD_DATA_GOUV = 10
+    AUGMENTE_LOAD = 11
+    AUGMENTE_CLEAN = 12
+    UPLOAD_DATA_ECO = 13
+    
 
 if __name__ == '__main__':
 

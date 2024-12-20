@@ -4,22 +4,27 @@ from reporting.Report import Report
 import logging
 from utils.StepMngmt import StepMngmt
 from utils.Step import Step
+import augmente.data_management
+import augmente.nettoyage
+import augmente.utils
 import argparse
 import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-P', dest='process', type=str, help='run a specific process')
 parser.add_argument("-l", dest='local', action='store_true', help="run script locally")
+parser.add_argument("-t", dest='test', action='store_true', help="run script without loading reference files")
 #parser.add_argument("-f", dest='format', type=str, help="run script for format 2019")
 args = parser.parse_args()
 
+step = StepMngmt()
+    
 def main(report,data_format:str = 2022):
     """La fonction main() appelle tour à tour les processus spécifiques (ProcessFactory.py/SourceProcess.py) et les
     étapes du Global Process (GlobalProcess.py)."""
 
     # Init reporting
     # Init resume
-    step = StepMngmt()
     # get arguments from command line to know which process to run, if there is no arguments run all processes
     if args.process:
         p = ProcessFactory(args.process,data_format,report)
@@ -39,8 +44,24 @@ def main(report,data_format:str = 2022):
     if not args.local:
         # gp.upload_s3()
         gp.upload_datagouv()
-    step.reset()
     logging.info ("Execution de l'application terminée")
+
+
+def main_augmente(data_format:str = '2022'):
+    
+    logger.info("Téléchargement des fichiers de données")
+    augmente.data_management.main()
+    logger.info("Fichiers mis à jour dans le dossier data")
+
+    logger.info(f"Application règles métier format {data_format}")
+    augmente.nettoyage.main(data_format)
+    logger.info("csv généré dans le dossier data")
+
+    # Partie désactivé logger.info("Enrichissement des données")
+    # enrichissement2.main()
+    # logger.info("csv enrichi dans le dossier data")
+    if not args.test and not args.local:
+        augmente.utils.export_all_csv(data_format,args.local)
 
 if __name__ == "__main__":
     """Lorsqu'on appelle la fonction main (courante), on définit le niveau de logging et le format d'affichage."""
@@ -74,10 +95,13 @@ if __name__ == "__main__":
     for data_format in all_data_format:
         print("---------------------------------------------------------------")
         print(f"Traitement pour le format {data_format}")
-        report = Report('decp-rama',False)
+        report = Report('decp-rama',True)
         try:
             main(report,data_format)
+            main_augmente(data_format)
+            step.reset()
             report.db_end_session('OK')
         except Exception as err:
             report.db_end_session('KO ')
             print(f"Une erreur est survenue lors du traitement pour le format {data_format} - {err}")
+        

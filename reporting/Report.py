@@ -105,8 +105,10 @@ class Report:
                     dic.append(data[i])
         else:
             for i in range(0,len(data)):
-                if data.iloc[i]['error'] is not None:
+                if ('error' in data.iloc[i] and data.iloc[i]['error'] is not None) \
+                    or ('Erreurs' in data.iloc[i] and data.iloc[i]['Erreurs'] is not None):
                     dic.append(data.iloc[i].to_dict())
+
         if len(dic)>0:
             self.add(step,code_erreur,message,dic)
 
@@ -198,7 +200,7 @@ class Report:
             'date': currentday,
             'sources': self.messages
             }
-        with open(f"results/{currentday}-errors.json", 'w', encoding='utf-8') as f:
+        with open(f"results/{currentday}-errors.json", 'w+', encoding='utf-8') as f:
             json.dump(json_data, f, ensure_ascii=False, indent=4)
 
     # Save in memory current statistics and reinit statistics 
