@@ -285,7 +285,7 @@ class GlobalProcess:
 
         # Cas du changement de mois 
         # prenant en compte le cas de l'inactivité de l'application pendant plusieurs jours 
-        if ((self.get_current_date().month)!=config["resource_month"]):
+        if ((self.get_current_date().month)!=config["resource_month"]) and config["resource_month"] is not None:
             logging.info("Finalisation du fichier du mois précédent")
             # On récupère la date du mois précédent  
             # pour pouvoir retrouver le nom du fichier contenant les marchés et concession du mois précédent.
@@ -490,11 +490,11 @@ class GlobalProcess:
                 del marche["source"]
             if 'idAccordCadre' in marche and marche['idAccordCadre'] == '':
                 del marche["idAccordCadre"]
-            self.force_int('dureeMois',marche)
-            self.force_int('offresRecues',marche)
-            self.force_bool('marcheInnovant',marche)
-            self.force_bool('attributionAvance',marche)
-            self.force_bool('sousTraitanceDeclaree',marche)
+            self.force_int_or_nc('dureeMois',marche)
+            self.force_int_or_nc('offresRecues',marche)
+            self.force_bool_or_nc('marcheInnovant',marche)
+            self.force_bool_or_nc('attributionAvance',marche)
+            self.force_bool_or_nc('sousTraitanceDeclaree',marche)
 
             if 'modifications' in marche and isinstance(marche['modifications'],list) and len(marche['modifications'])==0:
                 del marche['modifications']                
@@ -527,24 +527,7 @@ class GlobalProcess:
                     'contrat-concession': concessions
                 }
         }
-    
-    def force_int(self,cle:str,marche:dict):
-        if cle in marche.keys() :
-            try:
-                # Convertir la valeur en entier
-                marche[cle] = int(marche[cle])
-                #print(f"La durée en mois pour la clé '{cle}' a été convertie en entier.")
-            except ValueError:
-                logging.warning(f"Erreur : la valeur de la clé '{cle}' ne peut pas être convertie en entier.")
-            except TypeError:
-                logging.warning(f"Erreur : la valeur de la clé '{cle}' est de type incompatible pour la conversion.")
 
-    def force_bool(self,cle:str,marche:dict):
-        if cle in marche.keys() :
-            if ("true"==marche[cle]) or ("oui"==marche[cle]) or ("1"==marche[cle]):
-                marche[cle] = True
-            elif ("false"==marche[cle]) or ("non"==marche[cle]) or ("0"==marche[cle]):
-                marche[cle] = False
 
     def dico_exists_node_in_node(self,dico,parent_node, child_node):
         if parent_node in dico:
@@ -762,6 +745,25 @@ class GlobalProcess:
                 if node_child in element and isinstance(element[node_child],dict):
                     self._restore_attributes_by_prefix(element[node_child],'backup__')
 
+
+    
+    def force_int_or_nc(self,cle:str,marche:dict):
+        if cle in marche.keys() and marche[cle] != 'NC':
+            try:
+                # Convertir la valeur en entier
+                marche[cle] = int(marche[cle])
+                #print(f"La durée en mois pour la clé '{cle}' a été convertie en entier.")
+            except ValueError:
+                logging.warning(f"Erreur : la valeur de la clé '{cle}' ne peut pas être convertie en entier.")
+            except TypeError:
+                logging.warning(f"Erreur : la valeur de la clé '{cle}' est de type incompatible pour la conversion.")
+
+    def force_bool_or_nc(self,cle:str,marche:dict):
+        if cle in marche.keys() and marche[cle] != 'NC':
+            if ("true"==marche[cle]) or ("oui"==marche[cle]) or ("1"==marche[cle]):
+                marche[cle] = True
+            elif ("false"==marche[cle]) or ("non"==marche[cle]) or ("0"==marche[cle]):
+                marche[cle] = False
 
     def get_current_date(self) -> datetime:
         return datetime.now()
