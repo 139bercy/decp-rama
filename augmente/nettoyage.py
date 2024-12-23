@@ -42,7 +42,7 @@ def compute_execution_time(func):
         result = func(*args, **kwargs)
         end_time = time.time()
         execution_time = end_time - start_time
-        print(f"Execution time of {func.__name__}: {execution_time} seconds")
+        logging.info(f"Execution time of {func.__name__}: {execution_time} seconds")
         return result
     return wrapper
 
@@ -70,7 +70,7 @@ def main(data_format:str = '2022'):
         #json_source = 'decp_'+data_format +'.json'
         json_source = f"../decp-rama/results/decp-daily.json"
         #if not os.path.isfile("data/decpv2.json"):
-        #    print("Load file from S3 repositary")
+        #    logging.info("Load file from S3 repositary")
         if not args.test:
             augmente.utils.download_file("data/"+json_source,"data/"+json_source)
             augmente.utils.download_file("data/cpv_2008_fr.xls","data/cpv_2008_fr.xls")
@@ -197,19 +197,19 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
     # deja reporté report.add('Regles concessions','P_BAD_CONCESSION','Concessions inconsistantes',df_concession_badlines)
 
     if not df_concession.empty:
-        print("Concession valides : ", str(df_concession.shape[0]))
-        print("Concession mauvaises : ", str(df_concession_badlines.shape[0]))
-        print("Concession mal rempli % : ", str((df_concession_badlines.shape[0] / (df_concession.shape[0] + df_concession_badlines.shape[0]) * 100)))
+        logging.info("Concession valides : ", str(df_concession.shape[0]))
+        logging.info("Concession mauvaises : ", str(df_concession_badlines.shape[0]))
+        logging.info("Concession mal rempli % : ", str((df_concession_badlines.shape[0] / (df_concession.shape[0] + df_concession_badlines.shape[0]) * 100)))
     else:
-        print("Aucune concession traitée")
+        logging.info("Aucune concession traitée")
         
     if not df_marche.empty:
-        print("Marchés valides : ", str(df_marche.shape[0]))
-        print("Marché mauvais : ", str(df_marche_badlines.shape[0]))
-        print("Marché mal rempli % : ", str((df_marche_badlines.shape[0] / (df_marche.shape[0] + df_marche_badlines.shape[0]) * 100)))
+        logging.info("Marchés valides : ", str(df_marche.shape[0]))
+        logging.info("Marché mauvais : ", str(df_marche_badlines.shape[0]))
+        logging.info("Marché mal rempli % : ", str((df_marche_badlines.shape[0] / (df_marche.shape[0] + df_marche_badlines.shape[0]) * 100)))
     else:
         #df_marche_badlines = df_marche.empty
-        print("Aucun marché traité")
+        logging.info("Aucun marché traité")
 
     # Formater la date sous le format "YYYY-MM-DD"
     maintenant = datetime.now() 
@@ -467,7 +467,7 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         df.drop(columns=["titulaires"], inplace=True)
 
         logging.info("dedoublonnage_marche")
-        print("df_marché avant dédoublonnage : " + str(df.shape))
+        logging.info("df_marché avant dédoublonnage : " + str(df.shape))
         # filtre pour mettre la date de publication la plus récente en premier
         df = df.sort_values(by=["datePublicationDonnees"], ascending=False)
 
@@ -525,8 +525,8 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         # suppression des doublons en gardant la première ligne donc datePublicationDonnees la plus récente
         dff = df.drop_duplicates(subset=feature_doublons_marche, keep="first")
 
-        print("df_marché après dédoublonnage : " + str(dff.shape))
-        print("% de doublons marché : ", str((df.shape[0] - dff.shape[0]) / df.shape[0] * 100))
+        logging.info("df_marché après dédoublonnage : " + str(dff.shape))
+        logging.info("% de doublons marché : ", str((df.shape[0] - dff.shape[0]) / df.shape[0] * 100))
         return dff
 
     def marche_check_empty(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
@@ -538,7 +538,6 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         return df, dfb
 
     def marche_replace_titulaire_type(df: pd.DataFrame) -> pd.DataFrame:
-        #print("TEST",df["titulaire_typeIdentifiant_1"].str.match("FRW", na=False))
         bad_label = df["titulaire_typeIdentifiant_1"].str.match("FRW", na=True)
         df.loc[bad_label,'titulaire_typeIdentifiant_1'] = 'FRWF'
         bad_label = df["titulaire_typeIdentifiant_1"].str.match("HORS_UE", na=False)
@@ -785,7 +784,6 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
 
     df_marche_ = marche_cpv(df_marche_, df_cpv, data_format)
 
-    # print(df_marche_)
     #Champs ayant des listes
     df_marche_ = keep_more_recent(df_marche_,"modifications")
     df_marche_ = keep_more_recent(df_marche_,"modificationsActesSousTraitance")
@@ -929,7 +927,7 @@ def regles_concession(df_concession_: pd.DataFrame,data_format:str) -> pd.DataFr
         #        "donneesExecution.intituleTarif", "donneesExecution.tarif"]] = df["donneesExecution"].apply(extract_values_donnees_execution).apply(pd.Series)
 
         logging.info("dedoublonnage_concession")
-        print("df_concession_ avant dédoublonnage : " + str(df.shape))
+        logging.info("df_concession_ avant dédoublonnage : " + str(df.shape))
         # filtre pour mettre la date de publication la plus récente en premier
         df = df.sort_values(by=["datePublicationDonnees"], ascending=[False])
 
@@ -946,8 +944,8 @@ def regles_concession(df_concession_: pd.DataFrame,data_format:str) -> pd.DataFr
         # suppression des doublons en gardant la première ligne donc datePublicationDonnees la plus récente
         dff = df.drop_duplicates(subset=feature_doublons_concession,
                                                             keep="first")
-        print("df_concession_ après dédoublonnage : " + str(df.shape))
-        print("% doublon concession : ", str((df.shape[0] - dff.shape[0]) / df.shape[0] * 100))
+        logging.info("df_concession_ après dédoublonnage : " + str(df.shape))
+        logging.info("% doublon concession : ", str((df.shape[0] - dff.shape[0]) / df.shape[0] * 100))
         return dff
 
     df_concession_badlines_ = pd.DataFrame(columns=df_concession_.columns)
@@ -1139,7 +1137,6 @@ def keep_more_recent(df:pd.DataFrame,field_name:str)-> pd.DataFrame:
         
     #Sélectionner le dictionnaire ayant la date la plus récente
     
-    #print(field_name)
     if field_name in df.columns:
         listes_non_vides = df[df[field_name].apply(lambda x: isinstance(x, list) and len(x) > 0)]
         listes_vides = df[~df[field_name].apply(lambda x: isinstance(x, list) and len(x) > 0)]        
@@ -1157,12 +1154,10 @@ def keep_more_recent(df:pd.DataFrame,field_name:str)-> pd.DataFrame:
                 #Dictionaire avec plusieurs clés et valeurs
                 elif isinstance(element,dict):
                     dico_plus_recent = comparer_dico(dico_plus_recent,element)
-            #print(dico_plus_recent)     #ceci est correcte
             # Mettre à jour le DataFrame avec le dictionnaire le plus récent
             listes_non_vides.at[index, field_name] = [dico_plus_recent] if dico_plus_recent else []
             listes_non_vides = complete_columns_from_list(listes_non_vides,field_name,index,dico_plus_recent)
         df = pd.concat([listes_non_vides, listes_vides], ignore_index=True)
-    #print(listes_vides)
     return df
 
 def complete_columns_from_list(df:pd.DataFrame,field_name:str, ligne:int, dico: dict) -> pd.DataFrame:
@@ -1188,15 +1183,11 @@ def complete_columns_from_list(df:pd.DataFrame,field_name:str, ligne:int, dico: 
         
     
     if field_name=='modificationsActesSousTraitance':
-        #print (dico)
         df.loc[ligne, 'idModificationActeSousTraitance'] = dico.get('id', None)
         df.loc[ligne, 'dureeMoisModificationActeSousTraitance'] = dico.get('dureeMois', None)
         df.loc[ligne, 'dateNotificationModificationSousTraitanceModificationActeSousTraitance'] = dico.get('dateNotificationModificationSousTraitance', None)
         df.loc[ligne, 'montantModificationActeSousTraitance'] = dico.get('montant', None)
         df.loc[ligne, 'datePublicationDonneesModificationActeSousTraitance'] = dico.get('datePublicationDonnees', None)
-        # print(dico)
-        # print(df)
-
     return df
 
 def check_montant(df: pd.DataFrame, dfb: pd.DataFrame, col: str, montant : int = 15000000000) -> pd.DataFrame:
@@ -1407,8 +1398,7 @@ def mark_mixed_field(df:pd.DataFrame, field_name:str) -> pd.DataFrame:
     #Obtention de du dataframe ayant les codes CPV où les champs "orgineFrance" et "origineUE" sont obligatoires
     df_codes_obligatoires = df_cpv[masque_codes_obligatoires]
     df_codes_obligatoires = df_codes_obligatoires['CODE'].astype(str).str.replace(".", "-")
-    #print(df_codes_obligatoires['CODE'].tolist())
-
+    
     #Selon la liste, nous allons marquer les colonnes "orgineFrance" et "origineUE" par le tag "MQ"
     mandatory_code = df['codeCPV'].isin(df_codes_obligatoires.tolist())
     empty_mixed  = (~pd.notna(df[field_name]) | pd.isnull(df[field_name]) | (df[field_name]=='') | \

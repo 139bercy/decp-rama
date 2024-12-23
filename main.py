@@ -44,7 +44,6 @@ def main(report,data_format:str = 2022):
     if not args.local:
         # gp.upload_s3()
         gp.upload_datagouv()
-    logging.info ("Execution de l'application terminée")
 
 
 def main_augmente(data_format:str = '2022'):
@@ -89,12 +88,12 @@ if __name__ == "__main__":
     logging.info("                      NOUVELLE EXECUTION")
     logging.info("---------------------------------------------------------------")
 
-    print('Launching ...')
-
     all_data_format = ['2022']
     for data_format in all_data_format:
-        print("---------------------------------------------------------------")
-        print(f"Traitement pour le format {data_format}")
+        logging.info("---------------------------------------------------------------")
+        logging.info(f"            Traitement pour le format {data_format}")
+        logging.info("---------------------------------------------------------------")
+        
         report = Report('decp-rama',True)
         try:
             main(report,data_format)
@@ -103,5 +102,11 @@ if __name__ == "__main__":
             report.db_end_session('OK')
         except Exception as err:
             report.db_end_session('KO ')
-            print(f"Une erreur est survenue lors du traitement pour le format {data_format} - {err}")
+            logging.error(f"Une erreur est survenue lors du traitement pour le format {data_format} - {err}")
         
+        logging.info(f"Traitement pour le format {data_format} terminé")
+    
+    logging.info("---------------------------------------------------------------")
+    logging.info("Exécution de l'application terminée")
+    logging.info("---------------------------------------------------------------")
+                

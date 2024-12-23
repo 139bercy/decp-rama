@@ -148,7 +148,6 @@ class SourceProcess:
                 title = title + [prefix+d["title"] for d in ressources]
             else: 
                 url, title = self.check_date_file(url,title, ressources, old_ressources,prefix)
-                # print("Les urls dont le contenu a été modifié sont: ", url)
 
             #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
             if os.path.exists(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json"):
@@ -159,8 +158,7 @@ class SourceProcess:
             #Cas où les fichiers old_metadata n'existent pas: on fait une copie
             else:
                 shutil.copy(f"metadata/{self.source}/metadata_{self.key}_{i}.json",f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json")
-                print(os.listdir(f"old_metadata/{self.source}"))
-            logging.info("Récupération des url OK")
+                logging.info(os.listdir(f"old_metadata/{self.source}"))
 
         return url,title
 
@@ -187,7 +185,6 @@ class SourceProcess:
                     url = url + [d["url"]] 
                     title = title + [prefix+d["title"]]
 
-        print("url",url)
         return url, title         
     
 
@@ -199,9 +196,8 @@ class SourceProcess:
         logging.info("  ÉTAPE GET")
         logging.info(f"Début du téléchargement : {len(self.url)} fichier(s)")
         os.makedirs(f"sources/{self.source}", exist_ok=True)
-        # print("SELF.URL:" , self.url)
         if self.cle_api==[]:
-            print("Pas  de clé api")
+            logging.info("Pas de clé api pour télécherger les données")
             self._download_without_metadata()
         else:
             # Verification de l'existence d'un eventuel doublon + nettoyage + 
@@ -242,7 +238,7 @@ class SourceProcess:
         #dans le dossier puis affectation du nom du fichier à l'attribut titre
         else:
             wget.download(self.url[0], f"sources/{self.source}/")
-            print(os.listdir(f"sources/{self.source}"))
+            logging.info(os.listdir(f"sources/{self.source}"))
             self.title = [ os.listdir(f"sources/{self.source}")[0] ]
             logging.info(f"Titre des fichiers : {self.title}")
 
@@ -605,13 +601,10 @@ class SourceProcess:
         if "offresRecues" in self.df.columns: 
             self.df['offresRecues'] = self.df['offresRecues'].fillna(0).astype(int)
         if "marcheInnovant" in self.df.columns:
-            #print("TYPE COLONNE MARCHE INNOVANT:", self.df['marcheInnovant'].dtype)
             self.convert_boolean('marcheInnovant')
         if "attributionAvance" in self.df.columns:
-            #print("TYPE COLONNE ATTRIBUTION AVANCEE:", self.df['attributionAvance'].dtype)
             self.convert_boolean('attributionAvance')
         if "sousTraitanceDeclaree" in self.df.columns:
-            #print("TYPE COLONNE sous traitance:", self.df['sousTraitanceDeclaree'].dtype)
             self.convert_boolean('sousTraitanceDeclaree')
         
         if "dureeMois" in self.df.columns:

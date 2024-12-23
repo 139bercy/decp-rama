@@ -7,6 +7,10 @@ __pycache__/
 # Results and sources
 results
 sources
+data
+data_eclatees
+processing
+cache
 old_metadata
 bad_results
 tools_flux

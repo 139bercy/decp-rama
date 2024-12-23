@@ -76,14 +76,14 @@ def download_file(file_name_s3: str, file_name_local: str, verbose=False):
     path, filename = os.path.split(
         file_name_local)  # On télécharge d'abord à la racine du répertoire courant. Puis on déplace. Sinon erreur s3.
     if verbose:
-        print(f"Fichier {file_name_s3} téléchargé vers {filename}")
+        logging.info(f"Fichier {file_name_s3} téléchargé vers {filename}")
     bucket.download_file(file_name_s3, filename)
     if "/" in file_name_local:
         if not (os.path.exists(path)):  # Si le chemin data n'existe pas (dans le cas de la CI et de Saagie)
             os.mkdir(path)
         os.replace(filename, os.path.join(path, filename))
         if verbose:
-            print(f"fichier{filename} déplacé vers {os.path.join(path, filename)}")
+            logging.info(f"fichier{filename} déplacé vers {os.path.join(path, filename)}")
     return None
 
 def download_file(file_name:str):

@@ -36,28 +36,28 @@ class Db:
         conn = None
         try:
             # connect to the PostgreSQL server
-            print('Connecting to the PostgreSQL database...')
+            logging.info('Connecting to the PostgreSQL database...')
             conn = psycopg2.connect(**self.connection_params)
             
             # create a cursor
             cur = conn.cursor()
             
         # execute a statement
-            print('PostgreSQL database version:')
+            logging.info('PostgreSQL database version:')
             cur.execute('SELECT version()')
 
             # display the PostgreSQL database server version
             db_version = cur.fetchone()
-            print(db_version)
+            logging.info(db_version)
         
         # close the communication with the PostgreSQL
             cur.close()
         except (Exception, psycopg2.DatabaseError) as error:
-            print(error)
+            logging.error(error)
         finally:
             if conn is not None:
                 conn.close()
-                print('Database connection closed.')
+                logging.info('Database connection closed.')
 
     def add_session(self,session_name):
         """
@@ -77,7 +77,7 @@ class Db:
             connection.commit()
 
         except Exception as e:
-            print(self.ERROR_MESSAGE_SESSION_BEGIN, e)
+            logging.error(self.ERROR_MESSAGE_SESSION_BEGIN, e)
         finally:
             # Fermeture de la connexion
             if cursor:
@@ -104,7 +104,7 @@ class Db:
             connection.commit()
 
         except Exception as e:
-            print(self.ERROR_MESSAGE_SESSION_END, e)
+            logging.error(self.ERROR_MESSAGE_SESSION_END, e)
         finally:
             # Fermeture de la connexion
             if cursor:
@@ -151,10 +151,8 @@ class Db:
             # Commit des changements
             connection.commit()
 
-            #print("L'enregistrement a été ajouté avec succès.")
-
         except Exception as e:
-            print(self.ERROR_MESSAGE_SESSION_REPORT, e)
+            logging.error(self.ERROR_MESSAGE_SESSION_REPORT, e)
         finally:
             # Fermeture de la connexion
             if cursor:
@@ -190,7 +188,7 @@ class Db:
             connection.commit()
 
         except Exception as e:
-            print(self.ERROR_MESSAGE_STEP, e)
+            logging.error(self.ERROR_MESSAGE_STEP, e)
         finally:
             # Fermeture de la connexion
             if cursor:
@@ -223,7 +221,7 @@ class Db:
             connection.commit()
 
         except Exception as e:
-            print(self.ERROR_MESSAGE_FILE, e)
+            logging.error(self.ERROR_MESSAGE_FILE, e)
         finally:
             if cursor:
                 cursor.close()
@@ -251,7 +249,7 @@ class Db:
             connection.commit()
 
         except Exception as e:
-            print(self.ERROR_MESSAGE_EXCLUSION, e)
+            logging.error(self.ERROR_MESSAGE_EXCLUSION, e)
         finally:
             if cursor:
                 cursor.close()
@@ -289,7 +287,7 @@ class Db:
             connection.commit()
 
         except Exception as e:
-            print(self.ERROR_MESSAGE_SOURCE, e)
+            logging.error(self.ERROR_MESSAGE_SOURCE, e)
         finally:
             # Fermeture de la connexion
             if cursor:

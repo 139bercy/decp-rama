@@ -10,7 +10,7 @@ import logging
 
 import ftplib
 def upload_dataeco(file_to_upload : str, remote_path : str) -> None : 
-    print(f"Upload {file_to_upload} to data.eco")
+    logging.info(f"Upload {file_to_upload} to data.eco")
 
     path_file_to_upload = "data/" + file_to_upload
     # PATH_FILE_CONFIG = "confs/config_data.json"
@@ -63,11 +63,11 @@ def upload_dataeco(file_to_upload : str, remote_path : str) -> None :
             fh = open(path_file_to_upload, 'rb')
             myFTP.storbinary(f'STOR {file_to_upload}', fh)
             fh.close()
-            print(f"Vous avez upload {path_file_to_upload} depuis votre version local vers {remote_path}")
+            logging.info(f"Vous avez upload {path_file_to_upload} depuis votre version local vers {remote_path}")
         except:
             logging.error("Erreur dans l'upload des fichiers")
     else:
-        print ("Source File does not exist")
+        logging.info ("Source File does not exist")
 
 
 
@@ -81,7 +81,7 @@ def upload_dataeco(file_to_upload : str, remote_path : str) -> None :
     # dft.to_csv(path_file_o_upload_csv, quoting=csv.QUOTE_NONNUMERIC, sep=";", index=False)
     # try :
     #     bash_cmd = [f" lftp -u {USER_DATAECO}:{PWD_DATAECO} {HOST_DATAECO} -e 'set ftp:ssl-force true ; set ssl:verify-certificate false;cd decp; put {path_file_to_upload}; quit'"] # Je n'ai pas trouvé de biblio ftp python satisfaisante. Donc ce sera en bash
-    #     print ( "ALED",bash_cmd)
+    #     logging.info ( "ALED",bash_cmd)
     # except Exception as err:
     #                 logging.error(f"On est tombé sur un hic - {err}")
     # subprocess.call(bash_cmd, shell=True)

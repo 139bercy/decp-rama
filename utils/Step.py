@@ -29,16 +29,13 @@ if __name__ == '__main__':
     with open('data.json', 'w') as json_file:
         json.dump(data_to_save, json_file)
 
-    print("Données sauvegardées dans le fichier JSON.")
-
     # Charger les données depuis le fichier JSON
     with open('data.json', 'r') as json_file:
         loaded_data = json.load(json_file)
 
     # Récupérer la valeur de l'attribut 'source'
     source_value = loaded_data['source']
-    print(f"Valeur chargée: {source_value}")
-
+    
     # Convertir la valeur chargée en membre de l'énumération
     source_enum = Step(source_value)
-    print(f"Membre de l'énumération correspondant: {source_enum.name}")
+    

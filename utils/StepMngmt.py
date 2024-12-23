@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import shutil
 from utils.Step import Step
+import logging
 
 class StepMngmt:
     _instance = None
@@ -55,14 +56,8 @@ class StepMngmt:
                     
                 if not self.bypass(source,step):
                     
-                    # Opération avant l'appel à la méthode
-                    print(f"Avant l'appel à {func.__name__} avec paramètre: {source},{step},{format}, données classe: {self.bypass(source,step)}")
-
                     # Appel à la méthode de classe
                     result = func(self_wrapper, *args, **kwargs)
-
-                    # Opération après l'appel à la méthode
-                    print(f"Après l'appel à {func.__name__} avec paramètre: {source},{step},{format}")
 
                     # Accéder aux données de l'instance de MyClass
                     if format == self.FORMAT_DATAFRAME:
@@ -112,32 +107,36 @@ class StepMngmt:
 
     def resume(self,source:str,step:Step,format:str) -> pd.DataFrame|dict:
         path = self._get_snapshot_path(source,step,format)
-        if format == self.FORMAT_DATAFRAME:
-            return pd.read_pickle(path)
-        else:
-            with open(path, encoding="utf-8") as json_file:
-                return json.load(json_file)
-
+        if os.path.exists(path):
+            if format == self.FORMAT_DATAFRAME:
+                return pd.read_pickle(path)
+            else:
+                with open(path, encoding="utf-8") as json_file:
+                    return json.load(json_file)
+        return None
 
     def resume_dicts(self,source:str,step:Step,format:str) -> tuple[dict,dict]:
         path = self._get_snapshot_path(source,step,format+'_marche')
-        with open(path, encoding="utf-8") as json_file:
-            dico_marche = json.load(json_file)
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as json_file:
+                dico_marche = json.load(json_file)
         path = self._get_snapshot_path(source,step,format+'_concession')
-        with open(path, encoding="utf-8") as json_file:
-            dico_concession = json.load(json_file)
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as json_file:
+                dico_concession = json.load(json_file)
         return dico_marche, dico_concession
 
 
     def bypass(self,source:str,step:Step) -> pd.DataFrame|dict:
         init_status = self._check_init_status(source)
-        if init_status == Step.NONE:                # Previous launch end here, need to process operation
+        if init_status == Step.NONE:                # Previous launchnot found, need to process operation
             return False
         elif init_status.value == step.value:       # Previous launch end here, need to process operation
             return True
         elif init_status.value < step.value:        # Previous launch ended earlier, need to process operation
             return False
         elif init_status.value > step.value:        # Previous launch ended further, just continue
+            logging.info(f"PASS step {step}")
             return True
 
 

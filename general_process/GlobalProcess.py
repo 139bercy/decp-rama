@@ -124,7 +124,7 @@ class GlobalProcess:
             if "nature" in self.df.columns:
                 self.df.loc[bool_nan_type, "_type"] = self.df.loc[bool_nan_type,"nature"].apply(lambda x: "Marché" if "march" in x.lower() else "Concession")
         else:
-            print("_type non defini")
+            logging.warning("_type non defini")
         # S'il y a des Nan dans les modifications, on met une liste vide pour coller au format du v1
         if "modifications" in self.df.columns:
             mask_modifications_nan = self.df.loc[:, "modifications"].isnull()
@@ -398,7 +398,7 @@ class GlobalProcess:
                 logging.error(f"Exception lors du chargement du fichier json {path} - {err}")
                 dico={}
         else:
-            print("le fichier {path} est vide")
+            logging.warning("le fichier {path} est vide")
             dico={}
         return dico
     
@@ -576,10 +576,10 @@ class GlobalProcess:
                 error_file.write(jsonPath + "\n")
                 for error in errors_json:
                     error_file.write(error + "\n")
-            print(f"{len(errors_json)} erreurs de validation ont été sauvegardées dans erreur.log.txt.")
+            logging.info(f"{len(errors_json)} erreurs de validation ont été sauvegardées dans erreur.log.txt.")
             return False
         else:
-            print("Le fichier JSON est valide.")
+            logging.info("Le fichier JSON est valide.")
             return True     
 
     def _dico_merge(self,dico_ancien: dict,dico_nouveau: dict) -> dict:
@@ -754,7 +754,6 @@ class GlobalProcess:
             try:
                 # Convertir la valeur en entier
                 marche[cle] = int(marche[cle])
-                #print(f"La durée en mois pour la clé '{cle}' a été convertie en entier.")
             except ValueError:
                 logging.warning(f"Erreur : la valeur de la clé '{cle}' ne peut pas être convertie en entier.")
             except TypeError:
