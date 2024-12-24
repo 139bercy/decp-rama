@@ -18,13 +18,7 @@ numpy
 
 requests
 selenium
-scikit-learn
-scipy
-matplotlib
-folium
-geopy
 openpyxl
 pytest
 argparse 
-python-stdnum
 xlrd
