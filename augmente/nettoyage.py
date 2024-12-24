@@ -71,9 +71,9 @@ def main(data_format:str = '2022'):
         json_source = f"../decp-rama/results/decp-daily.json"
         #if not os.path.isfile("data/decpv2.json"):
         #    logging.info("Load file from S3 repositary")
-        if not args.test:
-            augmente.utils.download_file("data/"+json_source,"data/"+json_source)
-            augmente.utils.download_file("data/cpv_2008_fr.xls","data/cpv_2008_fr.xls")
+        #if not args.test:
+        #    #augmente.utils.download_file("data/"+json_source,"data/"+json_source)
+        #    augmente.utils.download_file("data/cpv_2008_fr.xls","data/cpv_2008_fr.xls")
 
         logger.info(f"Opening {json_source}")
         with open(json_source, 'rb') as f:
