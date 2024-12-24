@@ -94,7 +94,7 @@ if __name__ == "__main__":
         logging.info(f"            Traitement pour le format {data_format}")
         logging.info("---------------------------------------------------------------")
         
-        report = Report('decp-rama',True)
+        report = Report('decp-rama',False)
         try:
             main(report,data_format)
             main_augmente(data_format)
