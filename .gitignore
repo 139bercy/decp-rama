@@ -16,6 +16,7 @@ bad_results
 tools_flux
 resources
 METADATA_FOR_REPLAY
+config.json
 
 # C extensions
 *.so

@@ -88,6 +88,11 @@ if __name__ == "__main__":
     logging.info("                      NOUVELLE EXECUTION")
     logging.info("---------------------------------------------------------------")
 
+    if args.local:
+        logging.info("Option exécution local activée")
+    if args.test:
+        logging.info("Option exécution de test activée")
+        
     all_data_format = ['2022']
     for data_format in all_data_format:
         logging.info("---------------------------------------------------------------")
