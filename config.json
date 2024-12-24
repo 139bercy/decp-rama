@@ -1,16 +1,16 @@
 {
     "url_api": "https://www.data.gouv.fr/api/1",
-    "dataset_id": "5cd57bf68b4c4179299eb0e9",
-    "resource_id_global": "4fafdaff-b697-4494-9523-e9f56916fea8",
+    "dataset_id": "",
+    "resource_id_global": "",
     "resource_year": 2024,
-    "resource_id_month": "67614c69-f8b7-4df3-adf5-2b29c16643b1",
+    "resource_id_month": "",
     "resource_month": 12,
-    "data_gouv_api_key": "eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyIjoiNWYwZjA0NzZkNzk3NDZjYmU5OGNjYmMwIiwidGltZSI6MTY0ODIxNzg4Ny4wOTg0ODE3fQ.d9b1s_170PeSNAOLyqFFOGoW8irEg1nxNxn-fdGCGAckFbVcIxpaxkEm8H-BlI6nLLvWmvS_lL3nKWaHb7Cd9g",
+    "data_gouv_api_key": "",
     "database": {
-        "dbname": "ifap",
-        "user": "ifap_install",
-        "password": "ifap_install",
-        "host": "localhost",
-        "port": "5432"
+        "dbname": "",
+        "user": "",
+        "password": "",
+        "host": "",
+        "port": ""
     }
 }
