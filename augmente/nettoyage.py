@@ -68,7 +68,7 @@ def main(data_format:str = '2022'):
         logger.info("Format utilisé " + data_format)
 
         #json_source = 'decp_'+data_format +'.json'
-        json_source = f"../decp-rama/results/decp-daily.json"
+        json_source = f"results/decp-daily.json"
         #if not os.path.isfile("data/decpv2.json"):
         #    logging.info("Load file from S3 repositary")
         #if not args.test:
@@ -949,7 +949,7 @@ def regles_concession(df_concession_: pd.DataFrame,data_format:str) -> pd.DataFr
         dff = df.drop_duplicates(subset=feature_doublons_concession,
                                                             keep="first")
         logging.info("df_concession_ après dédoublonnage : " + str(df.shape))
-        logging.info("% doublon concession : ", str((df.shape[0] - dff.shape[0]) / df.shape[0] * 100))
+        logging.info("% doublon concession : "+ str((df.shape[0] - dff.shape[0]) / df.shape[0] * 100))
         return dff
 
     df_concession_badlines_ = pd.DataFrame(columns=df_concession_.columns)
