@@ -1,14 +1,6 @@
 # Étape 1: Image temporaire pour installer les dépendances
 FROM python:3.12.8 AS builder
 
-RUN apt-get update && \
-    apt-get install -y libpq-dev gcc && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-# Create virtual environment
-RUN python -m venv /opt/venv
-# Activate virtual environment
-ENV PATH="/opt/venv/bin:$PATH"
 WORKDIR /build
 
 # Copie uniquement le fichier requirements.txt
@@ -32,4 +24,4 @@ COPY . /app
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Démarrer le projet
-CMD [ "python", "main.py" ]
+CMD [ "python", "app.py" ]

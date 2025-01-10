@@ -15,9 +15,7 @@ class ProcessFactory:
         # self.processes = [DecpAwsProcess, BfcProcess, PesProcess, AwsProcess, AifeProcess, EmarProcess, LyonProcess, MegaProcess]  # Supprimer le BRe car pris en compte dans megalisbre, DecpAwsProcess
         #self.processes = [DecpAwsProcess, EmarProcess, LyonProcess]  # Supprimer le BRe car pris en compte dans megalisbre, DecpAwsProcess
         #self.processes = [PesProcess, LyonProcess, EmarProcess]
-        self.processes = [Aife2024Process]
         #self.processes = [MegaProcess]
-        self.processes = [Pes2024Process]
         #self.processes = [Emar2024Process]
         #self.processes = [SampleJsonProcess]
         #self.processes = [SampleXmlProcess]

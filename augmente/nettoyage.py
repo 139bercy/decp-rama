@@ -79,10 +79,10 @@ def main(data_format:str = '2022'):
         with open(json_source, 'rb') as f:
             # c'est long de charger le json, je conseille de le faire une fois et de sauvegarder le df en pickle pour les tests
             df = augmente.convert_json_to_pandas.manage_modifications(json.load(f),data_format)
-        if args.test:
-            #m = math.ceil(len(df.index)/3)
-            df = df.sample(n=len(df.index), random_state=1)   #on récupère tous les marchés et concessions
-            logger.info("Mode test activé")
+        #if args.test:
+        #    #m = math.ceil(len(df.index)/3)
+        #    df = df.sample(n=len(df.index), random_state=1)   #on récupère tous les marchés et concessions
+        #    logger.info("Mode test activé")
 
         logger.info("Nettoyage des données")
         manage_data_quality(df,data_format)
@@ -100,7 +100,8 @@ def main(data_format:str = '2022'):
         step.snapshot_dataframe(StepMngmt.SOURCE_ALL,Step.AUGMENTE_CLEAN,df)
 
 def restore_nc(df,field):
-    df[field] = df.apply(lambda row: row['backup__'+field] if pd.isna(row[field]) and row['backup__'+field] == 'NC' else row[field], axis=1)
+    if 'backup__'+field in df.columns:
+        df[field] = df.apply(lambda row: row['backup__'+field] if pd.isna(row[field]) and row['backup__'+field] == 'NC' else row[field], axis=1)
 
 @compute_execution_time
 def manage_data_quality(df: pd.DataFrame,data_format:str):
@@ -197,16 +198,16 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
     # deja reporté report.add('Regles concessions','P_BAD_CONCESSION','Concessions inconsistantes',df_concession_badlines)
 
     if not df_concession.empty:
-        logging.info("Concession valides : ", str(df_concession.shape[0]))
-        logging.info("Concession mauvaises : ", str(df_concession_badlines.shape[0]))
-        logging.info("Concession mal rempli % : ", str((df_concession_badlines.shape[0] / (df_concession.shape[0] + df_concession_badlines.shape[0]) * 100)))
+        logging.info("Concession valides : "+ str(df_concession.shape[0]))
+        logging.info("Concession mauvaises : "+ str(df_concession_badlines.shape[0]))
+        logging.info("Concession mal rempli % : "+ str((df_concession_badlines.shape[0] / (df_concession.shape[0] + df_concession_badlines.shape[0]) * 100)))
     else:
         logging.info("Aucune concession traitée")
         
     if not df_marche.empty:
-        logging.info("Marchés valides : ", str(df_marche.shape[0]))
-        logging.info("Marché mauvais : ", str(df_marche_badlines.shape[0]))
-        logging.info("Marché mal rempli % : ", str((df_marche_badlines.shape[0] / (df_marche.shape[0] + df_marche_badlines.shape[0]) * 100)))
+        logging.info("Marchés valides : "+ str(df_marche.shape[0]))
+        logging.info("Marché mauvais : "+ str(df_marche_badlines.shape[0]))
+        logging.info("Marché mal rempli % : "+ str((df_marche_badlines.shape[0] / (df_marche.shape[0] + df_marche_badlines.shape[0]) * 100)))
     else:
         #df_marche_badlines = df_marche.empty
         logging.info("Aucun marché traité")
@@ -399,7 +400,9 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
     suppression_colonnes =['dureeMoisActeSousTraitance', 'montantActeSousTraitance', 'variationPrixActeSousTraitance',\
                             'montantActeSousTraitance', 'idActeSousTraitance', 'dateNotificationActeSousTraitance',\
                             'datePublicationDonneesActeSousTraitance', 'typeIdentifiantSousTraitant','idSousTraitant']
-    df_marche_.drop(columns=suppression_colonnes, inplace=True)
+    for column in suppression_colonnes:
+        if column in df_marche_.columns:
+            df_marche_.drop(columns=suppression_colonnes, inplace=True)
 
     @compute_execution_time
     def dedoublonnage_marche(df: pd.DataFrame, feature_doublons_marche) -> pd.DataFrame:
@@ -464,7 +467,8 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
 
         df = df["titulaires"].apply(extract_values,data_format=data_format).join(df)
 
-        df.drop(columns=["titulaires"], inplace=True)
+        if "titulaires" in df.columns:
+            df.drop(columns=["titulaires"], inplace=True)
 
         logging.info("dedoublonnage_marche")
         logging.info("df_marché avant dédoublonnage : " + str(df.shape))
@@ -526,7 +530,7 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         dff = df.drop_duplicates(subset=feature_doublons_marche, keep="first")
 
         logging.info("df_marché après dédoublonnage : " + str(dff.shape))
-        logging.info("% de doublons marché : ", str((df.shape[0] - dff.shape[0]) / df.shape[0] * 100))
+        logging.info("% de doublons marché : "+ str((df.shape[0] - dff.shape[0]) / df.shape[0] * 100))
         return dff
 
     def marche_check_empty(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
