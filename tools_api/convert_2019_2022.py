@@ -39,6 +39,8 @@ def delete_nodes(json_dorigine, json_reference):
             del json_dorigine[cle]
 
     return json_dorigine
+
+
 def value(data:dict,nodes:list):
     value = data
     for node in nodes:
@@ -47,6 +49,29 @@ def value(data:dict,nodes:list):
         else:
             return None
     return value
+
+def value_list(data:list,attributes:list,sub_node:str):
+    result = []
+    for element in data:
+        new_element = {sub_node: {}}
+        for attribute in attributes:
+            new_element[sub_node][attribute] = value(element,[attribute])
+        result.append(new_element)
+    return result
+
+def value_list_list(data,node,attributes:list,sub_node,included_node:str,included_attributes:list,included_sub_node:str):
+    result = None
+    if node in data:
+        result = []
+        for element in data[node]:
+            new_element = {sub_node: {}}
+            for attribute in attributes:
+                if attribute == included_node and attribute in element:
+                    new_element[sub_node][attribute] = value_list([element[attribute]],included_attributes,included_sub_node)
+                else:
+                    new_element[sub_node][attribute] = value(element,[attribute])
+            result.append(new_element)
+    return result
 
 def convert_marche(marche:dict) -> dict:
     marche = {
@@ -77,55 +102,24 @@ def convert_marche(marche:dict) -> dict:
         'typePrix': value(marche,['typePrix']),
         'attributionAvance': value(marche,['attributionAvance']),
         'tauxAvance': value(marche,['tauxAvance']),
-        'titulaires': {
-            'id': value(marche,['titulaires','id']),
-            'typeIdentifiant': value(marche,['titulaires','typeIdentifiant'])
-        },
+        'titulaires': value_list(marche['titulaires'],['id','typeIdentifiant'],'titulaire'),
         'typeGroupementOperateurs': value(marche,['typeGroupementOperateurs']),
         'sousTraitanceDeclaree': value(marche,['sousTraitanceDeclaree']),
         'datePublicationDonnees': value(marche,['datePublicationDonnees']),
-        'actesSousTraitance': {
-            'id': value(marche,['actesSousTraitance','id']),
-            'sousTraitant': {
-                'id':  None,
-                'typeIdentifiant':  None,
-                'dureeMois':  None,
-                'dateNotification':  None,
-                'montant':  None,
-                'variationPrix': None,
-                'datePublicationDonnees': None
-            }
-        },
-        'modifications': {
-            'id': value(marche,['modifications','id']),
-            'dureeMois': value(marche,['modifications','dureeMois']),
-            'montant': value(marche,['modifications','montant']),
-            'titulaires': {
-                'id':  value(marche,['modifications','titulaires','id']),
-                'typeIdentifiant':  value(marche,['modifications','titulaires','typeIdentifiant'])
-            },
-            'dateNotificationModification': None,
-            'datePublicationDonneesModification': value(marche,['modifications','datePublicationDonneesModification'])
-        },
-        'modificationsActesSousTraitance': {
-            'id': None,
-            'dureeMois': None,
-            'dateNotificationModificationSousTraitance': None,
-            'montant': None,
-            'datePublicationDonnees': None
-        }
+        'modifications': value_list_list(marche,'modifications',['id','dureeMois','montant','titulaires','dateNotificationModification','datePublicationDonneesModification'],'modification','titulaires',['id','typeIdentifiant'],'titulaire')
     }
     return marche
 
 
 def convert_concession(marche):
     return marche
-    
 
 # Chargement du fichier JSON
-with open('results/decp-2019.json', 'r', encoding='utf-8') as f:
+#with open('results/decp-2019.json', 'r', encoding='utf-8') as f:
+with open('results/sample-2019.json', 'r', encoding='utf-8') as f:
     data = json.load(f)
 
+new_list = []
 for marche in data['marches']:
     if without_accents(marche["nature"].lower()) in nature_marches_min:
         # Cas d'un marché
@@ -133,5 +127,9 @@ for marche in data['marches']:
     else:
         # Cas d'une concession
         marche = convert_concession(marche)
+    new_list.append(marche)
+
+with open('results/sample-2019-to-2022.json', 'w+', encoding='utf-8') as f:
+    json.dump(new_list, f, indent=2, ensure_ascii=False)
 
 print("End")
