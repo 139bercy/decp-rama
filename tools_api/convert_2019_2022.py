@@ -67,7 +67,10 @@ def value_list_list(data,node,attributes:list,sub_node,included_node:str,include
             new_element = {sub_node: {}}
             for attribute in attributes:
                 if attribute == included_node and attribute in element:
-                    new_element[sub_node][attribute] = value_list([element[attribute]],included_attributes,included_sub_node)
+                    if included_sub_node in element[attribute]:
+                        new_element[sub_node][attribute] = value_list(element[attribute][included_sub_node] if isinstance(element[attribute][included_sub_node],list) else [element[attribute][included_sub_node]],included_attributes,included_sub_node)
+                    else:
+                        new_element[sub_node][attribute] = value_list([element[attribute]],included_attributes,included_sub_node)
                 else:
                     new_element[sub_node][attribute] = value(element,[attribute])
             result.append(new_element)
@@ -108,6 +111,7 @@ def convert_marche(marche:dict) -> dict:
         'datePublicationDonnees': value(marche,['datePublicationDonnees']),
         'modifications': value_list_list(marche,'modifications',['id','dureeMois','montant','titulaires','dateNotificationModification','datePublicationDonneesModification'],'modification','titulaires',['id','typeIdentifiant'],'titulaire')
     }
+    # TODO remove empty node "modification" (when modification : None or modification : {} )
     return marche
 
 
@@ -129,7 +133,7 @@ for marche in data['marches']:
         marche = convert_concession(marche)
     new_list.append(marche)
 
-with open('results/sample-2019-to-2022.json', 'w+', encoding='utf-8') as f:
+with open('results/sample-2019-cobverted-to-2022.json', 'w+', encoding='utf-8') as f:
     json.dump(new_list, f, indent=2, ensure_ascii=False)
 
 print("End")
