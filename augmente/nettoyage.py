@@ -179,8 +179,12 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
     if data_format=="2022":
         if not df_concession.empty:
             restore_nc(df_concession,'dureeMois')
+
             stabilize_columns(df_concession,"concession_"+data_format)
+            stabilize_columns(df_concession_badlines,"concession_"+data_format,True)
+
             df_concession = concession_mark_fields(df_concession)
+
         if not df_marche.empty:
             restore_nc(df_marche,'offresRecues')
             restore_nc(df_marche,'marcheInnovant')
@@ -191,6 +195,8 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             restore_nc(df_marche,'variationPrixActeSousTraitance')
 
             stabilize_columns(df_marche,"marche_"+data_format)
+            stabilize_columns(df_marche_badlines,"marche_"+data_format,True)
+            
             df_marche = marche_mark_fields(df_marche)
 
     # Reporting
@@ -379,22 +385,24 @@ def order_columns_concessions(df: pd.DataFrame):
     df = df.reindex(colonnes_presentes, axis=1)
     return df
 
-def stabilize_columns(df:pd.DataFrame,set:str):
+def stabilize_columns(df:pd.DataFrame,set:str,add_error_columnns:bool=False):
     """
     On ajoute des colonnes vides si celles-ci doivent exister et on supprimer les colonnes en trop
     """
+
+    if add_error_columnns is True and 'Erreurs' not in df.columns:
+        df['Erreurs'] = pd.NA
 
     columns_reference = conf_glob["df_"+set]
     for column in columns_reference:
         if column not in df.columns:
             df[column] = pd.NA
     for column in df.columns:
-        if column not in columns_reference:
+        if column not in columns_reference and not (add_error_columnns is True and column == 'Erreurs'):
             df.drop(columns=[column], inplace=True)
 
 @compute_execution_time
 def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
-    df_marche_badlines_ = pd.DataFrame(columns=df_marche_.columns)
     
     #Cas spécial. Ces colonnes existent déjà dans le df et sont, par défaut, rempli avec le 1er élément de la liste
     suppression_colonnes =['dureeMoisActeSousTraitance', 'montantActeSousTraitance', 'variationPrixActeSousTraitance',\
@@ -404,6 +412,9 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         if column in df_marche_.columns:
             df_marche_.drop(columns=suppression_colonnes, inplace=True)
 
+    # On initialise la table des marches exclus a l'identique de celle des marches
+    df_marche_badlines_ = pd.DataFrame(columns=df_marche_.columns)
+    
     @compute_execution_time
     def dedoublonnage_marche(df: pd.DataFrame, feature_doublons_marche) -> pd.DataFrame:
         
@@ -801,7 +812,14 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
 
     df_marche_tmp, df_marche_badlines_ = check_id_format(df_marche_, df_marche_badlines_)
 
-    df_marche_badlines_ = df_marche_badlines_.groupby(feature_doublons_marche, as_index=False).agg({'Erreurs': ', '.join})
+    # Les étapes précédente ont pu créer des lignes en doublon avec un message d'erreur différent, on élimine ici les doublons et concatene les erreurs
+    group_columns = feature_doublons_marche # all columns - Erreur: df_marche_badlines_.columns.difference(['Erreurs']).tolist()
+    group_columns.append("idModification")
+    grouped = df_marche_badlines_.groupby(group_columns).agg({
+            'Erreurs': lambda x: ', '.join(x)  # Concatenation des valeurs de la colonne "Erreurs"
+        }).reset_index()
+    df_no_errors = df_marche_badlines_.drop(columns=['Erreurs'])
+    df_marche_badlines_ = pd.merge(df_no_errors, grouped, on=group_columns, how='left')
 
     df_marche_badlines_ = reorder_columns(df_marche_badlines_)
     df_marche_ = order_columns_marches(df_marche_)
@@ -816,7 +834,7 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
 def regles_concession(df_concession_: pd.DataFrame,data_format:str) -> pd.DataFrame:
 
     @compute_execution_time
-    def dedoublonnage_concession(df: pd.DataFrame) -> pd.DataFrame:
+    def dedoublonnage_concession(df: pd.DataFrame, feature_doublons_concession:list) -> pd.DataFrame:
         """
         Sont considérés comme doublons des concessions ayant les mêmes valeurs aux champs suivants :
         id,
@@ -934,8 +952,6 @@ def regles_concession(df_concession_: pd.DataFrame,data_format:str) -> pd.DataFr
         logging.info("df_concession_ avant dédoublonnage : " + str(df.shape))
         # filtre pour mettre la date de publication la plus récente en premier
         df = df.sort_values(by=["datePublicationDonnees"], ascending=[False])
-
-        feature_doublons_concession = ["id", "autoriteConcedante.id", "dateDebutExecution", "concessionnaire_id_1","valeurGlobale"]
 
         # Only for reporting
         index_to_keep = df.drop_duplicates(subset=feature_doublons_concession).index.tolist()
@@ -1074,7 +1090,9 @@ def regles_concession(df_concession_: pd.DataFrame,data_format:str) -> pd.DataFr
 
         return df
 
-    df_concession_ = dedoublonnage_concession(df_concession_)
+    feature_doublons_concession = ["id", "autoriteConcedante.id", "dateDebutExecution", "concessionnaire_id_1","valeurGlobale"]
+
+    df_concession_ = dedoublonnage_concession(df_concession_,feature_doublons_concession)
     augmente.utils.save_csv(df_concession_, "df_concession_dedoublonnage.csv")
 
     df_concession_ = concession_replace_concessionnaire_type(df_concession_)
@@ -1107,6 +1125,15 @@ def regles_concession(df_concession_: pd.DataFrame,data_format:str) -> pd.DataFr
         df_concession_, df_concession_badlines_ = check_id_format(df_concession_, df_concession_badlines_)
 
     df_concession_, df_concession_badlines_ = check_duree_contrat(df_concession_, df_concession_badlines_, 360)
+
+    # Les étapes précédente ont pu créer des lignes en doublon avec un message d'erreur différent, on élimine ici les doublons et concatene les erreurs
+    group_columns = feature_doublons_concession # all columns - Erreur: df_marche_badlines_.columns.difference(['Erreurs']).tolist()
+    group_columns.append("idModification")
+    grouped = df_concession_badlines_.groupby(group_columns).agg({
+            'Erreurs': lambda x: ', '.join(x)  # Concatenation des valeurs de la colonne "Erreurs"
+        }).reset_index()
+    df_no_errors = df_concession_badlines_.drop(columns=['Erreurs'])
+    df_concession_badlines_ = pd.merge(df_no_errors, grouped, on=group_columns, how='left')
 
     #if data_format=='2019':
     #    del df_concession_badlines_['Erreurs']
