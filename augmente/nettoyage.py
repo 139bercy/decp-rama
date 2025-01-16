@@ -821,12 +821,13 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
     df_no_errors = df_marche_badlines_.drop(columns=['Erreurs'])
     df_marche_badlines_ = pd.merge(df_no_errors, grouped, on=group_columns, how='left')
 
+    # On enlève de df_marche_ les lignes en erreur de df_marche_badlines_
+    merged = df_marche_.merge(df_marche_badlines_[group_columns], on=group_columns, how='left', indicator=True)
+    df_marche_ = merged[merged['_merge'] == 'left_only'].drop(columns=['_merge'])
+
     df_marche_badlines_ = reorder_columns(df_marche_badlines_)
     df_marche_ = order_columns_marches(df_marche_)
     
-    df_marche_tmp = df_marche_.merge(df_marche_badlines_, on=feature_doublons_marche, how='left', indicator=True)
-    df_marche_ = df_marche_tmp[df_marche_tmp['_merge'] == 'left_only'].drop(columns=['_merge'])
-
     return df_marche_, df_marche_badlines_
 
 
