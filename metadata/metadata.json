@@ -240,6 +240,18 @@
     "validate" : true,
     "convert_nc": false
   },
+  "ppsmj":
+  {
+    "code": "ppsmj",
+    "description": "Données essentielles marché PPSMJ 2024 Région ile de France",
+    "url_source": "https://static.data.gouv.fr/resources/donnees-essentielles-marche-ppsmj-2024-region-ile-de-france/20250110-091617/ppsmj.xml",
+    "format": "xml",
+    "cle_api": [],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+
+  },
   "geoflar":
   {
 	  "description": "Fichier permettant d'enrichir les champs : INSEE COM, Geo point, SUPERFICIE, POPULATION",

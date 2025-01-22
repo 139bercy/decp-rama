@@ -39,6 +39,8 @@ class StepMngmt:
             with open(self.STATUS_FILEPATH, 'r') as json_file:
                 self.current_status = json.load(json_file)
 
+            logging.info("Resume execution")
+
         except FileNotFoundError:
             self.current_status = {}
             with open(self.STATUS_FILEPATH, 'w') as json_file:

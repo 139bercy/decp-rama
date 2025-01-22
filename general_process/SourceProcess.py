@@ -272,6 +272,8 @@ class SourceProcess:
                     j = 0
                     for marche in dico['marches']['marche']:
                         if self.convert_nc:
+                            NodeFormat.force_bools_nc(['sousTraitanceDeclaree','marcheInnovant','attributionAvance'],marche)
+                        else:
                             NodeFormat.force_bools(['sousTraitanceDeclaree','marcheInnovant','attributionAvance'],marche)
 
                         NodeFormat.force_floats(['tauxAvance','origineUE','origineFrance','montant'],marche)

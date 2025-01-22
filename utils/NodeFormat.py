@@ -97,12 +97,22 @@ class NodeFormat:
                     NodeFormat.force_ints(['id','dureeMois'],marche[parent_node][i][child_node])
                     NodeFormat.force_floats(['montant'],marche[parent_node][i][child_node])
 
-    def force_bools(keys:list,marche:dict):
+
+    def force_bools_nc(keys:list,marche:dict):
         for key in keys:
             if key in marche and marche[key] is not None and  marche[key] !='NC':
                 if marche[key] == '0':
                     marche[key] = False
                 elif marche[key] == '1':
+                    marche[key] = True
+
+
+    def force_bools(keys:list,marche:dict):
+        for key in keys:
+            if key in marche and marche[key] is not None:
+                if marche[key] == '0' or marche[key] == 'non' or marche[key] == 'false' :
+                    marche[key] = False
+                elif marche[key] == '1' or marche[key] == 'oui' or marche[key] == 'true' :
                     marche[key] = True
 
 
