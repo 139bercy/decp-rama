@@ -236,6 +236,10 @@ with open('results/decp-2019.json', 'r', encoding='utf-8') as f:
 #with open('results/samples-2019-marches.json', 'r', encoding='utf-8') as f:
     data = json.load(f)
 
+file_path = 'results/sample-2019-converted-to-2022.json'
+with open(file_path, 'w') as file:
+    file.write("{ \"marches\": [\n")
+
 new_list = []
 for marche in data['marches']:
     if ("nature" in marche and marche["nature"] is not None and without_accents(marche["nature"].lower()) in nature_marches_min) or \
@@ -245,9 +249,17 @@ for marche in data['marches']:
     else:
         # Cas d'une concession
         marche = convert_concession(marche)
-    new_list.append(marche)
+    #new_list.append(marche)
+    with open(file_path, 'a') as file:
+        json.dump(marche, file, indent=2)
+        file.write(",\n") # Ajout d'une virgule pour séparer les éléments
 
-with open('results/sample-2019-converted-to-2022.json', 'w+', encoding='utf-8') as f:
-    json.dump(new_list, f, indent=2, ensure_ascii=False)
+with open(file_path, 'rb+') as file:
+    file.seek(-2, 2)  # Retour arrière pour enlever la virgule finale
+    file.truncate()   # Tronquer le fichier pour enlever cette partie
+    file.write(b"\n  ]\n}")
+
+#with open(file_path, 'w+', encoding='utf-8') as f:
+#    json.dump(new_list, f, indent=2, ensure_ascii=False)
 
 print("End")
