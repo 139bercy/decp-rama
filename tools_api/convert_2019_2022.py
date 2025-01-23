@@ -1,6 +1,7 @@
 import json
 import unicodedata
 
+MARCHE = "Marché"
 SANS_OBJET = ["Sans objet"]
 IN_FORME_PRIX = ['Ferme','Ferme et actualisable','Révisable']
 OUT_FORME_PRIX = ['Définitif ferme','Définitif actualisable','Définitif révisable']
@@ -9,7 +10,7 @@ def without_accents(chaine):
     # Normaliser la chaîne et supprimer les accents
     return ''.join(c for c in unicodedata.normalize('NFD', chaine) if unicodedata.category(c) != 'Mn')
 
-nature_marches = ["Marché", "Marché de partenariat", "Accord-cadre", "Marché subséquent"]
+nature_marches = [MARCHE, "Marché de partenariat", "Accord-cadre", "Marché subséquent"]
 nature_marches_min = [without_accents(valeur.lower()) for valeur in nature_marches]
 
 same_fields = ["id", "objet", "codeCPV", "procedure", "dureeMois", "dateNotification","montant","datePublicationDonnees",""] 
@@ -44,7 +45,7 @@ def delete_nodes(json_dorigine, json_reference):
     return json_dorigine
 
 
-def value(data:dict,nodes:list,default_value:str=None):
+def value(data:dict,nodes:list,default_value:str|int=None):
     value = data
     for node in nodes:
         if value is not None and node in value:
@@ -52,6 +53,7 @@ def value(data:dict,nodes:list,default_value:str=None):
         else:
             return default_value
     return value
+
 
 def value_list(data:list,attributes:list,sub_node:str):
     result = []
@@ -93,14 +95,15 @@ def value_list_list(data,node,attributes:list,sub_node,included_node:str=None,in
                         new_element[sub_node][attribute] = index
             result.append(new_element)
             index += 1
-
     return result
+
 
 def rename_node(marche,node_list:str,node:str,old_name:str,new_name:str):
     if node_list in marche and isinstance(marche[node_list], list):
         for element in marche[node_list]:
             if node in element and old_name in element[node]:
                 element[node][new_name] = element[node].pop(old_name)
+
 
 def remove_empty_list_nodes(data):
     if isinstance(data, list):
@@ -118,17 +121,18 @@ def remove_empty_list_nodes(data):
         for key in keys_to_delete:
             del data[key]
 
+
 def extract_nature(marche:dict) -> tuple[str,str,str]:
-    nature = value(marche,['nature'],'Marché')
-    technique = SANS_OBJET
-    modalite_execution = SANS_OBJET
+    nature = value(marche,['nature'],MARCHE)
+    technique = "NC"
+    modalite_execution = "NC"
 
     if nature == 'Accord-cadre':
         technique = nature
-        nature = "Marché"
+        nature = MARCHE
     elif nature == 'Marchés subséquents':
         modalite_execution = nature
-        nature = "Marché"
+        nature = MARCHE
 
     return nature,technique,modalite_execution
 
@@ -141,6 +145,7 @@ def convert_type_prix(marche,node_name) -> str:
     else:
         return node_name
 
+
 def convert_type_identifiant(marche) -> str:
     type_identifiant = value(marche,['typeIdentifiant'])
     if type_identifiant == 'UE':
@@ -149,7 +154,7 @@ def convert_type_identifiant(marche) -> str:
 
 
 def convert_marche(marche:dict) -> dict:
-    print(f"Marche ",value(marche,['id']))
+    print("Marche ",value(marche,['id']))
     
     nature,technique,modalite_execution = extract_nature(marche)
     type_prix = convert_type_prix(marche,['formePrix'])
@@ -161,10 +166,10 @@ def convert_marche(marche:dict) -> dict:
         'nature': nature,
         'objet': value(marche,['objet']),
         'techniques': {
-            "technique": technique
+            "technique": [technique]
         },
         'modalitesExecution': {
-            "modaliteExecution": modalite_execution
+            "modaliteExecution": [modalite_execution]
         },
         #'idAccordCadre': None,
         'codeCPV': value(marche,['codeCPV']),
@@ -176,24 +181,24 @@ def convert_marche(marche:dict) -> dict:
         'dureeMois': int(value(marche,['dureeMois'])),
         'dateNotification': value(marche,['dateNotification']),
         'considerationsSociales': {
-            "considerationSociale": ["Pas de consid\u00e9ration sociale"]
+            "considerationSociale": ["NC"]
         },
         'considerationsEnvironnementales': {
-            "considerationEnvironnementale": ["Pas de consid\u00e9ration environnementale"]
+            "considerationEnvironnementale": ["NC"]
         },
-        'marcheInnovant': value(marche,['marcheInnovant']),
-        'origineUE': value(marche,['origineUE']),
-        'origineFrance': value(marche,['origineFrance']),
-        'ccag': value(marche,['ccag'],"Pas de CCAG"),
-        'offresRecues': value(marche,['offresRecues'],1),
+        'marcheInnovant': value(marche,['marcheInnovant'],"NC"),
+        'origineUE': value(marche,['origineUE'],"NC"),
+        'origineFrance': value(marche,['origineFrance'],"NC"),
+        'ccag': value(marche,['ccag'],"NC"),
+        'offresRecues': value(marche,['offresRecues'],"NC"),
         'montant': int(value(marche,['montant'])) if value(marche,['montant']) is not None else None,
-        'formePrix': None,
+        'formePrix': "NC",
         'typePrix': type_prix,
-        'attributionAvance': value(marche,['attributionAvance']),
-        #'tauxAvance': value(marche,['tauxAvance']),
+        'attributionAvance': value(marche,['attributionAvance'],"NC"),
+        'tauxAvance': value(marche,['tauxAvance'],"NC"),
         'titulaires': value_list(marche['titulaires'],['id','typeIdentifiant'],'titulaire') if 'titulaires' in marche else None,
         'typeGroupementOperateurs': value(marche,['typeGroupementOperateurs']),
-        'sousTraitanceDeclaree': value(marche,['sousTraitanceDeclaree']),
+        'sousTraitanceDeclaree': value(marche,['sousTraitanceDeclaree'],"NC"),
         'datePublicationDonnees': value(marche,['datePublicationDonnees']),
         'modifications': value_list_list(marche,'modifications',['id','dureeMois','montant','titulaires','dateNotificationModification','dateSignatureModification'],'modification','titulaires',['id','typeIdentifiant'],'titulaire')
     }
@@ -204,7 +209,7 @@ def convert_marche(marche:dict) -> dict:
 
 
 def convert_concession(marche):
-    print(f"Concession ",value(marche,['id']))
+    print("Concession ",value(marche,['id']))
     marche = {
         'id': value(marche,['id']),
         'autoriteConcedante': value_list([marche['autoriteConcedante']],['id'],'autoriteConcedante') if 'autoriteConcedante' in marche else None,
@@ -215,10 +220,10 @@ def convert_concession(marche):
         'dateDebutExecution': value(marche,['dateDebutExecution']),
         'dateSignature': value(marche,['dateSignature']),
         'considerationsSociales': {
-            "considerationSociale": ["Pas de consid\u00e9ration sociale"]
+            "considerationSociale": ["NC"]
         },
         'considerationsEnvironnementales': {
-            "considerationEnvironnementale": ["Pas de consid\u00e9ration environnementale"]
+            "considerationEnvironnementale": ["NC"]
         },
         'concessionnaires': value_list(marche['concessionnaires'],['id','typeIdentifiant'],'concessionnaire') if 'concessionnaires' in marche else None,
         'valeurGlobale': value(marche,['valeurGlobale']),
@@ -231,6 +236,7 @@ def convert_concession(marche):
 
     return marche
 
+
 # Chargement du fichier JSON
 with open('results/decp-2019.json', 'r', encoding='utf-8') as f:
 #with open('results/samples-2019-marches.json', 'r', encoding='utf-8') as f:
@@ -240,16 +246,14 @@ file_path = 'results/sample-2019-converted-to-2022.json'
 with open(file_path, 'w') as file:
     file.write("{ \"marches\": [\n")
 
-new_list = []
 for marche in data['marches']:
     if ("nature" in marche and marche["nature"] is not None and without_accents(marche["nature"].lower()) in nature_marches_min) or \
-        ("_type" in marche and marche["_type"] is not None and marche["_type"] == 'Marché'):
+        ("_type" in marche and marche["_type"] is not None and marche["_type"] == MARCHE):
         # Cas d'un marché
         marche = convert_marche(marche)
     else:
         # Cas d'une concession
         marche = convert_concession(marche)
-    #new_list.append(marche)
     with open(file_path, 'a') as file:
         json.dump(marche, file, indent=2)
         file.write(",\n") # Ajout d'une virgule pour séparer les éléments
@@ -258,8 +262,5 @@ with open(file_path, 'rb+') as file:
     file.seek(-2, 2)  # Retour arrière pour enlever la virgule finale
     file.truncate()   # Tronquer le fichier pour enlever cette partie
     file.write(b"\n  ]\n}")
-
-#with open(file_path, 'w+', encoding='utf-8') as f:
-#    json.dump(new_list, f, indent=2, ensure_ascii=False)
 
 print("End")
