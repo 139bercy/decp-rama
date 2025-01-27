@@ -578,10 +578,17 @@ class SourceProcess:
                 ligne["acheteur"] = {"id": ligne["id"] }
             return ligne      
         
+        def tri_titulaires(titulaires):
+            return sorted(titulaires, key=lambda x: x['titulaire']['id'])
+
         logging.info("  ÉTAPE FIX")
         logging.info(f"Début de fix: Ajout source et suppression des doublons de {self.source}")
         # Ajout de source
         self.df = self.df.assign(source=self.source)
+
+        # Application de la fonction de tri
+        if 'titulaires' in self.df.columns:
+            self.df['titulaires'] = self.df['titulaires'].apply(tri_titulaires)
 
         # Pour les flux en exception avec "NC" ## OBSOLETE on duplique les colonnes qui contiendront des NC 
         # et on converti les "NC" en Nan
