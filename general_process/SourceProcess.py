@@ -624,16 +624,16 @@ class SourceProcess:
         
         # For statistics purpose only
         df_marche = df_str[df_str['_type'].str.contains("Marché")]
-        if len(df_marche[df_marche.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep=False)])>0:
-            self.report.add('Fix/Marchés',self.report.D_DUPLICATE,'Doublon dans la source',df_marche[df_marche.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep=False)])
-            self.report.nb_duplicated_marches += len(df_marche[df_marche.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep=False)])
+        if len(df_marche[df_marche.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep="last")])>0:
+            self.report.add('Fix/Marchés',self.report.D_DUPLICATE,'Doublon dans la source',df_marche[df_marche.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep="last")])
+            self.report.nb_duplicated_marches += len(df_marche[df_marche.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep="last")])
     
         df_concession = df_str[~df_str['_type'].str.contains("Marché")]
-        if len(df_concession[df_concession.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep=False)])>0:
-            self.report.add('Fix/Concessions',self.report.D_DUPLICATE,'Doublon dans la source',df_concession[df_concession.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep=False)])
-            self.report.nb_duplicated_concessions += len(df_concession[df_concession.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep=False)])
+        if len(df_concession[df_concession.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep="last")])>0:
+            self.report.add('Fix/Concessions',self.report.D_DUPLICATE,'Doublon dans la source',df_concession[df_concession.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep="last")])
+            self.report.nb_duplicated_concessions += len(df_concession[df_concession.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep="last")])
 
-        index_to_keep = df_str.drop_duplicates(subset=df_marche.columns.difference(['report__file','report__nbtotal','report__error','report__position']), keep=False).index.tolist()
+        index_to_keep = df_str.drop_duplicates(subset=df_marche.columns.difference(['report__file','report__nbtotal','report__error','report__position']), keep="last").index.tolist()
         self.df = self.df.iloc[index_to_keep]
         self.df = self.df.reset_index(drop=True)
 
