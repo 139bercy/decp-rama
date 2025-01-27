@@ -814,7 +814,8 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
 
     # Les étapes précédente ont pu créer des lignes en doublon avec un message d'erreur différent, on élimine ici les doublons et concatene les erreurs
     group_columns = feature_doublons_marche # all columns - Erreur: df_marche_badlines_.columns.difference(['Erreurs']).tolist()
-    group_columns.append("idModification")
+    if "idModification" in df_marche_badlines_:
+        group_columns.append("idModification")
     grouped = df_marche_badlines_.groupby(group_columns).agg({
             'Erreurs': lambda x: ', '.join(x)  # Concatenation des valeurs de la colonne "Erreurs"
         }).reset_index()
