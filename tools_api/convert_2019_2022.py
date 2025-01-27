@@ -1,7 +1,10 @@
 import json
 import unicodedata
 
+NC = "NC"
 MARCHE = "Marché"
+CONCESSION = "Concession"
+ACCORD_CADRE = "Accord-cadre"
 SANS_OBJET = ["Sans objet"]
 IN_FORME_PRIX = ['Ferme','Ferme et actualisable','Révisable']
 OUT_FORME_PRIX = ['Définitif ferme','Définitif actualisable','Définitif révisable']
@@ -10,8 +13,11 @@ def without_accents(chaine):
     # Normaliser la chaîne et supprimer les accents
     return ''.join(c for c in unicodedata.normalize('NFD', chaine) if unicodedata.category(c) != 'Mn')
 
-nature_marches = [MARCHE, "Marché de partenariat", "Accord-cadre", "Marché subséquent"]
+nature_marches = [MARCHE, "Marché de partenariat", ACCORD_CADRE, "Marché subséquent"]
 nature_marches_min = [without_accents(valeur.lower()) for valeur in nature_marches]
+
+nature_concessions = ["Concession de travaux", "Concession de service", "Concession de service public", "Délégation de service public"]
+nature_concessions_min = [without_accents(valeur.lower()) for valeur in nature_concessions]
 
 same_fields = ["id", "objet", "codeCPV", "procedure", "dureeMois", "dateNotification","montant","datePublicationDonnees",""] 
 delete_nodes = {
@@ -122,20 +128,36 @@ def remove_empty_list_nodes(data):
             del data[key]
 
 
-def extract_nature(marche:dict) -> tuple[str,str,str]:
+def extract_nature_marche(marche:dict) -> tuple[str,str,str]:
     nature = value(marche,['nature'],MARCHE)
-    technique = "NC"
-    modalite_execution = "NC"
+    if nature is None:
+        nature = value(marche,['_type'],MARCHE)
+    technique = NC
+    modalite_execution = NC
+    if without_accents(nature.lower()) in nature_marches_min:
+        index = nature_marches_min.index(without_accents(nature.lower()))
+    else:
+        index = 0
+    nature = nature_marches[index]    
 
-    if nature == 'Accord-cadre':
+    if nature.lower() == ACCORD_CADRE.lower():
         technique = nature
         nature = MARCHE
-    elif nature == 'Marchés subséquents':
+    elif nature.lower() == 'marchés subséquents':
         modalite_execution = nature
         nature = MARCHE
 
     return nature,technique,modalite_execution
 
+def extract_nature_concession(concession:dict) -> str:
+    nature = value(concession,['nature'],CONCESSION)
+    if nature is None:
+        nature = value(concession,['_type'],CONCESSION)
+
+    index = nature_concessions_min.index(without_accents(nature.lower()))
+    nature = nature_concessions[index]    
+
+    return nature
 
 def convert_type_prix(marche,node_name) -> str:
     type_prix = value(marche,node_name)
@@ -156,7 +178,7 @@ def convert_type_identifiant(marche) -> str:
 def convert_marche(marche:dict) -> dict:
     print("Marche ",value(marche,['id']))
     
-    nature,technique,modalite_execution = extract_nature(marche)
+    nature,technique,modalite_execution = extract_nature_marche(marche)
     type_prix = convert_type_prix(marche,['formePrix'])
     id_marche = value(marche,['id'])
 
@@ -181,25 +203,27 @@ def convert_marche(marche:dict) -> dict:
         'dureeMois': int(value(marche,['dureeMois'])),
         'dateNotification': value(marche,['dateNotification']),
         'considerationsSociales': {
-            "considerationSociale": ["NC"]
+            "considerationSociale": [NC]
         },
         'considerationsEnvironnementales': {
-            "considerationEnvironnementale": ["NC"]
+            "considerationEnvironnementale": [NC]
         },
-        'marcheInnovant': value(marche,['marcheInnovant'],"NC"),
-        'origineUE': value(marche,['origineUE'],"NC"),
-        'origineFrance': value(marche,['origineFrance'],"NC"),
-        'ccag': value(marche,['ccag'],"NC"),
-        'offresRecues': value(marche,['offresRecues'],"NC"),
+        'marcheInnovant': value(marche,['marcheInnovant'],NC),
+        'origineUE': value(marche,['origineUE'],NC),
+        'origineFrance': value(marche,['origineFrance'],NC),
+        'ccag': value(marche,['ccag'],NC),
+        'offresRecues': value(marche,['offresRecues'],NC),
         'montant': int(value(marche,['montant'])) if value(marche,['montant']) is not None else None,
         'formePrix': "NC",
         'typePrix': type_prix,
-        'attributionAvance': value(marche,['attributionAvance'],"NC"),
-        'tauxAvance': value(marche,['tauxAvance'],"NC"),
+        'attributionAvance': value(marche,['attributionAvance'],NC),
+        'tauxAvance': value(marche,['tauxAvance'],NC),
         'titulaires': value_list(marche['titulaires'],['id','typeIdentifiant'],'titulaire') if 'titulaires' in marche else None,
         'typeGroupementOperateurs': value(marche,['typeGroupementOperateurs']),
-        'sousTraitanceDeclaree': value(marche,['sousTraitanceDeclaree'],"NC"),
+        'sousTraitanceDeclaree': value(marche,['sousTraitanceDeclaree'],NC),
         'datePublicationDonnees': value(marche,['datePublicationDonnees']),
+        '_type': MARCHE,
+        'source': value(marche,['source'],NC),
         'modifications': value_list_list(marche,'modifications',['id','dureeMois','montant','titulaires','dateNotificationModification','dateSignatureModification'],'modification','titulaires',['id','typeIdentifiant'],'titulaire')
     }
     rename_node(marche,'modifications','modification','dateSignatureModification','dateNotificationModification')
@@ -210,20 +234,21 @@ def convert_marche(marche:dict) -> dict:
 
 def convert_concession(marche):
     print("Concession ",value(marche,['id']))
+    nature = extract_nature_concession(marche)
     marche = {
         'id': value(marche,['id']),
         'autoriteConcedante': value_list([marche['autoriteConcedante']],['id'],'autoriteConcedante') if 'autoriteConcedante' in marche else None,
-        'nature': value(marche,['nature']),
+        'nature': nature,
         'objet': value(marche,['objet']),
         'procedure': value(marche,['procedure']),
         'dureeMois': value(marche,['dureeMois']),
         'dateDebutExecution': value(marche,['dateDebutExecution']),
         'dateSignature': value(marche,['dateSignature']),
         'considerationsSociales': {
-            "considerationSociale": ["NC"]
+            "considerationSociale": [NC]
         },
         'considerationsEnvironnementales': {
-            "considerationEnvironnementale": ["NC"]
+            "considerationEnvironnementale": [NC]
         },
         'concessionnaires': value_list(marche['concessionnaires'],['id','typeIdentifiant'],'concessionnaire') if 'concessionnaires' in marche else None,
         'valeurGlobale': value(marche,['valeurGlobale']),
@@ -231,6 +256,8 @@ def convert_concession(marche):
         'datePublicationDonnees': value(marche,['datePublicationDonnees']),
         'modifications': value_list_list(marche,'modifications',['id','dureeMois','valeurGlobale','dateSignatureModification','datePublicationDonneesModification'],'modification'),
         'donneesExecution': value_list_list(marche,'donneesExecution',['depensesInvestissement','tarifs','datePublicationDonneesExecution'],'donneeExecution','tarifs',['intituleTarif','tarif'],'tarif'),
+        '_type': CONCESSION,
+        'source': value(marche,['source'],NC)
     }
     remove_empty_list_nodes(marche)
 
@@ -243,24 +270,27 @@ with open('results/decp-2019.json', 'r', encoding='utf-8') as f:
     data = json.load(f)
 
 file_path = 'results/sample-2019-converted-to-2022.json'
-with open(file_path, 'w') as file:
+with open(file_path, 'w', encoding='utf-8') as file:
     file.write("{ \"marches\": [\n")
 
+comma = False
 for marche in data['marches']:
     if ("nature" in marche and marche["nature"] is not None and without_accents(marche["nature"].lower()) in nature_marches_min) or \
-        ("_type" in marche and marche["_type"] is not None and marche["_type"] == MARCHE):
+        ("_type" in marche and marche["_type"] is not None and marche["_type"] == MARCHE) or \
+        "titulaires" in marche:
         # Cas d'un marché
         marche = convert_marche(marche)
     else:
         # Cas d'une concession
         marche = convert_concession(marche)
-    with open(file_path, 'a') as file:
-        json.dump(marche, file, indent=2)
-        file.write(",\n") # Ajout d'une virgule pour séparer les éléments
+    with open(file_path, 'a', encoding='utf-8') as file:
+        if comma:
+            file.write(",\n") # Ajout d'une virgule pour séparer les éléments
+        else:
+            comma = True
+        json.dump(marche, file, indent=2, ensure_ascii=False)
 
-with open(file_path, 'rb+') as file:
-    file.seek(-2, 2)  # Retour arrière pour enlever la virgule finale
-    file.truncate()   # Tronquer le fichier pour enlever cette partie
-    file.write(b"\n  ]\n}")
+with open(file_path, 'a', encoding='utf-8') as file:
+    file.write("\n  ]\n}")
 
 print("End")
