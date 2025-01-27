@@ -244,9 +244,11 @@
   {
     "code": "ppsmj",
     "description": "Données essentielles marché PPSMJ 2024 Région ile de France",
-    "url_source": "https://static.data.gouv.fr/resources/donnees-essentielles-marche-ppsmj-2024-region-ile-de-france/20250110-091617/ppsmj.xml",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/67920206904b58f1a43a72a4",
+    "url_source_PREVIOUS_2": "https://static.data.gouv.fr/resources/marche-de-formation-professionnel-des-personnes-placees-sous-main-de-justice/20250123-084702/ppsmj-1.xml",
+    "url_source_PREVIOUS": "https://static.data.gouv.fr/resources/donnees-essentielles-marche-ppsmj-2024-region-ile-de-france/20250110-091617/ppsmj.xml",
     "format": "xml",
-    "cle_api": [],
+    "cle_api": ["67920206904b58f1a43a72a4"],
     "url": "",
     "validate" : true,
     "convert_nc": false
