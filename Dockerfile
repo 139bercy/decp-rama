@@ -24,4 +24,13 @@ COPY . /app
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Démarrer le projet
-CMD [ "python", "app.py" ]
+CMD [ "python", "main.py" ]
+
+# Commande pour lancer l'execution de l'application dans le container
+# docker run --mount type=bind,source=config.json,target=/app/config.json \
+#  --mount type=bind,source=metadata,target=/app/metadata \
+#  --mount type=bind,source=old_metadata,target=/app/old_metadata \
+#  --mount type=bind,source=source,target=/app/sources \
+#  --mount type=bind,source=processing,target=/app/processing \
+#  --mount type=bind,source=results,target=/app/results \
+#  --mount type=bind,source=data,target=/app/data docker-decp-rama
