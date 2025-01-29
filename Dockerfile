@@ -1,5 +1,5 @@
 # Étape 1: Image temporaire pour installer les dépendances
-FROM python:3.12.8 AS builder
+FROM python:3.12.8-alpine3.21 AS builder
 
 WORKDIR /build
 
@@ -10,7 +10,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --target=/build/dependencies -r requirements.txt
 
 # Étape 2: Image finale
-FROM python:3.12.8
+FROM python:3.12.8-alpine3.21
 
 WORKDIR /app
 
