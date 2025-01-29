@@ -579,7 +579,7 @@ class SourceProcess:
             return ligne      
         
         def tri_titulaires(titulaires):
-            return sorted(titulaires, key=lambda x: x['titulaire']['id'])
+            return sorted(titulaires, key=lambda x: x['titulaire']['id']) if isinstance(titulaires, list) else titulaires
 
         logging.info("  ÉTAPE FIX")
         logging.info(f"Début de fix: Ajout source et suppression des doublons de {self.source}")
