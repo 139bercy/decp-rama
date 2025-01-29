@@ -1,0 +1,81 @@
+Installation de decp-rama dans un container docker
+(Exemple réalisé dans un environnement Debian sous wsl windows)
+
+# Creation de l'image Docker
+
+On créé l'image docker à partit des sources de l'application decp-rama
+(Ces sources seront téléchargées dans le répertoire local c:\projets\ )
+
+## Téléchargement des sources de l'application decp-rama
+
+Les sources du code de l'application decp-rama sont sur github:
+Pour les copier en local utiliser la commande suivante:
+
+git clone https://github.com/139bercy/decp-rama.git
+
+La branche concernée par cette note est la DECP_schema_2.0.x :
+
+cd decp-rama
+git switch DECP_schema_2.0.x
+
+Les sources sont maintenant sur le dicque local dans le répertoire local c:\projets\decp-rama
+Ce répertoire est monté dans wsl dans le répertoire /mnt/c/projets/decp-rama
+
+[
+CONTRÔLE:
+Les 2 premières lignes du fichier Dockerfile à la racine du projet decp-rama sont:
+# Étape 1: Image temporaire pour installer les dépendances
+FROM python:3.12.8-alpine3.21 AS builder
+]
+
+## Configuration du Dockerfile
+
+Ajout des données d'accès au FTP dataeco
+
+
+## Construction de l'image docker
+
+Construction d'une image docker à partir du fichier Dockerfile à la racine du projet decp-rama:
+
+Un environnement virtuel d'exécution sera créer et les dépendances seront ajoutées à partir du fichier requirements.txt 
+
+sudo docker -D build -t docker-decp-rama .
+
+[
+CONTRÔLE:
+Vérification que l'image docker a bien été créée.
+Exécuter la commande suivante:
+sudo docker image
+Il doit y avoir au moins une ligne commancant par docker-decp-rama comme celle-ci dans le tableau des images docker existantes:
+REPOSITORY         TAG       IMAGE ID       CREATED          SIZE
+docker-decp-rama   latest    afdd983ff2a0   57 seconds ago   1.58GB
+]
+
+# Lancement de l'application decp-rama
+
+## Configuration de l'application decp-rama
+L'application étant lancée tout les jours, le mieux est de reprendre les données de la dernière exécution:
+- Le fichier cumulatif du mois en cours le fichier s'appelle decp-2024-12.json)
+	-> ce fichier doit etre copié dans le répertoire /results/ de l'application
+- Le fichier cumulatif de l'année en cours le fichier s'appelle decp-2024.json)
+	-> ce fichier doit etre copié dans le répertoire /results/ de l'application
+- Le fichier de configuration config.json avec les identifiants de ressources sur data gouv pour l'année et le mois en cours des et le numéro de mois et l'année en cours:
+	-> Le fichier doit etre copié à la racine du projet decp-rama
+- Les fichiers sur les sources déjà traitées pour toutes les sources (repertoire <code source>/<code source>_<clé metadata>_0/  )
+	-> Les fichiers doivents être déosé dans le repertoire old_metadata 
+
+## sudo docker run docker-decp-rama
+
+# Ressources 
+
+L'application decp-rama sauvegarde des informations dans plusieurs répertoires:
+ - sources/			pour les sources téléchargées pour les traitements
+ - old_metadata/ 	pour la liste des sources traitées 
+ - processing/ 		pour l'avancement de l'exécution (fichier run_status.json) ainsi que les données générées à la fin de chaque étape
+ - results/			pour les données produite par la première phase de traitement decp-rama destinée à alimenter data.gouv 
+	et aussi les rapports d'exécution
+ - data/			pour les données produite par la deuxième phase de traitement (decp-augmente) destinée à alimenter dataeco 
+	ainsi que les données de référence nécessaire à la deuxième phase des traitements.
+et à la fin de chaque mois, le fichier confi.json est mis à jour.
+ 
+	

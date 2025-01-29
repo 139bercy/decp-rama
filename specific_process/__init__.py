@@ -14,5 +14,6 @@ from .MegaProcess import MegaProcess
 from .Megalis2024Process import Megalis2024Process
 from .PesProcess import PesProcess
 from .Pes2024Process import Pes2024Process
+from .Ppsmj2024Process import Ppsmj2024Process
 from .SampleXmlProcess import SampleXmlProcess
 from .SampleJsonProcess import SampleJsonProcess

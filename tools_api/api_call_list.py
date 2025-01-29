@@ -5,7 +5,7 @@ import json
 
 api_host = "https://www.data.gouv.fr/api/1"
 
-url = f"{api_host}/datasets/?q=galis%20Bretagne%20-%20sch&page=1&page_size=100"
+url = f"{api_host}/datasets/?q=de%20formation%20professionnel%20des%20Personnes%20Plac&page=1&page_size=100"
 
 config_file = "config.json"
 # read info from config.son

@@ -6,17 +6,19 @@ __pycache__/
 .vscode
 # Results and sources
 results
+results_DATA
 sources
-data
+data_download
 data_eclatees
-processing
 cache
-old_metadata
 bad_results
 tools_flux
 resources
 METADATA_FOR_REPLAY
 config.json
+result.json
+result_list.json
+
 
 # C extensions
 *.so
