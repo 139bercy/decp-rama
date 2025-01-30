@@ -688,7 +688,8 @@ class GlobalProcess:
         # Nous avons changé de mois, on doit donc mettre à jour le fichier decp_<Annee> sur datagouv 
         # et créer la ressource pour le fichier mensuel et l'uploader
         if ((self.get_current_date().month)!=config["resource_month"]) and config["resource_month"] is not None:
-            
+            a_month_ago = self.get_current_date() - relativedelta(months=1)
+            suffix_prev_month = a_month_ago.strftime('%Y-%m')
             resource_id_prev_month = config["resource_id_month"]
             _ = self._upload_file(headers,api,dataset_id,resource_id_prev_month,suffix_prev_month)
 
@@ -709,7 +710,7 @@ class GlobalProcess:
                 data['resource_year'] = self.get_current_date().year
 
             with open(config_file, "w") as file:
-                json.dump(data, file, indent=4)        
+                json.dump(data, file, indent=4)
         #Cas quand le mois n'a pas changé depuis la dernière exécution (ou lors de la première execution)
         else:
             result_resource_id = self._upload_file(headers,api,dataset_id,config["resource_id_month"],suffix_month)
@@ -784,6 +785,7 @@ class GlobalProcess:
                 marche[cle] = False
 
     def get_current_date(self) -> datetime:
+        # for test: return datetime.strptime("2025-03-01", "%Y-%m-%d")
         return datetime.now()
 
     def get_month_first_day(self,date:datetime) -> datetime:
