@@ -619,7 +619,14 @@ class SourceProcess:
         if "dureeMois" in self.df.columns:
             self.df['dureeMois'] = self.df['dureeMois'].astype(int)
 
-        # Suppression des doublons
+        # Arrondi des montants
+        if "montant" in self.df.columns:
+            self.df['backup__montant'] = self.df['montant']
+            self.df['montant'] = self.df['montant'].astype(int)
+
+        ## Suppression des doublons
+
+        # Conversion des valeurs pour uniformiser les comparaisons
         df_str = self.df.astype(str)
         
         # For statistics purpose only
