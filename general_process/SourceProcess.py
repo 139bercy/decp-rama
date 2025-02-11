@@ -581,6 +581,9 @@ class SourceProcess:
         def tri_titulaires(titulaires):
             return sorted(titulaires, key=lambda x: x['titulaire']['id']) if isinstance(titulaires, list) else titulaires
 
+        def tri_concessionnaires(concessionnaires):
+            return sorted(concessionnaires, key=lambda x: x['concessionnaire']['id']) if isinstance(concessionnaires, list) else concessionnaires
+
         logging.info("  ÉTAPE FIX")
         logging.info(f"Début de fix: Ajout source et suppression des doublons de {self.source}")
         # Ajout de source
@@ -589,6 +592,8 @@ class SourceProcess:
         # Application de la fonction de tri
         if 'titulaires' in self.df.columns:
             self.df['titulaires'] = self.df['titulaires'].apply(tri_titulaires)
+        if 'concessionnaires' in self.df.columns:
+            self.df['concessionnaires'] = self.df['concessionnaires'].apply(tri_concessionnaires)
 
         # Pour les flux en exception avec "NC" ## OBSOLETE on duplique les colonnes qui contiendront des NC 
         # et on converti les "NC" en Nan
@@ -622,7 +627,7 @@ class SourceProcess:
         # Arrondi des montants
         if "montant" in self.df.columns:
             self.df['backup__montant'] = self.df['montant']
-            self.df['montant'] = self.df['montant'].astype(int)
+            self.df['montant'] = self.df['montant'].apply(lambda x: int(x) if pd.notna(x) else np.nan)
 
         ## Suppression des doublons
 
@@ -630,15 +635,16 @@ class SourceProcess:
         df_str = self.df.astype(str)
         
         # For statistics purpose only
+        excluded_columns = ['report__file','report__error','report__position']
         df_marche = df_str[df_str['_type'].str.contains("Marché")]
-        if len(df_marche[df_marche.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep="last")])>0:
-            self.report.add('Fix/Marchés',self.report.D_DUPLICATE,'Doublon dans la source',df_marche[df_marche.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep="last")])
-            self.report.nb_duplicated_marches += len(df_marche[df_marche.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep="last")])
+        if len(df_marche[df_marche.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])>0:
+            self.report.add('Fix/Marchés',self.report.D_DUPLICATE,'Doublon stricts dans la source',df_marche[df_marche.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])
+            self.report.nb_duplicated_marches += len(df_marche[df_marche.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])
     
         df_concession = df_str[~df_str['_type'].str.contains("Marché")]
-        if len(df_concession[df_concession.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep="last")])>0:
-            self.report.add('Fix/Concessions',self.report.D_DUPLICATE,'Doublon dans la source',df_concession[df_concession.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep="last")])
-            self.report.nb_duplicated_concessions += len(df_concession[df_concession.duplicated(subset=df_marche.columns.difference(['report__file','report__error','report__position']), keep="last")])
+        if len(df_concession[df_concession.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])>0:
+            self.report.add('Fix/Concessions',self.report.D_DUPLICATE,'Doublon stricts dans la source',df_concession[df_concession.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])
+            self.report.nb_duplicated_concessions += len(df_concession[df_concession.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])
 
         index_to_keep = df_str.drop_duplicates(subset=df_marche.columns.difference(['report__file','report__nbtotal','report__error','report__position']), keep="last").index.tolist()
         self.df = self.df.iloc[index_to_keep]

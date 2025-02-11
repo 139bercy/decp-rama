@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import ast
 import json
 import os
@@ -181,6 +182,12 @@ class GlobalProcess:
     def dedoublonnage(self,df: pd.DataFrame,add_report=True) -> pd.DataFrame:
         nb_duplicated_marches = 0
         nb_duplicated_concessions = 0
+
+        # On complete la colonne backup montant pour les marches ajoutés depuisl'export qui ne sont pas passé par fix
+        if "montant" in self.df.columns and 'backup__montant' in self.df.columns \
+            and df.loc[df['_type'] == 'Marché', 'backup__montant'].isna().any():
+            df.loc[(df['backup__montant'].isna()) & (df['_type'] == 'Marché'), 'backup__montant'] = df['montant']
+            df.loc[df['_type'] == 'Marché', 'montant'] = df.loc[df['_type'] == 'Marché', 'montant'].apply(lambda x: int(x) if pd.notna(x) else np.nan)
 
         if "modifications" in df.columns: # Règles de dédoublonnages diffèrentes. On part du principe qu'en cas 
             # de modifications, la colonne "modifications" est créée ou modifiée
@@ -372,6 +379,7 @@ class GlobalProcess:
                 if dico_mensuel=={}:
                     self.file_dump(path_result_month,dico)
                 else:
+        # Arrondi des montants
                     dico_global = dico['marches'] + dico_mensuel['marches']
                     #On transforme les dictionnaires en dataframes pour les dédoublonner
                     df_global = pd.DataFrame.from_dict(dico_global)
@@ -460,7 +468,8 @@ class GlobalProcess:
         marches = []
         for marche_in in dico_in['marches']:
             marche = marche_in.copy()
-
+            if 'backup__montant' in marche_in:
+                marche['montant'] = marche['backup__montant']
             self._restore_attributes_by_prefix(marche,'backup__')
             self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
 
@@ -524,6 +533,9 @@ class GlobalProcess:
                     or (isinstance(marche['modificationsActesSousTraitance'],str) and marche['modificationsActesSousTraitance']=='')):
                 del marche['modificationsActesSousTraitance']  
 
+            if 'backup__montant' in marche_in:
+                marche['montant'] = marche['backup__montant']
+                del marche['backup__montant']
             self._restore_attributes_by_prefix(marche,'backup__')
             self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
 
