@@ -3,6 +3,7 @@ import numpy as np
 import ast
 import json
 import os
+import re
 from datetime import date
 import pickle
 import logging
@@ -31,6 +32,7 @@ class GlobalProcess:
     et l'exportation des données en json pour publication (export)."""
 
     columns_with_list = ['titulaires','donneesExecution','modifications','concessionnaires','tarifs']
+    date_pattern = r'\d{4}-\d{2}-\d{2}'
 
     def __init__(self,data_format="2022", report:Report=None):
         """L'étape __init__ crée les variables associées à la classe GlobalProcess : le DataFrame et
@@ -274,6 +276,83 @@ class GlobalProcess:
                 return self.extract_publication_dates(modification['modification'])
         return dates_publication
 
+    def _add_meta_modifications(self,df_marches,df_concessions):
+        def _extract_max_id_modification(modifications):
+            # Récupérer les ids et retourner le maximum
+            ids = [item['modification']['id'] for item in modifications if 'modification' in item]
+            return max(ids) if ids else 0
+        
+        def _extract_max_date_modification(modifications):
+            # Récupérer les dates et retourner le maximum
+            dates = [pd.to_datetime(item['modification']['datePublicationDonneesModification'], errors='coerce') for item in modifications if 'modification' in item]
+            return max(dates) if dates else pd.NA
+        
+        def _max_date(row):
+            """Cette fonction revoie la date la plus avancée dans le temps entre les date de modification (tmp__datModification) et la date de publication des données."""
+            pub_date = pd.to_datetime(row['datePublicationDonnees'])
+            mod_date = pd.to_datetime(row['tmp__dateModification'])
+            # Choix de la date maximale, NaN s'il n'y a que NaN
+            m = max(pub_date, mod_date) if not (pd.isna(pub_date) and pd.isna(mod_date)) else pd.to_datetime("2024-01-01")
+            # Si la date est antérieure à 2024 ou est nulle, on la remplace par 2024-01-01
+            if m<pd.to_datetime("2024-01-01") or m is pd.NaT:
+                m = pd.to_datetime("2024-01-01")
+            return m
+        
+        def _tri_titulaires(titulaires):
+            """Cette fonction trie les titulaires par id afin d'éviter les erreurs de calcul de doublons lorsque l'ordre dans les données en entrée change."""
+            return sorted(titulaires, key=lambda x: x['titulaire']['id']) if isinstance(titulaires, list) else titulaires
+
+        def _tri_concessionnaires(concessionnaires):
+            """Cette fonction trie les concessionnaires par id afin d'éviter les erreurs de calcul de doublons lorsque l'ordre dans les données en entrée change."""
+            return sorted(concessionnaires, key=lambda x: x['concessionnaire']['id']) if isinstance(concessionnaires, list) else concessionnaires
+
+        def _prepare_group_by(df):
+            """Cette fonction prépare les données pour le groupby sur tmp__annee_mois  en ajoutant les données dans les colonnes tmp__idModification et tmp__dateModification et tmp__annee_mois."""
+            if not df.empty:# df[df['datePublicationDonnees'].isna()]['datePublicationDonnees']
+                df['datePublicationDonnees'] = pd.to_datetime(df['datePublicationDonnees'],format='mixed',errors='coerce')
+                if 'modifications' in df.columns:
+                    df['tmp__idModification'] = df['modifications'].apply(_extract_max_id_modification)
+                    df['tmp__dateModification'] = df['modifications'].apply(_extract_max_date_modification)
+                else:
+                    df['tmp__dateModification'] = pd.NaT
+                df['tmp__dateModification'] = df.apply(_max_date, axis=1)
+                df['tmp__dateModification'] = df['tmp__dateModification'].dt.strftime('%Y-%m')
+                df['tmp__annee_mois'] = df['tmp__annee_mois'].where(df['tmp__annee_mois'].notna(), df['tmp__dateModification'])#.strftime('%Y-%m')
+                df['tmp__dateModification'] = df['tmp__dateModification'].astype(str)
+                df['datePublicationDonnees'] = df['datePublicationDonnees'].astype(str) 
+
+        if not df_marches.empty:
+            df_marches['titulaires'] = df_marches['titulaires'].apply(_tri_titulaires)
+            _prepare_group_by(df_marches) # df_marches)
+
+        if not df_concessions.empty:
+            df_concessions['concessionnaires'] = df_concessions['concessionnaires'].apply(_tri_concessionnaires)
+            _prepare_group_by(df_concessions) # df_concessions)
+            
+    def _merge_in_file(self, file_path:str, dico:dict) -> dict:
+        """
+        La fonction _merge_in_file permet de fusionner un dictionnaires en entrée avec un dictionnaire contenu dans un fichier
+        Args:
+            file_name: Nom du fichier contenant le dictionnaire à fusionner
+            dico: dictionnaire à ajouter
+        """
+        #On vérifie que le fichier existe bien, sinon on le crée
+        if os.path.exists(file_path):
+            dico_file = self.file_load(file_path)
+            if dico_file=={}:
+                self.file_dump(file_path,dico)
+            else:
+                dico_global = dico['marches'] + dico_file['marches']
+                #On transforme les dictionnaires en dataframes pour les dédoublonner
+                df_global = pd.DataFrame.from_dict(dico_global)
+                df_global = self.dedoublonnage(df_global)
+                dico_final = self._nan_correction_dico(df_global)
+                self.file_dump(file_path,dico_final)     
+                return dico_final              
+        else:
+            self.file_dump(file_path,dico)
+        return dico
+
     @StepMngmt().decorator(Step.EXPORT,None)
     def export(self):
         # if df is empty then return
@@ -284,10 +363,24 @@ class GlobalProcess:
         logging.info("ÉTAPE EXPORTATION")
         logging.info("Début de l'étape Exportation en JSON")
 
+        """
+        ## Exportation des données dans des fichiers mensuels 
+        self._add_meta_modifications(self.df,pd.DataFrame())
+
+        for year_month, group in self.df.groupby('tmp__annee_mois'):
+            output_file = f"results/decp-{year_month}.json"
+            marches = group[group['_type'].str.contains("Marché")]
+            concessions = group[~group['_type'].str.contains("Marché")]
+            marches_json = marches.to_dict(orient='records')
+            concessions_json = concessions.to_dict(orient='records')
+            #self._merge_in_file(path_result,dico_nouveau)
+            self.file_dump(output_file, {'marches': marches_json, 'concessions': concessions_json})
+
+        """
+
         dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
                             for m in self.df.to_dict(orient='records')]}
-        with open('dico.pkl', 'wb') as f:
-            pickle.dump(dico, f)
+        
         # Modification des champs titulaires et modifications
         #dico = self.dico_modifications(dico)
 
@@ -297,7 +390,6 @@ class GlobalProcess:
         path_result = f"results/decp-{suffix_year}.json"
         path_result_month = f"results/decp-{suffix_month}.json"
         path_result_daily = "results/decp-daily.json"
-        path_result_backup = f"results/ref-decp-{suffix_year}.json"
         
         # Creation du sous répertoire "results"
         os.makedirs("results", exist_ok=True)
@@ -338,6 +430,18 @@ class GlobalProcess:
             # Modification des champs titulaires et modifications
             #dico = self.dico_modifications(dico)
 
+            if not df_prev_month.empty:
+                dico_prev_month = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
+                                    for m in df_prev_month.to_dict(orient='records')]}
+                # On ajoute les nouvelles données (données journalières) au fichier de l'année en cours
+                dico_nouveau = self._merge_in_file(path_result_last_month,dico_prev_month)
+
+                self._merge_in_file(path_result,dico_nouveau)
+
+
+
+                
+            
             dico_ancien = self.file_load(path_result)
             dico_nouveau = self.file_load(path_result_last_month)
             if not df_prev_month.empty:
@@ -371,24 +475,19 @@ class GlobalProcess:
                 except:
                     logging.error("Erreur d'écriture dans le fichier {path_result}")
                 #self.file_dump(path_result_backup,dico_nouveau)
+            
+
+
+
+
             self.file_dump(path_result_month,dico_curr_month)
         else:
-            #On vérifie que le fichier du mois a bien été crée, sinon on le crée
-            if os.path.exists(path_result_month):
-                dico_mensuel = self.file_load(path_result_month)
-                if dico_mensuel=={}:
-                    self.file_dump(path_result_month,dico)
-                else:
-        # Arrondi des montants
-                    dico_global = dico['marches'] + dico_mensuel['marches']
-                    #On transforme les dictionnaires en dataframes pour les dédoublonner
-                    df_global = pd.DataFrame.from_dict(dico_global)
-                    df_global = self.dedoublonnage(df_global)
-                    dico_final = self._nan_correction_dico(df_global)
-                    self.file_dump(path_result_month,dico_final)                   
-            else:
-                self.file_dump(path_result_month,dico)
+            # On ajoute les nouvelles données au fichier du mois en cours
+            self._merge_in_file(path_result_month,dico)
+        
+        # Sauvegarde des données journalières
         self.file_dump(path_result_daily,dico)
+
         logging.info("Exportation JSON OK")
 
     def file_load(self,path:str) ->dict:
@@ -501,6 +600,7 @@ class GlobalProcess:
             marche = marche_in.copy()
 
             delete_attributes_by_prefix(marche,'report__')
+            delete_attributes_by_prefix(marche,'tmp__')
 
             if 'report__file' in marche:
                 del marche["report__file"]
@@ -514,8 +614,14 @@ class GlobalProcess:
                 del marche["report__position"]
             if 'source' in marche:
                 del marche["source"]
-            if 'idAccordCadre' in marche and marche['idAccordCadre'] == '':
+            if 'idAccordCadre' in marche and (marche['idAccordCadre'] == '' or pd.isna(marche['idAccordCadre'])):
                 del marche["idAccordCadre"]
+            if 'origineUE' in marche and (marche['origineUE'] == '' or pd.isna(marche['origineUE'])):
+                del marche["origineUE"]
+            if 'origineFrance' in marche and (marche['origineFrance'] == '' or pd.isna(marche['origineFrance'])):
+                del marche["origineFrance"]
+            if 'tauxAvance' in marche and (marche['tauxAvance'] == '' or pd.isna(marche['tauxAvance'])):
+                del marche["tauxAvance"]
             self.force_int_or_nc('dureeMois',marche)
             self.force_int_or_nc('offresRecues',marche)
             self.force_bool_or_nc('marcheInnovant',marche)
@@ -526,11 +632,13 @@ class GlobalProcess:
                 del marche['modifications']                
             if 'actesSousTraitance' in marche \
                 and ((isinstance(marche['actesSousTraitance'],list) and len(marche['actesSousTraitance'])==0) \
-                    or (isinstance(marche['actesSousTraitance'],str) and marche['actesSousTraitance']=='')):
+                    or (isinstance(marche['actesSousTraitance'],str) and marche['actesSousTraitance']=='') or \
+                    (not isinstance(marche['actesSousTraitance'],list) and pd.isna(marche['actesSousTraitance']))):
                 del marche['actesSousTraitance']  
             if 'modificationsActesSousTraitance' in marche \
                 and ((isinstance(marche['modificationsActesSousTraitance'],list) and len(marche['modificationsActesSousTraitance'])==0) \
-                    or (isinstance(marche['modificationsActesSousTraitance'],str) and marche['modificationsActesSousTraitance']=='')):
+                    or (isinstance(marche['modificationsActesSousTraitance'],str) and marche['modificationsActesSousTraitance']=='') or \
+                    (not isinstance(marche['modificationsActesSousTraitance'],list) and pd.isna(marche['modificationsActesSousTraitance']))):
                 del marche['modificationsActesSousTraitance']  
 
             if 'backup__montant' in marche_in:

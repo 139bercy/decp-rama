@@ -29,6 +29,7 @@ from reporting.Report import Report
 from utils.NodeFormat import NodeFormat
 from utils.StepMngmt import StepMngmt
 from utils.Step import Step
+import re
 
 class SourceProcess:
 
@@ -36,7 +37,7 @@ class SourceProcess:
     sources. Elle sert à définir le cas général des étapes de traitement d'une source : création des
     variables de classe (__init__), nettoyage des dossiers de la source (_clean_metadata_folder),
     récupération des URLs (_url_init), get, convert et fix."""
-
+    
     def __init__(self, key, data_format, report:Report):
         """L'étape __init__ crée les variables associées à la classe SourceProcess : key, source,
         format, df, title, url, cle_api et metadata.
@@ -54,6 +55,8 @@ class SourceProcess:
         self.source = self.metadata[self.key]["code"]
         self.format = self.metadata[self.key]["format"]
         self.url_source = self.metadata[self.key]["url_source"]
+        self.date_pattern = re.compile(r'\d{4}-\d{2}-\d{2}')
+            
         self.validate = self.metadata[self.key]["validate"]
         self.convert_nc = self.metadata[self.key]["convert_nc"]
         self.df = pd.DataFrame()
@@ -148,6 +151,27 @@ class SourceProcess:
                 title = title + [prefix+d["title"] for d in ressources]
             else: 
                 url, title = self.check_date_file(url,title, ressources, old_ressources,prefix)
+            
+            """
+            # Filter by date in title, url
+            begin_date = "2024-01-01"
+            end_date = "2024-12-31"
+            filtered_url = []
+            filtered_title = []
+            for u, t in zip(url, title):
+                match = self.date_pattern.search(u)
+                if match:
+                    file_date = match.group()
+                    if begin_date <= file_date <= end_date:
+                        filtered_url.append(u)
+                        filtered_title.append(t)
+                else:
+                    # Date not found in url, we keep the file for further analysis
+                    filtered_url.append(u)
+                    filtered_title.append(t)
+            url = filtered_url
+            title = filtered_title
+            """
 
             #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
             if os.path.exists(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json"):
@@ -350,7 +374,7 @@ class SourceProcess:
             file_name : nom du fichier où se trouve le dictionnaire dico
 
         """
-        def complete_util_info(rec,source,file_name,position,error_message,error_path):
+        def complete_util_info(rec,source,file_name,year_month,position,error_message,error_path):
             # Adding source and file_name for reporting
             rec['report__file'] = file_name
             if source not in rec:
@@ -360,8 +384,17 @@ class SourceProcess:
                 rec['report__error'] = error_message
             if error_path is not None:
                 rec['report__path'] = error_path
+            rec['tmp__annee_mois'] = year_month
             return rec
-        
+
+        year_month = None
+        d = re.search(r'\d{4}-\d{2}-\d{2}', file_name)
+        if d is not None:
+            try:
+                year_month = pd.to_datetime(d.group()).strftime('%Y-%m')
+            except Exception:
+                year_month = None
+
         nb_total_marches,nb_total_concessions = self.get_nb_enregistrements(dico);
 
         # On mémorise le fichier source et les nombres de marchés et de concession
@@ -383,13 +416,13 @@ class SourceProcess:
                 valid,error_message,error_path = self.check_json(dico_test)
                 if self.validate and not valid:
                     #self.dico_2022_marche.remove(dico['marche'][n])
-                    dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,n,error_message,error_path))
+                    dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,year_month,n,error_message,error_path))
                 else: 
-                    self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,n,error_message,error_path))
+                    self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,year_month,n,error_message,error_path))
                     nb_good_marches+=1
                 n+=1
         elif 'marche' in dico:
-            dico_ignored_concession.append(complete_util_info(dico['marche'],self.source,file_name,0,'Une liste de marchés est attendue',''))
+            dico_ignored_concession.append(complete_util_info(dico['marche'],self.source,file_name,year_month,0,'Une liste de marchés est attendue',''))
         else:
             aucun_marches = True
 
@@ -405,13 +438,13 @@ class SourceProcess:
                 valid,error_message,error_path = self.check_json(dico_test)
                 if self.validate and not valid:
                     #self.dico_2022_concession.remove(dico['contrat-concession'][m])
-                    dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,m,error_message,error_path))
+                    dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,year_month,m,error_message,error_path))
                 else: 
-                    self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,m,error_message,error_path))
+                    self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,year_month,m,error_message,error_path))
                     nb_good_concessions+=1
                 m+=1
         elif 'contrat-concession' in dico:
-            dico_ignored_concession.append(complete_util_info(dico['contrat-concession'],self.source,file_name,0,'Une liste de concessions est attendue',''))
+            dico_ignored_concession.append(complete_util_info(dico['contrat-concession'],self.source,file_name,year_month,0,'Une liste de concessions est attendue',''))
         elif aucun_marches:
             self.report.db_add_error_file('Clean',self.report.E_VALIDATION,self.source,file_name,'Aucun marchés ni concessions n\'ont été retrouvé dans le fichier')
 
