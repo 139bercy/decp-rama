@@ -154,8 +154,8 @@ class SourceProcess:
             
             """
             # Filter by date in title, url
-            begin_date = "2024-01-01"
-            end_date = "2024-12-31"
+            begin_date = "2025-01-01"
+            end_date = "2025-12-31"
             filtered_url = []
             filtered_title = []
             for u, t in zip(url, title):
@@ -684,7 +684,7 @@ class SourceProcess:
         self.df = self.df.reset_index(drop=True)
 
         logging.info(f"Fix de {self.source} OK")
-        logging.info(f"Nombre de marchés dans {self.source} après fix : {len(self.df)}")
+        logging.info(f"Nombre de marchés et de concession dans {self.source} après fix : {len(self.df)}")
 
 
     def enlever_nc_colonne(self,df: pd.DataFrame,nom_colonne:str) -> pd.DataFrame:

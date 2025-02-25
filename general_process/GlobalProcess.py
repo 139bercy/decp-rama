@@ -373,9 +373,8 @@ class GlobalProcess:
             concessions = group[~group['_type'].str.contains("Marché")]
             marches_json = marches.to_dict(orient='records')
             concessions_json = concessions.to_dict(orient='records')
-            #self._merge_in_file(path_result,dico_nouveau)
-            self.file_dump(output_file, {'marches': marches_json, 'concessions': concessions_json})
-
+            self._merge_in_file(output_file,{'marches': marches_json, 'concessions': concessions_json})
+            #self.file_dump(output_file, {'marches': marches_json, 'concessions': concessions_json})
         """
 
         dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
@@ -565,15 +564,26 @@ class GlobalProcess:
 
         """        
         marches = []
-        for marche_in in dico_in['marches']:
-            marche = marche_in.copy()
-            if 'backup__montant' in marche_in:
-                marche['montant'] = marche['backup__montant']
-            self._restore_attributes_by_prefix(marche,'backup__')
-            self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
+        if 'marches' in dico_in:
+            for marche_in in dico_in['marches']:
+                marche = marche_in.copy()
+                if 'backup__montant' in marche_in:
+                    marche['montant'] = marche['backup__montant']
+                self._restore_attributes_by_prefix(marche,'backup__')
+                self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
 
-            marches.append(marche)
+                marches.append(marche)
             
+        if 'concessions' in dico_in:
+            for marche_in in dico_in['concessions']:
+                marche = marche_in.copy()
+                if 'backup__montant' in marche_in:
+                    marche['montant'] = marche['backup__montant']
+                self._restore_attributes_by_prefix(marche,'backup__')
+                self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
+
+                marches.append(marche)
+
         return {
                 'marches': marches 
         }
