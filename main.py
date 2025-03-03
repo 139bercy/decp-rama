@@ -39,11 +39,11 @@ def main(report,data_format:str = 2022):
     #gp.drop_by_date_2024()
     gp.drop_duplicate()
     gp.report.fix_statistics('merged')
-    gp.export()
+    gp.export(args.local)
     gp.save_report()
     if not args.local:
         # gp.upload_s3()
-        gp.upload_datagouv()
+        gp.upload_on_datagouv()
 
 
 def main_augmente(data_format:str = '2022'):

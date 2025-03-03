@@ -276,7 +276,7 @@ class GlobalProcess:
                 return self.extract_publication_dates(modification['modification'])
         return dates_publication
 
-    def _add_meta_modifications(self,df_marches,df_concessions):
+    def _add_meta_modifications(self,df_marches,df_concessions,process_dates:bool=True):
         def _extract_max_id_modification(modifications):
             # Récupérer les ids et retourner le maximum
             ids = [item['modification']['id'] for item in modifications if 'modification' in item]
@@ -323,11 +323,13 @@ class GlobalProcess:
 
         if not df_marches.empty:
             df_marches['titulaires'] = df_marches['titulaires'].apply(_tri_titulaires)
-            _prepare_group_by(df_marches) # df_marches)
+            if process_dates:
+                _prepare_group_by(df_marches) # df_marches)
 
         if not df_concessions.empty:
             df_concessions['concessionnaires'] = df_concessions['concessionnaires'].apply(_tri_concessionnaires)
-            _prepare_group_by(df_concessions) # df_concessions)
+            if process_dates:
+                _prepare_group_by(df_concessions) # df_concessions)
             
     def _merge_in_file(self, file_path:str, dico:dict) -> dict:
         """
@@ -352,9 +354,27 @@ class GlobalProcess:
         else:
             self.file_dump(file_path,dico)
         return dico
+    
+    def upload_on_datagouv(self):
+        config_file = "config.json"
+        # read info from config.son
+        with open(config_file, "r") as f:
+            config = json.load(f)
+            api = config["url_api"]
+            dataset_id = config["dataset_id"]
+            data_gouv_api_key = config["data_gouv_api_key"]
+
+        headers = {
+            "X-API-KEY": data_gouv_api_key
+        }
+
+        for suffix_month, _ in self.df.groupby('tmp__annee_mois'):
+            resource_id_month = self._get_ressource_id(headers,api,dataset_id,suffix_month)
+            resource_id_month = self._upload_file(headers,api,dataset_id,resource_id_month,suffix_month)
+        
 
     @StepMngmt().decorator(Step.EXPORT,None)
-    def export(self):
+    def export(self,local:bool):
         # if df is empty then return
         if len(self.df) == 0:
             logging.warning("Le DataFrame global est vide, impossible d'exporter")
@@ -363,7 +383,9 @@ class GlobalProcess:
         logging.info("ÉTAPE EXPORTATION")
         logging.info("Début de l'étape Exportation en JSON")
 
-        """
+        # Creation du sous répertoire "results"
+        os.makedirs("results", exist_ok=True)
+
         ## Exportation des données dans des fichiers mensuels 
         self._add_meta_modifications(self.df,pd.DataFrame())
 
@@ -375,24 +397,17 @@ class GlobalProcess:
             concessions_json = concessions.to_dict(orient='records')
             self._merge_in_file(output_file,{'marches': marches_json, 'concessions': concessions_json})
             #self.file_dump(output_file, {'marches': marches_json, 'concessions': concessions_json})
-        """
+
 
         dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
                             for m in self.df.to_dict(orient='records')]}
         
-        # Modification des champs titulaires et modifications
-        #dico = self.dico_modifications(dico)
-
         #Création des chemins des fichiers mensuel et annuel(global)
-        suffix_month = self.get_current_date().strftime('%Y-%m')
         suffix_year = self.get_current_date().strftime('%Y')
         path_result = f"results/decp-{suffix_year}.json"
-        path_result_month = f"results/decp-{suffix_month}.json"
         path_result_daily = "results/decp-daily.json"
-        
-        # Creation du sous répertoire "results"
-        os.makedirs("results", exist_ok=True)
 
+        """
         config_file = "config.json"
         # read info from config.son
         with open(config_file, "r") as f:
@@ -408,15 +423,17 @@ class GlobalProcess:
             suffix_month_ago = a_month_ago.strftime('%Y-%m')
             path_result_last_month = f"results/decp-{suffix_month_ago}.json"
 
+
             # Si l'execution de l'application ne s'est pas faite depuis plusieurs jours 
             # il faut scinder le dico en 2: les données du mois précédent et celle du mois en cours
-            self.df['datePublicationDonnees_comp'] = pd.to_datetime(self.df['datePublicationDonnees'],format='mixed',errors='coerce')
-            self.df['dateModifications_tmp'] = self.df['modifications'].apply(self.extract_publication_dates)
-            self.df['dateModifications_comp'] = self.df['dateModifications_tmp'].apply(lambda x: max(pd.to_datetime(x, errors='coerce')) if x else None)
-            self.df['datePublication__max'] = self.df[['datePublicationDonnees_comp', 'dateModifications_comp']].max(axis=1)
-            del self.df['datePublicationDonnees_comp']
-            del self.df['dateModifications_tmp']
-            del self.df['dateModifications_comp']
+            #self.df['datePublicationDonnees_comp'] = pd.to_datetime(self.df['datePublicationDonnees'],format='mixed',errors='coerce')
+            #self.df['dateModifications_tmp'] = self.df['modifications'].apply(self.extract_publication_dates)
+            #self.df['dateModifications_comp'] = self.df['dateModifications_tmp'].apply(lambda x: max(pd.to_datetime(x, errors='coerce')) if x else None)
+            #self.df['datePublication__max'] = self.df[['datePublicationDonnees_comp', 'dateModifications_comp']].max(axis=1)
+            #del self.df['datePublicationDonnees_comp']
+            #del self.df['dateModifications_tmp']
+            #del self.df['dateModifications_comp']
+            self._add_meta_modifications(self.df,pd.DataFrame(),False)
 
             month_first_day = self.get_month_first_day(self.get_current_date())
             df_prev_month = self.df[(self.df['datePublication__max'] < month_first_day) | self.df['datePublication__max'].isna()]
@@ -483,12 +500,13 @@ class GlobalProcess:
         else:
             # On ajoute les nouvelles données au fichier du mois en cours
             self._merge_in_file(path_result_month,dico)
-        
+        """
         # Sauvegarde des données journalières
         self.file_dump(path_result_daily,dico)
 
         logging.info("Exportation JSON OK")
-
+    
+        
     def file_load(self,path:str) ->dict:
         """
         La fonction file_load essaie de lire un fichier JSON et de le convertir en dictionnaire.
@@ -852,6 +870,30 @@ class GlobalProcess:
                 config["resource_year"] = self.get_current_date().year
             with open(config_file, "w") as file:
                 json.dump(config, file, indent=4) 
+
+    def _get_ressource_id(self,headers,api,dataset_id,suffix:str) -> str:
+        resource_id = None
+
+        resource_file = f"decp-{suffix}.json"
+
+        url = f"{api}/datasets/{dataset_id}/"
+
+        response = requests.get(url, headers)
+
+        if response.status_code == 200:
+            # Récupérer la réponse en JSON
+            response_json = response.json()
+
+            with open('result_trace.txt', 'w') as file:
+                #file.write(response.text)
+                json.dump(response_json, file, indent=4)
+            
+            resources = response_json['resources']
+            for resource in resources:
+                if resource['title'] == resource_file:
+                    resource_id = resource['id']
+                    
+        return resource_id
 
 
     def _upload_file(self,headers,api,dataset_id,resource_id:str,suffix:str) -> str:
