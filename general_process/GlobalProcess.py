@@ -202,7 +202,7 @@ class GlobalProcess:
             df_nomodif = df
 
         #Critères de dédoublonnage
-        feature_doublons_marche = ["id","acheteur", "titulaires", "dateNotification", "montant"] 
+        feature_doublons_marche = ["id", "acheteur", "titulaires", "dateNotification", "montant"] 
         feature_doublons_concession = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale"]
 
         #Séparation des marches et des concessions, suppression des doublons
@@ -388,6 +388,7 @@ class GlobalProcess:
 
         ## Exportation des données dans des fichiers mensuels 
         self._add_meta_modifications(self.df,pd.DataFrame())
+        self._nan_correction_dico(self.df)
 
         for year_month, group in self.df.groupby('tmp__annee_mois'):
             output_file = f"results/decp-{year_month}.json"
