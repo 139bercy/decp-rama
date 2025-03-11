@@ -367,11 +367,19 @@ class GlobalProcess:
         headers = {
             "X-API-KEY": data_gouv_api_key
         }
+        years = []
 
         for suffix_month, _ in self.df.groupby('tmp__annee_mois'):
+            logging.info(f"Uploading file decp-{suffix_month}.json")
             resource_id_month = self._get_ressource_id(headers,api,dataset_id,suffix_month)
             resource_id_month = self._upload_file(headers,api,dataset_id,resource_id_month,suffix_month)
-        
+            suffix_year = suffix_month[0:4]
+            if suffix_year in years:
+                logging.info(f"Uploading file decp-{suffix_year}.json")
+                years += [suffix_year]
+                resource_id_year = self._get_ressource_id(headers,api,dataset_id,suffix_year)
+                resource_id_year = self._upload_file(headers,api,dataset_id,resource_id_year,suffix_year)
+            
 
     @StepMngmt().decorator(Step.EXPORT,None)
     def export(self,local:bool):
@@ -397,6 +405,8 @@ class GlobalProcess:
             marches_json = marches.to_dict(orient='records')
             concessions_json = concessions.to_dict(orient='records')
             self._merge_in_file(output_file,{'marches': marches_json, 'concessions': concessions_json})
+            output_file_year = output_file[0:9]
+            self._merge_in_file(output_file_year,{'marches': marches_json, 'concessions': concessions_json})
             #self.file_dump(output_file, {'marches': marches_json, 'concessions': concessions_json})
 
 
