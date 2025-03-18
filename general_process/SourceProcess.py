@@ -56,6 +56,7 @@ class SourceProcess:
         self.format = self.metadata[self.key]["format"]
         self.url_source = self.metadata[self.key]["url_source"]
         self.date_pattern = re.compile(r'\d{4}-\d{2}-\d{2}')
+        self.date_pattern_inv = re.compile(r'\d{2}.\d{2}.\d{4}')
             
         self.validate = self.metadata[self.key]["validate"]
         self.convert_nc = self.metadata[self.key]["convert_nc"]
@@ -103,6 +104,16 @@ class SourceProcess:
         
         logging.info("Initialisation finie")
     
+    @staticmethod
+    def _date_in_intervale(date_txt:str, date_begin, date_end) -> bool:
+        # Conversion des chaînes de caractères en objets Date
+        date_a_verifier = datetime.strptime(date_txt, "%d.%m.%Y")
+
+        # Vérification de la séquence logique
+        if date_begin <= date_a_verifier <= date_end:
+            return True  # La date est comprise entre les deux autres dates.
+        else:
+            return False
 
     def _create_metadata_file(self,n:int)->tuple[list,list]:
         """
@@ -152,25 +163,39 @@ class SourceProcess:
             else: 
                 url, title = self.check_date_file(url,title, ressources, old_ressources,prefix)
             
+
             """
+            ## Code for generate all files for months and year between given dates 
             # Filter by date in title, url
-            begin_date = "2025-01-01"
-            end_date = "2025-12-31"
+
+            begin_date_txt = "2025-01-01"
+            end_date_txt = "2025-12-31"
+            date_begin = datetime.strptime(date_begin_txt, "%Y-%d-%d")
+            date_end = datetime.strptime(date_end_txt, "%Y-%d-%d")
+            
             filtered_url = []
             filtered_title = []
             for u, t in zip(url, title):
                 match = self.date_pattern.search(u)
                 if match:
                     file_date = match.group()
-                    if begin_date <= file_date <= end_date:
+                    if begin_date_txt <= file_date <= end_date_txt:
                         filtered_url.append(u)
                         filtered_title.append(t)
                 else:
-                    # Date not found in url, we keep the file for further analysis
-                    filtered_url.append(u)
-                    filtered_title.append(t)
+                    match = self.date_pattern2.search(u)
+                    if match:
+                        file_date = match.group()
+                        if SourceProcess._date_in_intervale(file_date, begin_date,end_date):
+                            filtered_url.append(u)
+                            filtered_title.append(t)
+                    else:
+                        # Date not found in url, we keep the file for further analysis
+                        filtered_url.append(u)
+                        filtered_title.append(t)
             url = filtered_url
             title = filtered_title
+            
             """
 
             #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
@@ -221,7 +246,7 @@ class SourceProcess:
         logging.info(f"Début du téléchargement : {len(self.url)} fichier(s)")
         os.makedirs(f"sources/{self.source}", exist_ok=True)
         if self.cle_api==[]:
-            logging.info("Pas de clé api pour télécherger les données")
+            logging.info("Pas de clé api pour télécharger les données")
             self._download_without_metadata()
         else:
             # Verification de l'existence d'un eventuel doublon + nettoyage + 
@@ -279,6 +304,13 @@ class SourceProcess:
         logging.info("Début du nettoyage des nouveaux fichiers")
         #Ouverture des fichiers
         dico = {}
+
+        # Tests AIFE
+        #self.url = [f"sources/{self.source}/Donnees-Essentielles-Marches13.03.2025.12-54.xml"]
+        #self.url += [f"sources/{self.source}/Donnees-Essentielles-Marches13.03.2025.11-50.xml"]
+        #self.title = ["Donnees-Essentielles-Marches13.03.2025.12-54.xml"]
+        #self.title += ["Donnees-Essentielles-Marches13.03.2025.11-50.xml"]
+        
         for i in range(len(self.title)):            
             if self.format == 'xml':
                 try:
@@ -297,11 +329,12 @@ class SourceProcess:
                     for marche in dico['marches']['marche']:
                         if self.convert_nc:
                             NodeFormat.force_bools_nc(['sousTraitanceDeclaree','marcheInnovant','attributionAvance'],marche)
+                            NodeFormat.force_floats_nc(['tauxAvance','origineUE','origineFrance','montant'],marche)
+                            NodeFormat.force_ints_nc(['offresRecues','dureeMois'],marche)
                         else:
                             NodeFormat.force_bools(['sousTraitanceDeclaree','marcheInnovant','attributionAvance'],marche)
-
-                        NodeFormat.force_floats(['tauxAvance','origineUE','origineFrance','montant'],marche)
-                        NodeFormat.force_ints(['offresRecues','dureeMois'],marche)
+                            NodeFormat.force_floats(['tauxAvance','origineUE','origineFrance','montant'],marche)
+                            NodeFormat.force_ints(['offresRecues','dureeMois'],marche)
 
                         if 'titulaires' in marche.keys() and not NodeFormat.is_normalized_list_node(marche,'titulaires', 'titulaire'):
                             NodeFormat.normalize_list_node(marche,'titulaires', 'titulaire')
@@ -360,7 +393,23 @@ class SourceProcess:
 
         logging.info("Fin du nettoyage des nouveaux fichier")
 
-
+    def _get_year_month(self,file_name):
+        year_month = None
+        d = re.search(self.date_pattern, file_name)
+        if d is not None:
+            try:
+                year_month = pd.to_datetime(d.group()).strftime('%Y-%m')
+            except Exception:
+                year_month = None
+        else:
+            d = re.search(self.date_pattern_inv, file_name)
+            if d is not None:
+                try:
+                    year_month = pd.to_datetime(d.group(),format="%d.%m.%Y").strftime('%Y-%m')
+                except Exception:
+                    year_month = None
+        return year_month
+    
     def _validation_format(self, dico:dict, file_name:str) -> None:
         """
         Cette fonction permet de vérifier la structure du dictionnaire fournit en
@@ -387,13 +436,8 @@ class SourceProcess:
             rec['tmp__annee_mois'] = year_month
             return rec
 
-        year_month = None
-        d = re.search(r'\d{4}-\d{2}-\d{2}', file_name)
-        if d is not None:
-            try:
-                year_month = pd.to_datetime(d.group()).strftime('%Y-%m')
-            except Exception:
-                year_month = None
+        # Get year-month suffix for this data set for merging data in export
+        year_month = self._get_year_month(file_name)
 
         nb_total_marches,nb_total_concessions = self.get_nb_enregistrements(dico);
 
@@ -612,7 +656,18 @@ class SourceProcess:
             return ligne      
         
         def tri_titulaires(titulaires):
-            return sorted(titulaires, key=lambda x: x['titulaire']['id']) if isinstance(titulaires, list) else titulaires
+            # return sorted(titulaires, key=lambda x: x['titulaire']['id']) if isinstance(titulaires, list) else titulaires
+            # Utiliser sorted si titulaires est une liste
+            if isinstance(titulaires, list):
+                return sorted([t for t in titulaires if 'id' in t['titulaire']], key=lambda x: x['titulaire']['id'])
+
+            # Si titulaires est un dict (par exemple, un dataframe converti en dict), on traite différemment
+            elif isinstance(titulaires, dict):
+                # Filtrer et trier les entrées qui ont bien l'attribut 'id'
+                return {k: v for k, v in titulaires.items() if 'id' in v and 'titulaire' in v and 'id' in v['titulaire']}
+
+            else:
+                raise TypeError("L'entrée titulaires doit être une liste ou un dictionnaire.")
 
         def tri_concessionnaires(concessionnaires):
             return sorted(concessionnaires, key=lambda x: x['concessionnaire']['id']) if isinstance(concessionnaires, list) else concessionnaires

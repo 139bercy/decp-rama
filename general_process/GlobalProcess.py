@@ -33,6 +33,7 @@ class GlobalProcess:
 
     columns_with_list = ['titulaires','donneesExecution','modifications','concessionnaires','tarifs']
     date_pattern = r'\d{4}-\d{2}-\d{2}'
+    date_pattern_inv = r'\d{2}.\d{2}.\d{4}'
 
     def __init__(self,data_format="2022", report:Report=None):
         """L'étape __init__ crée les variables associées à la classe GlobalProcess : le DataFrame et
@@ -405,7 +406,7 @@ class GlobalProcess:
             marches_json = marches.to_dict(orient='records')
             concessions_json = concessions.to_dict(orient='records')
             self._merge_in_file(output_file,{'marches': marches_json, 'concessions': concessions_json})
-            output_file_year = output_file[0:9]
+            output_file_year = output_file[0:17] + '.json'
             self._merge_in_file(output_file_year,{'marches': marches_json, 'concessions': concessions_json})
             #self.file_dump(output_file, {'marches': marches_json, 'concessions': concessions_json})
 
@@ -563,6 +564,7 @@ class GlobalProcess:
             path: chemin du fichier d'où l'on récupère les données
             dico: dictionnaire contenant les données qui vont être écrite dans le fichier  
         """
+        logging.info(f"Saving file {path}")
         if is_for_data_gouv:
             dico = self._dico_purge(dico)
         else:
@@ -931,7 +933,7 @@ class GlobalProcess:
                 data = response.json()
                 resource_id = data['id']
         else:
-            logging.error(f'Error uploading file decp-{suffix}.json3')
+            logging.error(f'Error {response.status_code} uploading file decp-{suffix}.json')
         
         return resource_id
 

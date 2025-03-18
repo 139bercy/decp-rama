@@ -116,6 +116,19 @@ class NodeFormat:
                     marche[key] = True
 
 
+    def force_floats_nc(keys:list,marche:dict):
+        for key in keys:
+            if key in marche and marche[key] is not None and  marche[key] !='NC':
+                try:
+                    # Convertir la valeur en float
+                    marche[key] = float(marche[key])
+                except ValueError:
+                    logging.warning(f"Erreur : la valeur de la clé '{key}' ne peut pas être convertie en entier.")
+                except TypeError:
+                    logging.warning(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
+            elif key in marche and marche[key] !='NC':
+                marche[key] = 0
+
     def force_floats(keys:list,marche:dict):
         for key in keys:
             if key in marche and marche[key] is not None and  marche[key] !='NC':
@@ -126,6 +139,19 @@ class NodeFormat:
                     logging.warning(f"Erreur : la valeur de la clé '{key}' ne peut pas être convertie en entier.")
                 except TypeError:
                     logging.warning(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
+
+    def force_ints_nc(keys:list,marche:dict):
+        for key in keys:
+            if key in marche and marche[key] is not None and  marche[key] !='NC':
+                try:
+                    # Convertir la valeur en int
+                    marche[key] = int(marche[key])
+                except ValueError:
+                    logging.warning(f"Erreur : la valeur de la clé '{key}' ne peut pas être convertie en entier.")
+                except TypeError:
+                    logging.warning(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
+            elif key in marche and marche[key] !='NC':
+                marche[key] = 0
 
     def force_ints(keys:list,marche:dict):
         for key in keys:
