@@ -56,7 +56,7 @@ class SourceProcess:
         self.format = self.metadata[self.key]["format"]
         self.url_source = self.metadata[self.key]["url_source"]
         self.date_pattern = re.compile(r'\d{4}-\d{2}-\d{2}')
-        self.date_pattern_inv = re.compile(r'\d{2}.\d{2}.\d{4}')
+        self.date_pattern_inv = re.compile(r'\d{2}\.{1}\d{2}\.{1}\d{4}')
             
         self.validate = self.metadata[self.key]["validate"]
         self.convert_nc = self.metadata[self.key]["convert_nc"]
@@ -164,14 +164,15 @@ class SourceProcess:
                 url, title = self.check_date_file(url,title, ressources, old_ressources,prefix)
             
 
-            """
+            
             ## Code for generate all files for months and year between given dates 
             # Filter by date in title, url
 
+
             begin_date_txt = "2025-01-01"
             end_date_txt = "2025-12-31"
-            date_begin = datetime.strptime(date_begin_txt, "%Y-%d-%d")
-            date_end = datetime.strptime(date_end_txt, "%Y-%d-%d")
+            begin_date = datetime.strptime(begin_date_txt, "%Y-%m-%d")
+            end_date = datetime.strptime(end_date_txt, "%Y-%m-%d")
             
             filtered_url = []
             filtered_title = []
@@ -183,7 +184,7 @@ class SourceProcess:
                         filtered_url.append(u)
                         filtered_title.append(t)
                 else:
-                    match = self.date_pattern2.search(u)
+                    match = self.date_pattern_inv.search(u)
                     if match:
                         file_date = match.group()
                         if SourceProcess._date_in_intervale(file_date, begin_date,end_date):
@@ -196,7 +197,6 @@ class SourceProcess:
             url = filtered_url
             title = filtered_title
             
-            """
 
             #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
             if os.path.exists(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json"):

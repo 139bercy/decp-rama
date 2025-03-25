@@ -24,6 +24,7 @@ class ProcessFactory:
         #self.processes = [Megalis2024Process]
         #self.processes = [Emar2024Process]
         #self.processes = [Ppsmj2024Process]
+        #self.processes = [Atexo2024Process]
         # if data_format=='2022':
         # self.processes = [SampleXmlProcess] # For test ECO
         self.dataframes = []
