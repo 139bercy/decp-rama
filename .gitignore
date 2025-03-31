@@ -12,11 +12,13 @@ data_download
 data_eclatees
 cache
 bad_results
+test_schemes
 tools_flux
 resources
 METADATA_FOR_REPLAY
 config.json
 result.json
+result_trace.txt
 result_list.json
 
 

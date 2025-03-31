@@ -660,14 +660,12 @@ class SourceProcess:
             # Utiliser sorted si titulaires est une liste
             if isinstance(titulaires, list):
                 return sorted([t for t in titulaires if 'id' in t['titulaire']], key=lambda x: x['titulaire']['id'])
-
             # Si titulaires est un dict (par exemple, un dataframe converti en dict), on traite différemment
             elif isinstance(titulaires, dict):
                 # Filtrer et trier les entrées qui ont bien l'attribut 'id'
                 return {k: v for k, v in titulaires.items() if 'id' in v and 'titulaire' in v and 'id' in v['titulaire']}
-
-            else:
-                raise TypeError("L'entrée titulaires doit être une liste ou un dictionnaire.")
+            # else:
+            #     raise TypeError("L'entrée titulaires doit être une liste ou un dictionnaire.")
 
         def tri_concessionnaires(concessionnaires):
             return sorted(concessionnaires, key=lambda x: x['concessionnaire']['id']) if isinstance(concessionnaires, list) else concessionnaires
