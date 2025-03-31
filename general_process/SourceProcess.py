@@ -446,6 +446,7 @@ class SourceProcess:
 
         logging.info(f"Nombre de marchés et concessions à valider dans {file_name}: {(nb_total_marches+nb_total_concessions)} ")
 
+        draft_validator = Draft7Validator(self.json_scheme)
         n, m = 0, 0
         nb_good_marches,nb_good_concessions = 0, 0
         dico_ignored_marche, dico_ignored_concession = [], []
@@ -457,7 +458,7 @@ class SourceProcess:
                 #self.dico_2022_marche.append(dico['marche'][n])
                 dico_test = {'marches': {'marche': [dico['marche'][n]], 'contrat-concession': []}}
 
-                valid,error_message,error_path = self.check_json(dico_test)
+                valid,error_message,error_path = self.check_json_batch(dico_test,draft_validator)
                 if self.validate and not valid:
                     #self.dico_2022_marche.remove(dico['marche'][n])
                     dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,year_month,n,error_message,error_path))
@@ -585,9 +586,29 @@ class SourceProcess:
 
         """
         try:
-            # Alternative Draft7Validator.check_schema(jsonScheme)
-            # Alternative Draft202012Validator.check_schema(jsonScheme)
+            # Draft7Validator.check_schema(jsonScheme)
+            # Draft202012Validator.check_schema(jsonScheme)
             validate(instance=json_data, schema=json_scheme)
+        except jsonschema.exceptions.ValidationError as err: 
+            #logging.error(f"Erreur de validation json - {err.message}")
+            return False, err.message, err.json_path
+        return True, None, None
+
+    def _validate_json_batch(self, json_data:dict,draft_validator:Draft7Validator) -> tuple[bool,str,str]:
+        """
+        Fonction vérifiant si le fichier jsn "json_data" respecte
+        le schéma spécifié dans le  schéma en paramètre "json_scheme". 
+
+        Args: 
+
+            json_data: dictionnaire qui va être vérifié par le validateur
+            draft_validator: Instance du validator initialisee avec le schéma à respecter
+
+        """
+        try:
+            # Draft7Validator.check_schema(jsonScheme)
+            # Draft202012Validator.check_schema(jsonScheme)
+            draft_validator.validate(instance=json_data)
         except jsonschema.exceptions.ValidationError as err: 
             #logging.error(f"Erreur de validation json - {err.message}")
             return False, err.message, err.json_path
@@ -605,6 +626,18 @@ class SourceProcess:
 
         """
         return self._validate_json(json_data,self.json_scheme)
+    
+    def check_json_batch(self,json_data,draft_validator:Draft7Validator) -> tuple[bool,str,str]:
+        """
+        Fonction qui prend en paramètre une donnée json
+        et vérifiant, grâce à un schéma, que la donnée est valide.
+
+        Args:
+
+            json_data : donnée json en entrée
+
+        """
+        return self._validate_json_batch(json_data,draft_validator)
     
 
     def convert_boolean_DEPRECATED(self,col_name:str) -> None:
@@ -660,14 +693,12 @@ class SourceProcess:
             # Utiliser sorted si titulaires est une liste
             if isinstance(titulaires, list):
                 return sorted([t for t in titulaires if 'id' in t['titulaire']], key=lambda x: x['titulaire']['id'])
-
             # Si titulaires est un dict (par exemple, un dataframe converti en dict), on traite différemment
             elif isinstance(titulaires, dict):
                 # Filtrer et trier les entrées qui ont bien l'attribut 'id'
                 return {k: v for k, v in titulaires.items() if 'id' in v and 'titulaire' in v and 'id' in v['titulaire']}
-
-            else:
-                raise TypeError("L'entrée titulaires doit être une liste ou un dictionnaire.")
+            # else:
+            #     raise TypeError("L'entrée titulaires doit être une liste ou un dictionnaire.")
 
         def tri_concessionnaires(concessionnaires):
             return sorted(concessionnaires, key=lambda x: x['concessionnaire']['id']) if isinstance(concessionnaires, list) else concessionnaires

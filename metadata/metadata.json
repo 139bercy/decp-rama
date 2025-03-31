@@ -147,7 +147,7 @@
   {
     "code": "marches-publics_aws",
     "description": "Données essentielles sai…lateforme AW Solutions.",
-    "url_source": "https://www.data.gouv.fr/api/1/datasets/declaration-des-donnees-essentielles-avenue-web-systemes/",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/declaration-des-donnees-essentielles-avenue-web-systemes/",
     "format": "json",
     "cle_api": ["65cf11893fda573b53b19f52"],
     "url": "",
