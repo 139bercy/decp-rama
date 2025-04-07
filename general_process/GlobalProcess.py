@@ -47,7 +47,7 @@ class GlobalProcess:
     @StepMngmt().decorator(Step.MERGE_ALL,StepMngmt.FORMAT_DATAFRAME)
     def merge_all(self) -> None:
         """Étape merge all qui permet la fusion des DataFrames de chacune des sources en un seul."""
-        logging.info("  ÉTAPE MERGE ALL")
+        logging.info("--- ÉTAPE MERGE ALL")
         logging.info("Début de l'étape Merge des Dataframes")
         if len(self.dataframes)>0:
             self.df = pd.concat(self.dataframes, ignore_index=True)
@@ -62,7 +62,7 @@ class GlobalProcess:
         """
         Étape fix all qui permet l'uniformisation du DataFrame.
         """
-        logging.info("  ÉTAPE FIX ALL")
+        logging.info("--- ÉTAPE FIX ALL")
         logging.info("Début de l'étape Fix_all du DataFrame fusionné")
 
         if len(self.df) == 0:
@@ -165,7 +165,7 @@ class GlobalProcess:
         supprimé les espaces et convertis l'ensemble du DataFrame en string.
         """
 
-        logging.info("  ÉTAPE DROP DUPLICATE")
+        logging.info("--- ÉTAPE DROP DUPLICATE")
         # if df is empty then return
         if len(self.df) == 0:
             logging.warning(f"Le DataFrame global est vide, impossible de supprimer les doublons")
@@ -334,7 +334,8 @@ class GlobalProcess:
             
     def _merge_in_file(self, file_path:str, dico:dict) -> dict:
         """
-        La fonction _merge_in_file permet de fusionner un dictionnaires en entrée avec un dictionnaire contenu dans un fichier
+        La fonction _merge_in_file permet de fusionner un dictionnaires en entrée avec 
+        le dictionnaire contenu dans un fichier
         Args:
             file_name: Nom du fichier contenant le dictionnaire à fusionner
             dico: dictionnaire à ajouter
@@ -353,6 +354,7 @@ class GlobalProcess:
                 self.file_dump(file_path,dico_final)     
                 return dico_final              
         else:
+            # Le fichier n'existait pas on ajoute le nouveau dictionnaire dedans
             self.file_dump(file_path,dico)
         return dico
     
@@ -389,7 +391,7 @@ class GlobalProcess:
             logging.warning("Le DataFrame global est vide, impossible d'exporter")
             return
         """Étape exportation des résultats au format json et xml dans le dossier /results"""
-        logging.info("ÉTAPE EXPORTATION")
+        logging.info("--- ÉTAPE EXPORTATION")
         logging.info("Début de l'étape Exportation en JSON")
 
         # Creation du sous répertoire "results"
@@ -405,21 +407,23 @@ class GlobalProcess:
             concessions = group[~group['_type'].str.contains("Marché")]
             marches_json = marches.to_dict(orient='records')
             concessions_json = concessions.to_dict(orient='records')
+            logging.info(f"Ajout de {len(marches_json)} marchés et {len(concessions_json)} concessions au fichier results/decp-{year_month}")
             self._merge_in_file(output_file,{'marches': marches_json, 'concessions': concessions_json})
             output_file_year = output_file[0:17] + '.json'
             self._merge_in_file(output_file_year,{'marches': marches_json, 'concessions': concessions_json})
-            #self.file_dump(output_file, {'marches': marches_json, 'concessions': concessions_json})
 
 
         dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
                             for m in self.df.to_dict(orient='records')]}
         
-        #Création des chemins des fichiers mensuel et annuel(global)
-        suffix_year = self.get_current_date().strftime('%Y')
-        path_result = f"results/decp-{suffix_year}.json"
+        #Création du fichier daily
         path_result_daily = "results/decp-daily.json"
 
         """
+        #Création des chemins des fichiers mensuel et annuel(global)
+        suffix_year = self.get_current_date().strftime('%Y')
+        path_result = f"results/decp-{suffix_year}.json"
+        
         config_file = "config.json"
         # read info from config.son
         with open(config_file, "r") as f:
@@ -530,18 +534,15 @@ class GlobalProcess:
             path: chemin du fichier d'où l'on récupère les données
 
         """
+        nb_marches = 0
+        nb_concessions = 0
         if(os.path.exists(path)):
             #On essaye de récupérer le fichier grâce au chemein contenu dans la variable path
             try:
                 with open(path, encoding="utf-8") as f:
                     dico = json.load(f)
-                if self.dico_exists_marche_in_marches(dico):
-                    dico['marches'] = dico['marches']['marche'] 
-                    if 'contrat-concession' in dico['marches']:
-                        dico['marches'].append(dico['marches']['contrat-concession'])
-                else:
-                    if 'contrat-concession' in dico['marches']:
-                        dico['marches'] = dico['marches']['contrat-concession']
+                nb_marches = len(dico['marches'])
+                logging.info(f"Chargement de {nb_marches} marches {nb_concessions} concessions du fichier json {path}")
             #Cas où le fichier est vide
             except ValueError:
                 dico={}

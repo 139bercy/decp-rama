@@ -25,6 +25,7 @@ class ProcessFactory:
         #self.processes = [Emar2024Process]
         #self.processes = [Ppsmj2024Process]
         #self.processes = [Atexo2024Process]
+        #self.processes = [SampleXmlProcess]
         # if data_format=='2022':
         # self.processes = [SampleXmlProcess] # For test ECO
         self.dataframes = []
@@ -44,7 +45,9 @@ class ProcessFactory:
         for process in self.processes:
             loaded = ''
             try:
-                logging.info(f"------------------------------{process.__name__}------------------------------")
+                logging.info( "---------------------------------------------------------------")
+                logging.info(f"               Traitement de {process.__name__} ")
+                logging.info( "---------------------------------------------------------------")
                 p = process(self.data_format,self.report)
                 if not self.step.bypass(p.source,Step.GET):
                     p.get()
@@ -71,7 +74,8 @@ class ProcessFactory:
                 p.fix_statistics()
                 logging.info (f"Ajout des données de la source {process.__name__}")
                 self.dataframes.append(p.df)
-                logging.info(f"----------------Fin du traitement {process.__name__}------------------------------")
+                logging.info( "---------------------------------------------------------------")
+                logging.info(f"             Fin du traitement {process.__name__}")
             except Exception as err:
                 if loaded != '':
                     logging.error(f"Erreur de traitement après l'opération {loaded}  - {err}")

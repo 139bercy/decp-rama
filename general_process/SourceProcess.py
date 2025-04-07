@@ -46,7 +46,7 @@ class SourceProcess:
             key: clé qui permettant d'identifier la source du processus
             data_format: il s'agit de l'année 2022 ou 2019
         """
-        logging.info("  ÉTAPE INIT")
+        logging.info("--- ÉTAPE INIT")
         self.report = report
         self.key = key
         self.data_format = data_format
@@ -102,6 +102,7 @@ class SourceProcess:
         else:
             self.url, self.title = self._create_metadata_file(len(self.cle_api))
         
+        logging.info(" ")
         logging.info("Initialisation finie")
     
     @staticmethod
@@ -242,7 +243,7 @@ class SourceProcess:
         Étape get qui permet le lavage du dossier sources/{self.source} et 
         la récupération de l'ensemble des fichiers présents sur chaque url.
         """
-        logging.info("  ÉTAPE GET")
+        logging.info("--- ÉTAPE GET")
         logging.info(f"Début du téléchargement : {len(self.url)} fichier(s)")
         os.makedirs(f"sources/{self.source}", exist_ok=True)
         if self.cle_api==[]:
@@ -300,7 +301,7 @@ class SourceProcess:
         dictionnaires pour séparer les marchés et les concessions respectant le format 
         des "mauvais".
         """        
-        logging.info("ÉTAPE CLEAN")
+        logging.info("--- ÉTAPE CLEAN")
         logging.info("Début du nettoyage des nouveaux fichiers")
         #Ouverture des fichiers
         dico = {}
@@ -512,8 +513,7 @@ class SourceProcess:
             if len(self.dico_2022_concession)>0:
                 self.report.add_forced('Clean/Concession',self.report.E_VALIDATION,'Concession non valide mais ajoutée',self.dico_2022_concession)
 
-        logging.info(f"Nombre de marchés et concessions invalides dans {file_name}: {len(dico_ignored_marche)+len(dico_ignored_concession)} ")
-        logging.info(f"Nombre de marchés et concessions valides dans {file_name}: {nb_good_marches+nb_good_concessions} ")
+        logging.info(f"Nombre de marchés et concessions valides dans {file_name}:   {nb_good_marches+nb_good_concessions} (ignorés: {len(dico_ignored_marche)+len(dico_ignored_concession)})")
 
 
     def _add_column_type(self, df: pd.DataFrame, default_type_name:str = None) -> None :
@@ -542,10 +542,9 @@ class SourceProcess:
         des marchés/concessions valides de chaque fichier pour le convertir en un 
         dataframe. L'ensemble des dataframes est stocké dans une liste. 
         """
-        logging.info("  ÉTAPE CONVERT")
+        logging.info("--- ÉTAPE CONVERT")
         logging.info(f"Début de convert: mise au format DataFrame de {self.source}")
 
-        logging.info(f"Début de convert: mise au format DataFrame de {self.source}")
         #Liste qui conservera les dataframes. 
         li = []
 
@@ -571,7 +570,7 @@ class SourceProcess:
         self.df = df
 
         logging.info("Conversion OK")
-        logging.info(f"Nombre de marchés dans {self.source} après convert : {len(self.df)}")
+        logging.info(f"Nombre de marchés/concessions dans {self.source} après convert : {len(self.df)}")
 
 
     def _validate_json(self, json_data:dict,json_scheme:dict) -> tuple[bool,str,str]:
@@ -665,10 +664,14 @@ class SourceProcess:
 
         """
         #Conversion si il s'agit de string
-        if self.df[col_name].dtypes == 'object':  
-            self.df[col_name] = self.df[col_name].astype(str).replace({'1': True, 'true': True, 'True': True, '0': False, 'false': False, 'False': False})
+        if self.df[col_name].dtypes == 'object':
+            #self.df[col_name] = self.df[col_name].astype(str).replace({'1': True, 'true': True, 'True': True, '0': False, 'false': False, 'False': False})
+            with pd.option_context("future.no_silent_downcasting", True):
+                self.df[col_name] = self.df[col_name].replace({'1': True, 'true': True, 'True': True, '0': False, 'false': False, 'False': False}).infer_objects(copy=False)
         else:
-            self.df[col_name] = self.df[col_name].astype(str).replace({'True': True, 'False': False }) 
+            #self.df[col_name] = self.df[col_name].astype(str).replace({'True': True, 'False': False })
+            with pd.option_context("future.no_silent_downcasting", True):
+                self.df[col_name] = self.df[col_name].replace({'True': True, 'False': False }).infer_objects(copy=False)
 
 
     def fix(self) -> None:
@@ -703,7 +706,7 @@ class SourceProcess:
         def tri_concessionnaires(concessionnaires):
             return sorted(concessionnaires, key=lambda x: x['concessionnaire']['id']) if isinstance(concessionnaires, list) else concessionnaires
 
-        logging.info("  ÉTAPE FIX")
+        logging.info("--- ÉTAPE FIX")
         logging.info(f"Début de fix: Ajout source et suppression des doublons de {self.source}")
         # Ajout de source
         self.df = self.df.assign(source=self.source)
@@ -777,7 +780,9 @@ class SourceProcess:
         if nom_colonne in df.columns:
             df['backup__' + nom_colonne] = df[nom_colonne]
             #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
-            df[nom_colonne] = df[nom_colonne].replace("NC",np.nan)
+            #df[nom_colonne] = df[nom_colonne].replace("NC",np.nan)
+            with pd.option_context("future.no_silent_downcasting", True):
+                df[nom_colonne] = df[nom_colonne].replace("NC",np.nan).infer_objects(copy=False)
         
         return df
 

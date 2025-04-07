@@ -69,20 +69,15 @@ def main(data_format:str = '2022'):
 
         #json_source = 'decp_'+data_format +'.json'
         json_source = f"results/decp-daily.json"
-        #if not os.path.isfile("data/decpv2.json"):
-        #    logging.info("Load file from S3 repositary")
-        #if not args.test:
-        #    #augmente.utils.download_file("data/"+json_source,"data/"+json_source)
-        #    augmente.utils.download_file("data/cpv_2008_fr.xls","data/cpv_2008_fr.xls")
 
         logger.info(f"Opening {json_source}")
         with open(json_source, 'rb') as f:
             # c'est long de charger le json, je conseille de le faire une fois et de sauvegarder le df en pickle pour les tests
             df = augmente.convert_json_to_pandas.manage_modifications(json.load(f),data_format)
-        #if args.test:
-        #    #m = math.ceil(len(df.index)/3)
-        #    df = df.sample(n=len(df.index), random_state=1)   #on récupère tous les marchés et concessions
-        #    logger.info("Mode test activé")
+        if args.test:
+            #m = math.ceil(len(df.index)/3)
+            df = df.sample(n=len(df.index), random_state=1)   #on récupère tous les marchés et concessions
+            logger.info("Mode test activé")
 
         logger.info("Nettoyage des données")
         manage_data_quality(df,data_format)
@@ -497,7 +492,8 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
             df["attributionAvance"] = df["attributionAvance"].astype(str)
             df["sousTraitanceDeclaree"] = df["sousTraitanceDeclaree"].astype(str)
             
-            df["offresRecues"] = df["offresRecues"].fillna(0).astype(int).astype(str)
+            with pd.option_context("future.no_silent_downcasting", True):
+                df["offresRecues"] = df["offresRecues"].fillna(0).infer_objects(copy=False) #.astype(int).astype(str)
             if 'tauxAvance' in df.columns:
                 df["tauxAvance"] = df["tauxAvance"].astype(str)
             if 'origineUE' in df.columns:
@@ -585,7 +581,9 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
     def marche_cpv_object(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
         # Si CPV manquant et objet du marché manquant ou < 5 caractères (V4), alors le marché est mis de côté
         
-        df["objet"] = df["objet"].str.replace("\n", "\\n").replace("\r", "\\r")
+        with pd.option_context("future.no_silent_downcasting", True):
+            df["objet"] = df["objet"].replace("\n", "\\n").infer_objects(copy=False)
+            df["objet"] = df["objet"].replace("\r", "\\r").infer_objects(copy=False)
         
         dfb = pd.concat(
             [dfb, df[~pd.notna(df["codeCPV"]) & ~pd.notna(df["objet"])]])
@@ -1174,6 +1172,26 @@ def keep_more_recent(df:pd.DataFrame,field_name:str)-> pd.DataFrame:
         listes_non_vides = df[df[field_name].apply(lambda x: isinstance(x, list) and len(x) > 0)]
         listes_vides = df[~df[field_name].apply(lambda x: isinstance(x, list) and len(x) > 0)]        
         
+        if not 'idModificationActeSousTraitance' in listes_non_vides:
+            listes_non_vides['idModificationActeSousTraitance'] = ""
+        else:
+            listes_non_vides['idModificationActeSousTraitance'] = listes_non_vides['idModificationActeSousTraitance'].astype(int,errors='ignore').astype(str)
+
+        if not 'dureeMoisModificationActeSousTraitance' in listes_non_vides:
+            listes_non_vides['dureeMoisModificationActeSousTraitance'] = ""
+        else:
+            listes_non_vides['dureeMoisModificationActeSousTraitance'] = listes_non_vides['dureeMoisModificationActeSousTraitance'].astype(int,errors='ignore').astype(str)
+
+        if not 'datePublicationDonneesModificationModification' in listes_non_vides:
+            listes_non_vides['datePublicationDonneesModificationModification'] = ""
+        else:
+            listes_non_vides['datePublicationDonneesModificationModification'].astype(str)
+
+        if not 'dureeMoisModificationActeSousTraitance' in listes_non_vides:
+            listes_non_vides['idModificationActeSousTraitance'] = ""
+        else:
+            listes_non_vides['idModificationActeSousTraitance'].astype(str)
+            
         #Parcourir chaque ligne du dataframe
         for index, ligne in listes_non_vides.iterrows():
             dico_plus_recent = {}
@@ -1213,8 +1231,6 @@ def complete_columns_from_list(df:pd.DataFrame,field_name:str, ligne:int, dico: 
         df.loc[ligne, 'dateNotificationModificationModification'] = dico.get('dateNotificationModification', None)
         df.loc[ligne, 'datePublicationDonneesModificationModification'] = dico.get('datePublicationDonneesModification', None)
 
-        
-    
     if field_name=='modificationsActesSousTraitance':
         df.loc[ligne, 'idModificationActeSousTraitance'] = dico.get('id', None)
         df.loc[ligne, 'dureeMoisModificationActeSousTraitance'] = dico.get('dureeMois', None)
@@ -1244,13 +1260,19 @@ def check_montant(df: pd.DataFrame, dfb: pd.DataFrame, col: str, montant : int =
     Si  INEXPLOITABLE, le contrat est mis de côté.
     """
     # replace string '' by 0
-    df[col] = df[col].replace('', 0)
+    df[col] = df[col].replace('', 0).infer_objects(copy=False)
     # change col to float
     df[col] = df[col].astype(float)
 
     # 1
-    dfb = pd.concat([dfb, df[df[col] > montant]])
+    #dfb = pd.concat([dfb, df[df[col] > montant]])
+    dfb = (dfb.copy() if df[df[col] > montant].empty else df[df[col] > montant].copy() if dfb.empty
+       else pd.concat([dfb, df[df[col] > montant]])
+      )
     df = df[df[col] <= montant]
+
+    if not "Erreurs" in dfb:
+        dfb["Erreurs"] = ""
 
     dfb = populate_error(dfb,f"Valeur du champ {col} trop élevée")
 
@@ -1403,8 +1425,9 @@ def mark_mixed_field(df:pd.DataFrame, field_name:str) -> pd.DataFrame:
     """
     # Transformation de la colonne CPV      
     df_cpv = pd.read_excel("data/cpv_2008_fr.xls", engine="xlrd")
-    df_cpv['CODE'] = df_cpv['CODE'].astype(str).str.replace("-", ".")   #On souhaite  réaliser ue conversion numérique. Donc 
-                                                                        #on remplace les "-" par les points.
+    with pd.option_context("future.no_silent_downcasting", True):
+        df_cpv['CODE'] = df_cpv['CODE'].replace("-", ".").infer_objects(copy=False) #On souhaite  réaliser ue conversion numérique. Donc 
+                                                                                    #on remplace les "-" par les points.
     df_cpv['CODE'] = pd.to_numeric(df_cpv['CODE'], errors='coerce')
 
     #Liste des intervalles de codes 
@@ -1430,7 +1453,8 @@ def mark_mixed_field(df:pd.DataFrame, field_name:str) -> pd.DataFrame:
 
     #Obtention de du dataframe ayant les codes CPV où les champs "orgineFrance" et "origineUE" sont obligatoires
     df_codes_obligatoires = df_cpv[masque_codes_obligatoires]
-    df_codes_obligatoires = df_codes_obligatoires['CODE'].astype(str).str.replace(".", "-")
+    with pd.option_context("future.no_silent_downcasting", True):
+        df_codes_obligatoires = df_codes_obligatoires['CODE'].replace(".", "-").infer_objects(copy=False)
     
     #Selon la liste, nous allons marquer les colonnes "orgineFrance" et "origineUE" par le tag "MQ"
     mandatory_code = df['codeCPV'].isin(df_codes_obligatoires.tolist())
@@ -1791,7 +1815,7 @@ def replace_nc_colonne(df: pd.DataFrame,nom_colonne:str) -> pd.DataFrame:
     if nom_colonne in df.columns:
         df['backup__' + nom_colonne] = df[nom_colonne]
         #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
-        df[nom_colonne] = df[nom_colonne].replace("NC",np.nan)
+        df[nom_colonne] = df[nom_colonne].replace("NC",pd.NA).infer_objects(copy=False)
     
     return df
 
