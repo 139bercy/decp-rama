@@ -90,14 +90,19 @@ if __name__ == "__main__":
 
     if args.local:
         logging.info("Option exécution local activée")
+    else:
+        logging.info("Option exécution local désactivée")
+
     if args.test:
         logging.info("Option exécution de test activée")
+    else:
+        logging.info("Option exécution de test désactivée")
         
     all_data_format = ['2022']
     for data_format in all_data_format:
-        logging.info("---------------------------------------------------------------")
-        logging.info(f"            Traitement pour le format {data_format}")
-        logging.info("---------------------------------------------------------------")
+        logging.info( "---------------------------------------------------------------")
+        logging.info(f"                Traitement pour le format {data_format}")
+        logging.info( "---------------------------------------------------------------")
         
         report = Report('decp-rama',False)
         try:
