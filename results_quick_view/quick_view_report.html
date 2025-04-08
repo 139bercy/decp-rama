@@ -24,7 +24,7 @@
 					errorTitle.append(data.title);
 					const errorList = document.getElementById('error-list');
 					console.log(data.sources);
-                    data.sources["e-marchespublics"].E_VALIDATION.forEach(error => {
+                    data.sources["sample_xml"].E_VALIDATION.forEach(error => {
                         const row = document.createElement('tr');
                         const id = document.createElement('td');
                         id.textContent = `${error.file} / ${error.data.id} `;
@@ -32,6 +32,9 @@
                         const message = document.createElement('td');
                         message.textContent = `${error.message}`;
 						row.appendChild(message)
+                        const path = document.createElement('td');
+                        path.textContent = `${error.path}`;
+						row.appendChild(path)
                         const errorMsg = document.createElement('td');
                         errorMsg.textContent = `${error.error}`;
 						row.appendChild(errorMsg)
