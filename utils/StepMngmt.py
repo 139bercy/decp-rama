@@ -184,11 +184,12 @@ class StepMngmt:
         # Vérifie si le répertoire existe
         if os.path.exists(path):
             for fichier in os.listdir(path):
-                chemin_complet = os.path.join(path, fichier)
-                if os.path.isdir(chemin_complet):
-                    shutil.rmtree(chemin_complet)
-                else:
-                    os.remove(chemin_complet)
+                if not fichier == '.gitignore':
+                    chemin_complet = os.path.join(path, fichier)
+                    if os.path.isdir(chemin_complet):
+                        shutil.rmtree(chemin_complet)
+                    else:
+                        os.remove(chemin_complet)
 
 
 if __name__ == '__main__':
