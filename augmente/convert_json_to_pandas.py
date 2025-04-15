@@ -52,7 +52,9 @@ def manage_modifications(data: dict,data_format:str) -> pd.DataFrame:
     complete_data_column(df)
 
     # Replace empty strings with NaN (Not a Number) and convert to float
-    df = df.replace(r'^\s*$', np.nan, regex=True)
+    # Fix FutureWarning df = df.replace(r'^\s*$', np.nan, regex=True)
+    with pd.option_context("future.no_silent_downcasting", True):
+        df.replace(r'^\s*$', np.nan, regex=True).infer_objects(copy=False)
     df = df.astype(conf_glob["nettoyage"]['type_col_nettoyage'], copy=False)
     prise_en_compte_modifications(df)
     if data_format=='2022':

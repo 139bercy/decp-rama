@@ -4,7 +4,6 @@ import pickle
 import logging.handlers
 import re
 import math
-import augmente.upload_dataeco as up
 import argparse
 import numpy as np
 import pandas as pd,csv
@@ -83,14 +82,6 @@ def main(data_format:str = '2022'):
         manage_data_quality(df,data_format)
 
         #Étant donné qu'on ne fait pas l'enrichissement pour l'instant le programme s'arrête ici et on upload les 4 fichiers.
-
-        maintenant = datetime.now() 
-        date = maintenant.strftime("%Y-%m-%d")
-
-        if not args.local:
-            files_to_upload = [(f"{date}-marche-2022.csv","decp/2022/marches-valides"),(f"{date}-concession-2022.csv","decp/2022/concessions-valides"),(f"{date}-marche-exclu-2022.csv","decp/2022/marches-invalides"),(f"{date}-concession-exclu-2022.csv","decp/2022/concessions-invalides")]
-            for f in files_to_upload :
-                up.upload_dataeco(f[0],f[1])
 
         step.snapshot_dataframe(StepMngmt.SOURCE_ALL,Step.AUGMENTE_CLEAN,df)
 
@@ -491,9 +482,11 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
             df["marcheInnovant"] = df["marcheInnovant"].astype(str)
             df["attributionAvance"] = df["attributionAvance"].astype(str)
             df["sousTraitanceDeclaree"] = df["sousTraitanceDeclaree"].astype(str)
-            
-            with pd.option_context("future.no_silent_downcasting", True):
-                df["offresRecues"] = df["offresRecues"].fillna(0).infer_objects(copy=False) #.astype(int).astype(str)
+            # Fix FutureWarning df["offresRecues"] = df["offresRecues"].fillna(0).astype(int).astype(str)
+            if 'offresRecues' in df.columns:
+                with pd.option_context("future.no_silent_downcasting", True):
+                    df["offresRecues"] = df["offresRecues"].fillna(0).infer_objects(copy=False) #.astype(int).astype(str)
+                df["offresRecues"] = df["offresRecues"].astype(int).astype(str)
             if 'tauxAvance' in df.columns:
                 df["tauxAvance"] = df["tauxAvance"].astype(str)
             if 'origineUE' in df.columns:
@@ -580,7 +573,7 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
 
     def marche_cpv_object(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
         # Si CPV manquant et objet du marché manquant ou < 5 caractères (V4), alors le marché est mis de côté
-        
+        # Fix FutureWarning df["objet"] = df["objet"].replace("\n", "\\n").replace("\r", "\\r")
         with pd.option_context("future.no_silent_downcasting", True):
             df["objet"] = df["objet"].replace("\n", "\\n").infer_objects(copy=False)
             df["objet"] = df["objet"].replace("\r", "\\r").infer_objects(copy=False)
@@ -1260,7 +1253,9 @@ def check_montant(df: pd.DataFrame, dfb: pd.DataFrame, col: str, montant : int =
     Si  INEXPLOITABLE, le contrat est mis de côté.
     """
     # replace string '' by 0
-    df[col] = df[col].replace('', 0).infer_objects(copy=False)
+    # Fix FutureWarning df[col] = df[col].replace('', 0)
+    with pd.option_context("future.no_silent_downcasting", True):
+        df[col] = df[col].replace('', 0).infer_objects(copy=False)
     # change col to float
     df[col] = df[col].astype(float)
 
@@ -1277,7 +1272,13 @@ def check_montant(df: pd.DataFrame, dfb: pd.DataFrame, col: str, montant : int =
     dfb = populate_error(dfb,f"Valeur du champ {col} trop élevée")
 
     # 2
-    dfb = pd.concat([dfb, df[df[col] < 1]])
+    #Fix FutureWarning dfb = pd.concat([dfb, df[df[col] < 1]])
+    dfb = (dfb.copy() if df[df[col] < 1].dropna(axis=1, how='all').empty else df[df[col] < 1].dropna(axis=1, how='all').copy() if dfb.empty
+       else pd.concat([dfb, df[df[col] < 1].dropna(axis=1, how='all')]) # if both DataFrames non empty
+      )
+    if "Erreurs" not in dfb.columns:
+        dfb["Erreurs"] = pd.NA
+
     df = df[df[col] >= 1]
 
     dfb = populate_error(dfb,f"Valeur du champ {col} inférieur à 1")
@@ -1425,6 +1426,7 @@ def mark_mixed_field(df:pd.DataFrame, field_name:str) -> pd.DataFrame:
     """
     # Transformation de la colonne CPV      
     df_cpv = pd.read_excel("data/cpv_2008_fr.xls", engine="xlrd")
+    # Fix FutureWarning df_cpv['CODE'] = df_cpv['CODE'].replace("-", ".")
     with pd.option_context("future.no_silent_downcasting", True):
         df_cpv['CODE'] = df_cpv['CODE'].replace("-", ".").infer_objects(copy=False) #On souhaite  réaliser ue conversion numérique. Donc 
                                                                                     #on remplace les "-" par les points.
@@ -1453,6 +1455,7 @@ def mark_mixed_field(df:pd.DataFrame, field_name:str) -> pd.DataFrame:
 
     #Obtention de du dataframe ayant les codes CPV où les champs "orgineFrance" et "origineUE" sont obligatoires
     df_codes_obligatoires = df_cpv[masque_codes_obligatoires]
+    # Fix FutureWarning df_codes_obligatoires = df_codes_obligatoires['CODE'].replace(".", "-")
     with pd.option_context("future.no_silent_downcasting", True):
         df_codes_obligatoires = df_codes_obligatoires['CODE'].replace(".", "-").infer_objects(copy=False)
     
@@ -1815,7 +1818,9 @@ def replace_nc_colonne(df: pd.DataFrame,nom_colonne:str) -> pd.DataFrame:
     if nom_colonne in df.columns:
         df['backup__' + nom_colonne] = df[nom_colonne]
         #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
-        df[nom_colonne] = df[nom_colonne].replace("NC",pd.NA).infer_objects(copy=False)
+        # Fix FutureWarning df[nom_colonne] = df[nom_colonne].replace("NC",pd.NA)
+        with pd.option_context("future.no_silent_downcasting", True):
+            df[nom_colonne] = df[nom_colonne].replace("NC",pd.NA).infer_objects(copy=False)
     
     return df
 
