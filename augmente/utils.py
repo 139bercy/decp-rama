@@ -6,7 +6,9 @@ import json
 import logging
 import pandas as pd
 import subprocess
+from datetime import datetime
 from ftplib import FTP_TLS
+import augmente.upload_dataeco as up
 import utils
 
 logger = logging.getLogger("main.utils")
@@ -111,7 +113,17 @@ def export_file_csv(path_file_to_upload_csv:str,  data_format:str, local:bool=Tr
         logger.info(ftpResponseMessage)
 
 def export_all_csv(data_format:str = '2022', local:bool=True):
-    export_file_csv(f"data/marche_{data_format}.csv",data_format,local)
-    export_file_csv(f"data/marche_exclu_{data_format}.csv",data_format,local)
-    export_file_csv(f"data/concession_{data_format}.csv",data_format,local)
-    export_file_csv(f"data/concession_exclu_{data_format}.csv",data_format,local)
+    #export_file_csv(f"data/marche_{data_format}.csv",data_format,local)
+    #export_file_csv(f"data/marche_exclu_{data_format}.csv",data_format,local)
+    #export_file_csv(f"data/concession_{data_format}.csv",data_format,local)
+    #export_file_csv(f"data/concession_exclu_{data_format}.csv",data_format,local)
+    
+    maintenant = datetime.now()
+    date = maintenant.strftime("%Y-%m-%d")
+    
+    if not args.local:
+        files_to_upload = [(f"{date}-marche-2022.csv","decp/2022/marches-valides"),(f"{date}-concession-2022.csv","decp/2022/concessions-valides"),(f"{date}-marche-exclu-2022.csv","decp/2022/marches-invalides"),(f"{date}-concession-exclu-2022.csv","decp/2022/concessions-invalides")]
+        for f in files_to_upload :
+            up.upload_dataeco(f[0],f[1])
+    
+    logger.info("csv généré dans le dossier data")

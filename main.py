@@ -54,8 +54,7 @@ def main_augmente(data_format:str = '2022'):
 
     logger.info(f"Application règles métier format {data_format}")
     augmente.nettoyage.main(data_format)
-    logger.info("csv généré dans le dossier data")
-
+    
     # Partie désactivé logger.info("Enrichissement des données")
     # enrichissement2.main()
     # logger.info("csv enrichi dans le dossier data")

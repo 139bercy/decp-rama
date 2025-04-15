@@ -165,7 +165,6 @@ class SourceProcess:
                 url, title = self.check_date_file(url,title, ressources, old_ressources,prefix)
             
 
-            
             ## Code for generate all files for months and year between given dates 
             # Filter by date in title, url
 
