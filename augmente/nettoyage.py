@@ -87,7 +87,7 @@ def main(data_format:str = '2022'):
 
 def restore_nc(df,field):
     if 'backup__'+field in df.columns:
-        df[field] = df.apply(lambda row: row['backup__'+field] if pd.isna(row[field]) and row['backup__'+field] == 'NC' else row[field], axis=1)
+        df[field] = df.apply(lambda row: row['backup__'+field] if pd.isna(row[field]) or row['backup__'+field] == 'NC' else row[field], axis=1)
 
 @compute_execution_time
 def manage_data_quality(df: pd.DataFrame,data_format:str):
@@ -151,8 +151,8 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
         replace_nc_colonne(df_marche,'attributionAvance')
         replace_nc_colonne(df_marche,'sousTraitanceDeclaree')
         replace_nc_colonne(df_marche,'dureeMois')
-        replace_nc_colonne(df_marche,'variationPrixActeSousTraitance')
-        replace_nc_colonne(df_marche,'dureeMoisActeSousTraitance')
+        #replace_nc_colonne(df_marche,'variationPrixActeSousTraitance')
+        #replace_nc_colonne(df_marche,'dureeMoisActeSousTraitance',True)
         df_marche, df_marche_badlines = regles_marche(df_marche,data_format)
     else:
         df_marche = pd.DataFrame([])
@@ -791,10 +791,13 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
     df_marche_ = marche_cpv(df_marche_, df_cpv, data_format)
 
     #Champs ayant des listes
-    df_marche_ = keep_more_recent(df_marche_,"modifications")
-    df_marche_ = keep_more_recent(df_marche_,"modificationsActesSousTraitance")
-    df_marche_ = keep_more_recent(df_marche_,"actesSousTraitance")
-    
+    df_marche_ = keep_more_recent(df_marche_,"modifications","Modification")
+    df_marche_ = keep_more_recent(df_marche_,"modificationsActesSousTraitance","ModificationActeSousTraitance")
+    df_marche_ = keep_more_recent(df_marche_,"actesSousTraitance","ActeSousTraitance")
+
+    replace_nc_colonne(df_marche_,'variationPrixActeSousTraitance')
+    replace_nc_colonne(df_marche_,'dureeMoisActeSousTraitance',True)
+
     # delete df_cpv to free memory
     del df_cpv
 
@@ -1139,7 +1142,7 @@ def regles_concession(df_concession_: pd.DataFrame,data_format:str) -> pd.DataFr
 
     return df_concession_, df_concession_badlines_
 
-def keep_more_recent(df:pd.DataFrame,field_name:str)-> pd.DataFrame:
+def keep_more_recent(df:pd.DataFrame,field_name:str,suffix:str)-> pd.DataFrame:
     """
     Cette fonction gère les champs qui ont une liste de dictionnaire. 
     """
@@ -1165,25 +1168,25 @@ def keep_more_recent(df:pd.DataFrame,field_name:str)-> pd.DataFrame:
         listes_non_vides = df[df[field_name].apply(lambda x: isinstance(x, list) and len(x) > 0)]
         listes_vides = df[~df[field_name].apply(lambda x: isinstance(x, list) and len(x) > 0)]        
         
-        if not 'idModificationActeSousTraitance' in listes_non_vides:
-            listes_non_vides['idModificationActeSousTraitance'] = ""
+        if not 'id'+suffix in listes_non_vides:
+            listes_non_vides['id'+suffix] = ""
         else:
-            listes_non_vides['idModificationActeSousTraitance'] = listes_non_vides['idModificationActeSousTraitance'].astype(int,errors='ignore').astype(str)
+            listes_non_vides['id'+suffix] = listes_non_vides['id'+suffix].astype(int,errors='ignore').astype(str)
 
-        if not 'dureeMoisModificationActeSousTraitance' in listes_non_vides:
-            listes_non_vides['dureeMoisModificationActeSousTraitance'] = ""
+        if not 'dureeMois'+suffix in listes_non_vides:
+            listes_non_vides['dureeMois'+suffix] = ""
         else:
-            listes_non_vides['dureeMoisModificationActeSousTraitance'] = listes_non_vides['dureeMoisModificationActeSousTraitance'].astype(int,errors='ignore').astype(str)
+            listes_non_vides['dureeMois'+suffix] = listes_non_vides['dureeMois'+suffix].astype(int,errors='ignore').astype(str)
 
-        if not 'datePublicationDonneesModificationModification' in listes_non_vides:
-            listes_non_vides['datePublicationDonneesModificationModification'] = ""
+        if not 'datePublicationDonnees'+suffix in listes_non_vides:
+            listes_non_vides['datePublicationDonnees'+suffix] = ""
         else:
-            listes_non_vides['datePublicationDonneesModificationModification'].astype(str)
+            listes_non_vides['datePublicationDonnees'+suffix].astype(str)
 
-        if not 'dureeMoisModificationActeSousTraitance' in listes_non_vides:
-            listes_non_vides['idModificationActeSousTraitance'] = ""
-        else:
-            listes_non_vides['idModificationActeSousTraitance'].astype(str)
+        #if not 'dureeMoisModificationActeSousTraitance' in listes_non_vides:
+        #    listes_non_vides['idModificationActeSousTraitance'] = ""
+        #else:
+        #    listes_non_vides['idModificationActeSousTraitance'].astype(str)
             
         #Parcourir chaque ligne du dataframe
         for index, ligne in listes_non_vides.iterrows():
@@ -1814,13 +1817,16 @@ def concession_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-def replace_nc_colonne(df: pd.DataFrame,nom_colonne:str) -> pd.DataFrame:
+def replace_nc_colonne(df: pd.DataFrame,nom_colonne:str,is_float:bool=False) -> pd.DataFrame:
     if nom_colonne in df.columns:
         df['backup__' + nom_colonne] = df[nom_colonne]
         #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
         # Fix FutureWarning df[nom_colonne] = df[nom_colonne].replace("NC",pd.NA)
         with pd.option_context("future.no_silent_downcasting", True):
-            df[nom_colonne] = df[nom_colonne].replace("NC",pd.NA).infer_objects(copy=False)
+            if is_float:
+                df[nom_colonne] = df[nom_colonne].replace("NC",0).infer_objects(copy=False)
+            else:
+                df[nom_colonne] = df[nom_colonne].replace("NC",pd.NA).infer_objects(copy=False)
     
     return df
 
