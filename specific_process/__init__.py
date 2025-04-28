@@ -17,3 +17,4 @@ from .Pes2024Process import Pes2024Process
 from .Ppsmj2024Process import Ppsmj2024Process
 from .SampleXmlProcess import SampleXmlProcess
 from .SampleJsonProcess import SampleJsonProcess
+from .Xmarches2024Process import Xmarches2024Process

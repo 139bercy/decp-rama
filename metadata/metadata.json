@@ -4,8 +4,8 @@
     "code": "sample_xml",
     "description": "Données de test",
     "url_source-VLAD-TEST": "http://127.0.0.1:4242/vlad-xml", 
-    "url_source-DECP-TEST": "http://127.0.0.1:4242/decp-xml", 
-    "url_source": "http://127.0.0.1:8081/documents/marches_avec_modifications.xml",
+    "url_source": "http://127.0.0.1:4242/decp-xml", 
+    "url_source_OLD2": "http://127.0.0.1:8081/documents/marches_avec_modifications.xml",
     "url_source-DEFAULT": "http://127.0.0.1:4242/data-2022-decp-xml",
     "format": "xml",
     "cle_api": [],
@@ -196,6 +196,17 @@
     "format": "json",
     "cle_api": [],
     "cle_api_OLD": ["65f18014e9923e9e71f5f258"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "xmarches_2024":
+  {
+    "code": "xmarches",
+    "description": "Données essentielles des marchés publics - Xmarchés",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/donnees-essentielles-des-marches-publics-xmarches/",
+    "format": "json",
+    "cle_api": ["651eb149add2f419788c36ef"],
     "url": "",
     "validate" : true,
     "convert_nc": false
