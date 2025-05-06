@@ -157,6 +157,7 @@ class StepMngmt:
 
     def reset(self):
         self.current_status = {}
+        self.init_status = {}
         with open(self.STATUS_FILEPATH, 'w') as json_file:
             json.dump(self.current_status, json_file)
         self._empty_directory(self.BASE_PATH)

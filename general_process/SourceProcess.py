@@ -168,7 +168,6 @@ class SourceProcess:
             ## Code for generate all files for months and year between given dates 
             # Filter by date in title, url
 
-
             begin_date_txt = "2025-01-01"
             end_date_txt = "2025-12-31"
             begin_date = datetime.strptime(begin_date_txt, "%Y-%m-%d")
@@ -310,7 +309,9 @@ class SourceProcess:
         #self.url += [f"sources/{self.source}/Donnees-Essentielles-Marches13.03.2025.11-50.xml"]
         #self.title = ["Donnees-Essentielles-Marches13.03.2025.12-54.xml"]
         #self.title += ["Donnees-Essentielles-Marches13.03.2025.11-50.xml"]
-        
+        # Force title force url file list
+        #self.title = os.listdir("sources\\xmarches")
+
         for i in range(len(self.title)):            
             if self.format == 'xml':
                 try:
@@ -456,15 +457,16 @@ class SourceProcess:
         if 'marche' in dico and isinstance(dico['marche'],list):
             while n < len(dico['marche']) :
                 #self.dico_2022_marche.append(dico['marche'][n])
-                dico_test = {'marches': {'marche': [dico['marche'][n]], 'contrat-concession': []}}
+                if dico['marche'][n] is not None:
+                    dico_test = {'marches': {'marche': [dico['marche'][n]], 'contrat-concession': []}}
 
-                valid,error_message,error_path = self.check_json_batch(dico_test,draft_validator)
-                if self.validate and not valid:
-                    #self.dico_2022_marche.remove(dico['marche'][n])
-                    dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,year_month,n,error_message,error_path))
-                else: 
-                    self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,year_month,n,error_message,error_path))
-                    nb_good_marches+=1
+                    valid,error_message,error_path = self.check_json_batch(dico_test,draft_validator)
+                    if self.validate and not valid:
+                        #self.dico_2022_marche.remove(dico['marche'][n])
+                        dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,year_month,n,error_message,error_path))
+                    else: 
+                        self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,year_month,n,error_message,error_path))
+                        nb_good_marches+=1
                 n+=1
         elif 'marche' in dico:
             dico_ignored_concession.append(complete_util_info(dico['marche'],self.source,file_name,year_month,0,'Une liste de marchés est attendue',''))
@@ -478,15 +480,16 @@ class SourceProcess:
         if 'contrat-concession' in dico and isinstance(dico['contrat-concession'],list):
             while m < len(dico['contrat-concession']) :
                 #self.dico_2022_concession.append(dico['contrat-concession'][m])
-                dico_test = {'marches': {'marche': [], 'contrat-concession': [dico['contrat-concession'][m]]}}
+                if dico['contrat-concession'][m] is not None:
+                    dico_test = {'marches': {'marche': [], 'contrat-concession': [dico['contrat-concession'][m]]}}
 
-                valid,error_message,error_path = self.check_json(dico_test)
-                if self.validate and not valid:
-                    #self.dico_2022_concession.remove(dico['contrat-concession'][m])
-                    dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,year_month,m,error_message,error_path))
-                else: 
-                    self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,year_month,m,error_message,error_path))
-                    nb_good_concessions+=1
+                    valid,error_message,error_path = self.check_json(dico_test)
+                    if self.validate and not valid:
+                        #self.dico_2022_concession.remove(dico['contrat-concession'][m])
+                        dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,year_month,m,error_message,error_path))
+                    else: 
+                        self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,year_month,m,error_message,error_path))
+                        nb_good_concessions+=1
                 m+=1
         elif 'contrat-concession' in dico:
             dico_ignored_concession.append(complete_util_info(dico['contrat-concession'],self.source,file_name,year_month,0,'Une liste de concessions est attendue',''))
@@ -767,7 +770,7 @@ class SourceProcess:
             self.report.add('Fix/Concessions',self.report.D_DUPLICATE,'Doublon stricts dans la source',df_concession[df_concession.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])
             self.report.nb_duplicated_concessions += len(df_concession[df_concession.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])
 
-        index_to_keep = df_str.drop_duplicates(subset=df_marche.columns.difference(['report__file','report__nbtotal','report__error','report__position']), keep="last").index.tolist()
+        index_to_keep = df_str.drop_duplicates(subset=df_marche.columns.difference(['report__file','report__nbtotal','report__error','report__position','tmp__annee_mois']), keep="last").index.tolist()
         self.df = self.df.iloc[index_to_keep]
         self.df = self.df.reset_index(drop=True)
 

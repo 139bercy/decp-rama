@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-P', dest='process', type=str, help='run a specific process')
 parser.add_argument("-l", dest='local', action='store_true', help="run script locally")
 parser.add_argument("-t", dest='test', action='store_true', help="run script without loading reference files")
+parser.add_argument("-r", dest='reset', action='store_true', help="Erase previous step history before running procese")
 #parser.add_argument("-f", dest='format', type=str, help="run script for format 2019")
 args = parser.parse_args()
 
@@ -96,6 +97,12 @@ if __name__ == "__main__":
         logging.info("Option exécution de test activée")
     else:
         logging.info("Option exécution de test désactivée")
+
+    if args.reset:
+        logging.info("Reset previous execution step")
+        step.reset()
+    else:
+        logging.info("Using previous execution history to continue processing")
         
     all_data_format = ['2022']
     for data_format in all_data_format:

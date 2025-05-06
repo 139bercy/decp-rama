@@ -41,6 +41,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", dest='test', action='store_true', help="run script in test mode with a small sample of data")
     parser.add_argument("-l", dest='local', action='store_true', help="run script locally")
+    parser.add_argument("-r", dest='reset', action='store_true', help="run script locally")
     #parser.add_argument("-f", dest='format', type=str, help="run script for format 2019")
     return parser.parse_args()
 

@@ -21,6 +21,9 @@ from utils.NodeFormat import NodeFormat
 from utils.StepMngmt import StepMngmt
 from utils.Step import Step
 
+with open(os.path.join("confs", "var_glob.json")) as f:
+    conf_glob = json.load(f)
+
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 pd.set_option('display.width', None)
@@ -143,7 +146,8 @@ class GlobalProcess:
         
         #mask_modif = self.df.modifications.apply(len)>0
         #self.df.loc[mask_modif, "modifications"] = self.df.loc[mask_modif, "modifications"].apply(remove_titulaire_key_in_modif)
-
+        self._add_meta_modifications(self.df,pd.DataFrame())
+        
     def drop_by_date_2024(self):
         """ 
         Supprime les lignes ne respectant pas les critères de date. Si le format suivi est de 2022, 
@@ -183,6 +187,62 @@ class GlobalProcess:
         logging.info(f"Nombre de marchés dans Df après suppression des doublons sur les nouvelles données : {len(self.df)}")
 
     def dedoublonnage(self,df: pd.DataFrame,add_report=True) -> pd.DataFrame:
+        nb_duplicated_marches = 0
+        nb_duplicated_concessions = 0
+
+        # On complete la colonne backup montant pour les marches ajoutés depuisl'export qui ne sont pas passé par fix
+        if "montant" in self.df.columns and 'backup__montant' in self.df.columns \
+            and df.loc[df['_type'] == 'Marché', 'backup__montant'].isna().any():
+            df.loc[(df['backup__montant'].isna()) & (df['_type'] == 'Marché'), 'backup__montant'] = df['montant']
+            df.loc[df['_type'] == 'Marché', 'montant'] = df.loc[df['_type'] == 'Marché', 'montant'].apply(lambda x: int(x) if pd.notna(x) else np.nan)
+
+        #Critères de dédoublonnage
+        feature_doublons_marche = ["id", "acheteur", "titulaires", "dateNotification", "montant"] 
+        feature_doublons_marche_order = ["id", "acheteur", "titulaires", "dateNotification", "montant",'tmp__dateModification','tmp__idModification'] 
+        feature_doublons_concession = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale"]
+        feature_doublons_concession_order = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale",'tmp__dateModification','tmp__idModification']
+
+        #Séparation des marches et des concessions, suppression des doublons
+        df_marche = df[df['_type'].str.contains("Marché")]
+        if not df_marche.empty:
+            df_marche = df_marche.astype(str)
+            df_marche = df_marche.sort_values(
+                feature_doublons_marche_order,
+                ascending=[True, True, True, True, True, True, True]
+            )
+            index_to_keep = df_marche.drop_duplicates(subset=feature_doublons_marche, keep='last').index.tolist()
+
+        # Mémoriser la nombre de marchés en double
+        nb_duplicated_marches = len(df_marche)-len(index_to_keep)
+        if add_report:
+            self.report.nb_duplicated_marches += nb_duplicated_marches
+
+        df_concession = df[~df['_type'].str.contains("Marché")]
+        if not df_concession.empty:
+            df_concession = df_concession.astype(str)
+            df_concession = df_concession.sort_values(
+                feature_doublons_concession_order,
+                ascending=[True, True, True, True, True, True, True]
+            )
+            index_to_keep += df_concession.drop_duplicates(subset=feature_doublons_concession, keep='last').index.tolist()
+
+        # Mémoriser la nombre de concessions après dédoublonnage
+        nb_duplicated_concessions = len(df_concession) - ( len(index_to_keep) - (len(df_marche) - nb_duplicated_marches) )
+        if add_report:
+            self.report.nb_duplicated_concessions += nb_duplicated_concessions
+
+        if add_report:
+            # Ajouter au reporting les doublons supprimés
+            self.report.add('FixAll/Marchés',self.report.D_DUPLICATE,'Marchés en doublon',df_marche[df_marche.duplicated(feature_doublons_marche)])
+            self.report.add('FixAll/Concessions',self.report.D_DUPLICATE,'Concessions en doublon',df_concession[df_concession.duplicated(feature_doublons_concession)])
+
+        df = df.loc[index_to_keep, :]
+        df = df.reset_index(drop=True)
+        
+        logging.info(f"Dedoublonnage {nb_duplicated_marches + nb_duplicated_concessions} lignes supprimées")
+        return df
+
+    def dedoublonnage_OLD(self,df: pd.DataFrame,add_report=True) -> pd.DataFrame:
         nb_duplicated_marches = 0
         nb_duplicated_concessions = 0
 
@@ -317,8 +377,8 @@ class GlobalProcess:
                 else:
                     df['tmp__dateModification'] = pd.NaT
                 df['tmp__dateModification'] = df.apply(_max_date, axis=1)
-                df['tmp__dateModification'] = df['tmp__dateModification'].dt.strftime('%Y-%m')
-                df['tmp__annee_mois'] = df['tmp__annee_mois'].where(df['tmp__annee_mois'].notna(), df['tmp__dateModification'])#.strftime('%Y-%m')
+                df['tmp__dateModification'] = df['tmp__dateModification'] #.dt.strftime('%Y-%m')
+                df['tmp__annee_mois'] = df['tmp__annee_mois'].where(df['tmp__annee_mois'].notna(), df['tmp__dateModification'].dt.strftime('%Y-%m'))#.strftime('%Y-%m')
                 df['tmp__dateModification'] = df['tmp__dateModification'].astype(str)
                 df['datePublicationDonnees'] = df['datePublicationDonnees'].astype(str) 
 
@@ -326,11 +386,20 @@ class GlobalProcess:
             df_marches['titulaires'] = df_marches['titulaires'].apply(_tri_titulaires)
             if process_dates:
                 _prepare_group_by(df_marches) # df_marches)
+            if "tmp__dateModification" not in df_marches.columns:
+                df_marches['tmp__dateModification'] = df_marches['datePublicationDonnees']
+            if "tmp__idModification" not in df_marches.columns:
+                df_marches['tmp__idModification'] = 0
+
 
         if not df_concessions.empty:
             df_concessions['concessionnaires'] = df_concessions['concessionnaires'].apply(_tri_concessionnaires)
             if process_dates:
                 _prepare_group_by(df_concessions) # df_concessions)
+            if "tmp__dateModification" not in df_concessions.columns:
+                df_concessions['tmp__dateModification'] = df_concessions['datePublicationDonnees']
+            if "tmp__idModification" not in df_concessions.columns:
+                df_concessions['tmp__idModification'] = 0
             
     def _merge_in_file(self, file_path:str, dico:dict) -> dict:
         """
@@ -359,6 +428,7 @@ class GlobalProcess:
         return dico
     
     def upload_on_datagouv(self):
+        logging.info(f"Uploading file ...")
         config_file = "config.json"
         # read info from config.son
         with open(config_file, "r") as f:
@@ -398,7 +468,6 @@ class GlobalProcess:
         os.makedirs("results", exist_ok=True)
 
         ## Exportation des données dans des fichiers mensuels 
-        self._add_meta_modifications(self.df,pd.DataFrame())
         self._nan_correction_dico(self.df)
 
         for year_month, group in self.df.groupby('tmp__annee_mois'):
@@ -635,7 +704,7 @@ class GlobalProcess:
             keys_to_delete = [clé for clé in marche.keys() if clé.startswith(prefix)]
             for key in keys_to_delete:
                 del marche[key]
-        
+         
         marches = []
         concessions = []
         for marche_in in dico_in['marches']:
@@ -698,6 +767,16 @@ class GlobalProcess:
                     del marche["_type"]
                 concessions.append(marche)
             else:
+                if 'valeurGlobale' in marche:
+                    del marche["valeurGlobale"]
+                if 'dateSignature' in marche:
+                    del marche["dateSignature"]
+                if 'donneesExecution' in marche:
+                    del marche["donneesExecution"]
+                if 'concessionnaires' in marche:
+                    del marche["concessionnaires"]
+                if '_type' in marche:
+                    del marche["_type"]
                 marches.append(marche)
             
         return {
@@ -800,7 +879,7 @@ class GlobalProcess:
             elif df[i].dtypes == 'int32':
                 df.fillna({i:0},inplace=True) 
             elif df[i].dtypes == 'object':
-                df.fillna({i:""},inplace=True)
+                df.astype(str).fillna({i:""},inplace=False)
             
         dico_final = {'marches': df.to_dict(orient='records')}
         return dico_final
