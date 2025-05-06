@@ -1,6 +1,7 @@
 import requests
 import json
 import hashlib
+import datetime
 
 # Script de test pour créer une nouvelle resource
 
