@@ -1380,7 +1380,11 @@ def check_duree_contrat(df: pd.DataFrame, dfb: pd.DataFrame, month: int) -> pd.D
     """
     df["dureeMois"] = df["dureeMois"].astype(int)
 
-    dfb = pd.concat([dfb, df[df["dureeMois"] > month]])
+    # Fixed FutureWarning
+    #dfb = pd.concat([dfb, df[df["dureeMois"] > month]])
+    df_filtered = df[df["dureeMois"] > month].dropna(axis=1, how='all')
+    if not df_filtered.empty:  # Vérifier si le DataFrame filtré n'est pas vide
+        dfb = pd.concat([dfb, df_filtered])
     df = df[df["dureeMois"] <= month]
 
     dfb = populate_error(dfb,f"Champ dureeMois trop grand")
