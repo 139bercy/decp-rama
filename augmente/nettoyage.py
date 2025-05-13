@@ -166,8 +166,8 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
         if not df_concession.empty:
             restore_nc(df_concession,'dureeMois')
 
-            stabilize_columns(df_concession,"concession_"+data_format)
-            stabilize_columns(df_concession_badlines,"concession_"+data_format,True)
+            df_concession = stabilize_columns(df_concession,"concession_"+data_format)
+            df_concession_badlines = stabilize_columns(df_concession_badlines,"concession_"+data_format,True)
 
             df_concession = concession_mark_fields(df_concession)
 
@@ -180,8 +180,8 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             restore_nc(df_marche,'dureeMoisActeSousTraitance')
             restore_nc(df_marche,'variationPrixActeSousTraitance')
 
-            stabilize_columns(df_marche,"marche_"+data_format)
-            stabilize_columns(df_marche_badlines,"marche_"+data_format,True)
+            df_marche = stabilize_columns(df_marche,"marche_"+data_format)
+            df_marche_badlines = stabilize_columns(df_marche_badlines,"marche_"+data_format,True)
             
             df_marche = marche_mark_fields(df_marche)
 
@@ -375,17 +375,22 @@ def stabilize_columns(df:pd.DataFrame,set:str,add_error_columnns:bool=False):
     """
     On ajoute des colonnes vides si celles-ci doivent exister et on supprimer les colonnes en trop
     """
-
-    if add_error_columnns is True and 'Erreurs' not in df.columns:
-        df['Erreurs'] = pd.NA
-
     columns_reference = conf_glob["df_"+set]
+
+    if add_error_columnns is True:
+        columns_reference.insert(0, "Erreurs")
+        if 'Erreurs' not in df.columns:
+            df['Erreurs'] = pd.NA
+
+    # Add column in df
     for column in columns_reference:
         if column not in df.columns:
             df[column] = pd.NA
+    # Delete columns in df which are not in columns_reference
     for column in df.columns:
         if column not in columns_reference and not (add_error_columnns is True and column == 'Erreurs'):
             df.drop(columns=[column], inplace=True)
+    return df[columns_reference]
 
 @compute_execution_time
 def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
