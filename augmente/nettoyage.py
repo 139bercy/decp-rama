@@ -212,9 +212,32 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
     report.save()
 
     # save data to csv files
+    if 'objet' not in df_concession.columns:
+        df_concession['objet'] = pd.NA    
+    else:
+        df_concession['objet'] = df_concession['objet'].str.replace('\n', '\\n', regex=False)
+        df_concession['objet'] = df_concession['objet'].str.replace('\r', '\\r', regex=False)
     df_concession.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-{data_format}.csv'), index=False, header=True)
+    
+    if 'objet' not in df_marche.columns:
+        df_marche['objet'] = pd.NA
+    else:
+        df_marche['objet'] = df_marche['objet'].str.replace('\n', '\\n', regex=False)
+        df_marche['objet'] = df_marche['objet'].str.replace('\r', '\\r', regex=False)
     df_marche.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-{data_format}.csv'), index=False, header=True)
+    
+    if 'objet' not in df_marche_badlines.columns:
+        df_marche_badlines['objet'] = pd.NA
+    else:
+        df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\n', '\\n', regex=False)
+        df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\r', '\\r', regex=False)
     df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-exclu-{data_format}.csv'), index=False,  header=True)
+    
+    if 'objet' not in df_concession_badlines.columns:
+        df_concession_badlines['objet'] = pd.NA    
+    else:
+        df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\n', '\\n', regex=False)
+        df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\r', '\\r', regex=False)
     df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-exclu-{data_format}.csv'), index=False,  header=True)
 
     # Concaténation des dataframes pour l'enrigissement (re-séparation après)
