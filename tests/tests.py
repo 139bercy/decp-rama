@@ -23,7 +23,7 @@ class UneClasseDeTest(unittest.TestCase):
     def setUp(self):
         # Initialisation des données de test
         self.process = SampleJsonProcess("2022")
-        self.processes = [SampleJsonProcess, SampleXmlProcess, PesNouveauProcess]
+        self.processes = [SampleJsonProcess, SampleXmlProcess, PesProcess]
         self.global_process = GlobalProcess()
         self.url = []
         

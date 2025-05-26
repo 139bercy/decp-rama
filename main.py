@@ -20,7 +20,7 @@ args = parser.parse_args()
 
 step = StepMngmt()
     
-def main(report,data_format:str = 2022):
+def main(report,data_format:str = "2022"):
     """La fonction main() appelle tour à tour les processus spécifiques (ProcessFactory.py/SourceProcess.py) et les
     étapes du Global Process (GlobalProcess.py)."""
 

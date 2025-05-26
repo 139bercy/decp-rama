@@ -16,6 +16,7 @@ test_schemes
 tools_flux
 resources
 METADATA_FOR_REPLAY
+old_metadata_REF
 config.json
 result.json
 result_trace.txt
