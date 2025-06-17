@@ -123,9 +123,9 @@ class NodeFormat:
                     # Convertir la valeur en float
                     marche[key] = float(marche[key])
                 except ValueError:
-                    logging.warning(f"Erreur : la valeur de la clé '{key}' ne peut pas être convertie en entier.")
+                    logging.warning(f"Erreur : la valeur de la clé '{key}' {marche[key]} ne peut pas être convertie en entier.")
                 except TypeError:
-                    logging.warning(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
+                    logging.warning(f"Erreur : la valeur de la clé '{key}' {marche[key]} est de type incompatible pour la conversion.")
             elif key in marche and marche[key] !='NC':
                 marche[key] = 0
 

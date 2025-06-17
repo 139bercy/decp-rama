@@ -2,6 +2,9 @@ from general_process.SourceProcess import SourceProcess
 import os
 import json
 import wget
+import ssl
+import certifi
+import urllib
 import pandas as pd
 import ast
 import logging
@@ -28,7 +31,13 @@ class DecpAwsProcess(SourceProcess):
         logging.info("  ÉTAPE GET")
         api_key = str(os.environ.get("API_KEY_Djabril"))  # à quoi sert cette variable ?
         os.makedirs(f"sources/{self.source}", exist_ok=True)
+        # Replaced after certifi can't validate ssl certificat
         wget.download(self.url_source, self.local_path)
+        #url = self.url_source
+        #context = ssl.create_default_context(cafile=certifi.where())
+        #with urllib.request.urlopen(url, context=context) as response, open(self.local_path, 'wb') as out_file:
+        #    out_file.write(response.read())
+
         logging.info(f"Téléchargement : {len(self.url_source)} fichier(s) OK")
 
     def convert(self):

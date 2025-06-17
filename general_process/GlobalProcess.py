@@ -670,6 +670,9 @@ class GlobalProcess:
                 marche = marche_in.copy()
                 if 'backup__montant' in marche_in:
                     marche['montant'] = marche['backup__montant']
+                if 'backup__datePublicationDonnees' in marche_in:
+                    marche['datePublicationDonnees'] = marche['backup__datePublicationDonnees']
+                    
                 self._restore_attributes_by_prefix(marche,'backup__')
                 self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
 
@@ -723,8 +726,6 @@ class GlobalProcess:
                 del marche["report__path"]
             if 'report__position' in marche:
                 del marche["report__position"]
-            if 'source' in marche:
-                del marche["source"]
             if 'idAccordCadre' in marche and (marche['idAccordCadre'] == '' or pd.isna(marche['idAccordCadre'])):
                 del marche["idAccordCadre"]
             if 'origineUE' in marche and (marche['origineUE'] == '' or pd.isna(marche['origineUE'])):
@@ -755,6 +756,10 @@ class GlobalProcess:
             if 'backup__montant' in marche_in:
                 marche['montant'] = marche['backup__montant']
                 del marche['backup__montant']
+            if 'backup__datePublicationDonnees' in marche_in:
+                marche['datePublicationDonnees'] = marche['backup__datePublicationDonnees']
+                del marche['backup__datePublicationDonnees']
+            
             self._restore_attributes_by_prefix(marche,'backup__')
             self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
 
@@ -775,6 +780,12 @@ class GlobalProcess:
                     del marche["donneesExecution"]
                 if 'concessionnaires' in marche:
                     del marche["concessionnaires"]
+                if 'autoriteConcedante' in marche:
+                    del marche["autoriteConcedante"]
+                if 'dateDebutExecution' in marche:
+                    del marche["dateDebutExecution"]
+                if 'montantSubventionPublique' in marche:
+                    del marche["montantSubventionPublique"]
                 if '_type' in marche:
                     del marche["_type"]
                 marches.append(marche)
@@ -1021,6 +1032,10 @@ class GlobalProcess:
         keys_to_delete = [clé for clé in marche.keys() if clé.startswith(prefix)]
         for key in keys_to_delete:
             if marche[key] == 'NC':
+                marche[key[len(prefix):]] = marche[key]
+            if pd.isna(marche[key]):
+                marche[key[len(prefix):]] = marche[key]
+            if pd.isna(marche[key]):
                 marche[key[len(prefix):]] = marche[key]
             del marche[key]
 

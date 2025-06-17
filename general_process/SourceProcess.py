@@ -2,6 +2,8 @@ from __future__ import annotations
 import linecache
 from xml.etree import ElementTree
 import wget
+import ssl
+import urllib.request, ssl, certifi
 import os
 import json
 import xml
@@ -83,6 +85,7 @@ class SourceProcess:
         """La fonction _clean_metadata_folder permet le nettoyage de /metadata/{self.source}"""
         # Lavage des dossiers dans metadata
         logging.info(f"Début du nettoyage de metadata/{self.source}")
+        logging.info(os.path.abspath('.'))
         if os.path.exists(f"metadata/{self.source}"):
             shutil.rmtree(f"metadata/{self.source}")
         logging.info(f"Nettoyage metadata/{self.source} OK")
@@ -127,16 +130,22 @@ class SourceProcess:
             n: nombre de clé api 
 
         """
-        logging.info("Début de la récupération de la liste des url")
+        logging.info("Début de la récupération de la liste des urls")
         title = []  
         url = []    
         for i in range(n):
             #Téléchargement du fichier de metadata de self.source et création de la 1ere variable json pour la comparaison 
             try:
+                # Replaced after certifi can't validate ssl certificat
                 wget.download(f"https://www.data.gouv.fr/api/1/datasets/{self.cle_api[i]}/",
                             f"metadata/{self.source}/metadata_{self.key}_{i}.json")
-            except:
+                #url = f"https://www.data.gouv.fr/api/1/datasets/{self.cle_api[i]}/"
+                #context = ssl.create_default_context(cafile=certifi.where())
+                #with urllib.request.urlopen(url, context=context) as response, open(f"metadata/{self.source}/metadata_{self.key}_{i}.json", 'wb') as out_file:
+                #    out_file.write(response.read())
+            except Exception as err:
                 logging.error("Erreur lors du chargement des métadonnées")
+                logging.error(err)
 
             with open(f"metadata/{self.source}/metadata_{self.key}_{i}.json", 'r+') as f:
                 ref_json = json.load(f)
@@ -190,6 +199,7 @@ class SourceProcess:
                             filtered_url.append(u)
                             filtered_title.append(t)
                     else:
+                        #if "-2024" in t or "-2025" in t:
                         # Date not found in url, we keep the file for further analysis
                         filtered_url.append(u)
                         filtered_title.append(t)
@@ -278,14 +288,27 @@ class SourceProcess:
         if nom_fichiers!=[]:   #Dossier non vide
             os.remove(f"sources/{self.source}/{nom_fichiers[0]}")
             logging.info(f"Le fichier {nom_fichiers[0]} était présent. Il a été supprimé")
+            
+            # Replaced after certifi can't validate ssl certificat
             wget.download(self.url[0], f"sources/{self.source}/{file_name}")
+            #url = self.url[0]
+            #context = ssl.create_default_context(cafile=certifi.where())
+            #with urllib.request.urlopen(url, context=context) as response, open(f"sources/{self.source}/{file_name}", 'wb') as out_file:
+            #    out_file.write(response.read())
+
             self.title = [ file_name ]
             logging.info(f"Titre des fichiers : {self.title}")
 
         #Le dossier est vide car il s'agit du 1er téléchargement. Téléchargement 
         #dans le dossier puis affectation du nom du fichier à l'attribut titre
         else:
+            # Replaced after certifi can't validate ssl certificat
             wget.download(self.url[0], f"sources/{self.source}/")
+            #url = self.url[0]
+            #context = ssl.create_default_context(cafile=certifi.where())
+            #with urllib.request.urlopen(url, context=context) as response, open(f"sources/{self.source}/", 'wb') as out_file:
+            #    out_file.write(response.read())
+
             logging.info(os.listdir(f"sources/{self.source}"))
             self.title = [ os.listdir(f"sources/{self.source}")[0] ]
             logging.info(f"Titre des fichiers : {self.title}")
@@ -304,10 +327,10 @@ class SourceProcess:
         #Ouverture des fichiers
         dico = {}
 
-        # Tests AIFE
-        #self.url = [f"sources/{self.source}/Donnees-Essentielles-Marches13.03.2025.12-54.xml"]
-        #self.url += [f"sources/{self.source}/Donnees-Essentielles-Marches13.03.2025.11-50.xml"]
-        #self.title = ["Donnees-Essentielles-Marches13.03.2025.12-54.xml"]
+        # Tests AIFE limite url
+        #self.url = [f"sources/{self.source}/decp-13000495500139-2025-05-05-02_.xml"]
+        #self.url += [f"sources/{self.source}/decp-13000495500139-2025-05-05-02_.xml"]
+        #self.title = ["decp-13000495500139-2025-05-05-02_.xml"]
         #self.title += ["Donnees-Essentielles-Marches13.03.2025.11-50.xml"]
         # Force title force url file list
         #self.title = os.listdir("sources\\xmarches")
@@ -669,12 +692,14 @@ class SourceProcess:
         if self.df[col_name].dtypes == 'object':
             #self.df[col_name] = self.df[col_name].astype(str).replace({'1': True, 'true': True, 'True': True, '0': False, 'false': False, 'False': False})
             with pd.option_context("future.no_silent_downcasting", True):
+                self.df["backup__"+col_name] = self.df[col_name]
                 self.df[col_name] = self.df[col_name].replace({'1': True, 'true': True, 'True': True, '0': False, 'false': False, 'False': False}).infer_objects(copy=False)
         else:
             #self.df[col_name] = self.df[col_name].astype(str).replace({'True': True, 'False': False })
             with pd.option_context("future.no_silent_downcasting", True):
+                self.df["backup__"+col_name] = self.df[col_name]
                 self.df[col_name] = self.df[col_name].replace({'True': True, 'False': False }).infer_objects(copy=False)
-
+        #self.df[col_name] = self.df[col_name].astype(bool)
 
     def fix(self) -> None:
         """
@@ -774,6 +799,9 @@ class SourceProcess:
         self.df = self.df.iloc[index_to_keep]
         self.df = self.df.reset_index(drop=True)
 
+        if "datePublicationDonnees" in self.df.columns:
+            self.df['backup__datePublicationDonnees'] = self.df['datePublicationDonnees']
+                
         logging.info(f"Fix de {self.source} OK")
         logging.info(f"Nombre de marchés et de concession dans {self.source} après fix : {len(self.df)}")
 
