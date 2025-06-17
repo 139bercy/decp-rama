@@ -91,13 +91,13 @@ def restore_nc(df,field):
 
 # Fonction pour remplacer les valeurs
 def modifier_source(valeur):
-    if valeur == 'Data.gouv.fr_pes':
+    if valeur == 'data.gouv.fr_pes':
         return 'DGFIP – PES marche'
     elif valeur == 'marches-publics_aws':
         return 'AWS'
     elif valeur == 'e-marchespublics':
         return 'Dematis'
-    elif valeur == 'Xmarches':
+    elif valeur == 'xmarches':
         return 'SPL-XDEMAT'
     elif valeur == 'ppsmj':
         return 'Region Ile-de-France'
