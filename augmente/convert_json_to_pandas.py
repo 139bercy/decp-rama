@@ -44,6 +44,27 @@ def manage_modifications(data: dict,data_format:str) -> pd.DataFrame:
     Retour:
         pd.DataFrame
     """
+
+    def convert_boolean(df,col_name:str) -> None:
+        """
+        Permet de remplacer les valeurs booléennes "1" ou "0", "Vrai" ou "Faux", "True" ou "False" par True ou False
+
+        Args:
+
+            col_name: colonne où s'effectue le changement
+
+        """
+        #Conversion si il s'agit de string
+        if df[col_name].dtypes == 'object':
+            #df[col_name] = df[col_name].astype(str).replace({'1': True, 'true': True, 'True': True, '0': False, 'false': False, 'False': False})
+            with pd.option_context("future.no_silent_downcasting", True):
+                df[col_name] = df[col_name].replace({1: True, 0: False, '1': True, 'true': True, 'True': True, '0': False, 'false': False, 'False': False}).infer_objects(copy=False)
+        else:
+            #df[col_name] = df[col_name].astype(str).replace({'True': True, 'False': False })
+            with pd.option_context("future.no_silent_downcasting", True):
+                df[col_name] = df[col_name].replace({'True': True, 'False': False }).infer_objects(copy=False)
+        #df[col_name] = df[col_name].astype(bool)
+
     L_indice = indice_marche_avec_modification(data)
     dict_modification = recuperation_colonne_a_modifier(data, L_indice)
     df = json_normalize(data['marches'])
@@ -51,6 +72,13 @@ def manage_modifications(data: dict,data_format:str) -> pd.DataFrame:
     # Fix ECO add empty columns
     complete_data_column(df)
 
+    if "marcheInnovant" in df.columns:
+        convert_boolean(df,'marcheInnovant')
+    if "attributionAvance" in df.columns:
+        convert_boolean(df,'attributionAvance')
+    if "sousTraitanceDeclaree" in df.columns:
+        convert_boolean(df,'sousTraitanceDeclaree')
+        
     # Replace empty strings with NaN (Not a Number) and convert to float
     # Fix FutureWarning df = df.replace(r'^\s*$', np.nan, regex=True)
     with pd.option_context("future.no_silent_downcasting", True):
