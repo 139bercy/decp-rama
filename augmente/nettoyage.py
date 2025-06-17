@@ -89,6 +89,20 @@ def restore_nc(df,field):
     if 'backup__'+field in df.columns:
         df[field] = df.apply(lambda row: row['backup__'+field] if pd.isna(row[field]) or row['backup__'+field] == 'NC' else row[field], axis=1)
 
+# Fonction pour remplacer les valeurs
+def modifier_source(valeur):
+    if valeur == 'Data.gouv.fr_pes':
+        return 'DGFIP – PES marche'
+    elif valeur == 'marches-publics_aws':
+        return 'AWS'
+    elif valeur == 'e-marchespublics':
+        return 'Dematis'
+    elif valeur == 'Xmarches':
+        return 'SPL-XDEMAT'
+    elif valeur == 'ppsmj':
+        return 'Region Ile-de-France'
+    return valeur  # Renvoie la valeur d'origine si aucune correspondance n'est trouvée
+
 @compute_execution_time
 def manage_data_quality(df: pd.DataFrame,data_format:str):
     """
@@ -114,6 +128,17 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
     df_badlines (dataFrame) : le dataframe des données exclues.
 
     """
+    def convert_list_to_str(df,col):
+        if col in df.columns:
+            df[col] = df[col].str[1:-1] #.apply(lambda x: ', '.join(map(str, x)))
+
+    def convert_all_list_to_str(df):
+        convert_list_to_str(df,'considerationsSociales')
+        convert_list_to_str(df,'considerationsEnvironnementales')
+        convert_list_to_str(df,'modalitesExecution')
+        convert_list_to_str(df,'techniques')
+        convert_list_to_str(df,'typesPrix')
+
     # séparation des marchés et des concessions, car traitement différent
     df_marche = None
     df_concession = None
@@ -211,33 +236,53 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
     report.fix_statistics('all sources')
     report.save()
 
-    # save data to csv files
-    if 'objet' not in df_concession.columns:
-        df_concession['objet'] = pd.NA    
-    else:
-        df_concession['objet'] = df_concession['objet'].str.replace('\n', '\\n', regex=False)
-        df_concession['objet'] = df_concession['objet'].str.replace('\r', '\\r', regex=False)
+    if not df_concession.empty:
+        if 'source' in df_concession.columns:
+            # Modification de la colonne 'source'
+            df_concession['source'] = df_concession['source'].apply(modifier_source)
+        # save data to csv files
+        if 'objet' not in df_concession.columns:
+            df_concession['objet'] = pd.NA    
+        else:
+            df_concession['objet'] = df_concession['objet'].str.replace('\n', '\\n', regex=False)
+            df_concession['objet'] = df_concession['objet'].str.replace('\r', '\\r', regex=False)
+    convert_all_list_to_str(df_concession)
     df_concession.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-{data_format}.csv'), index=False, header=True)
     
-    if 'objet' not in df_marche.columns:
-        df_marche['objet'] = pd.NA
-    else:
-        df_marche['objet'] = df_marche['objet'].str.replace('\n', '\\n', regex=False)
-        df_marche['objet'] = df_marche['objet'].str.replace('\r', '\\r', regex=False)
+    if not df_marche.empty:
+        if 'source' in df_marche.columns:
+            # Modification de la colonne 'source'
+            df_marche['source'] = df_marche['source'].apply(modifier_source)
+        if 'objet' not in df_marche.columns:
+            df_marche['objet'] = pd.NA
+        else:
+            df_marche['objet'] = df_marche['objet'].str.replace('\n', '\\n', regex=False)
+            df_marche['objet'] = df_marche['objet'].str.replace('\r', '\\r', regex=False)
+    convert_all_list_to_str(df_marche)
     df_marche.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-{data_format}.csv'), index=False, header=True)
     
-    if 'objet' not in df_marche_badlines.columns:
-        df_marche_badlines['objet'] = pd.NA
-    else:
-        df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\n', '\\n', regex=False)
-        df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\r', '\\r', regex=False)
+    if not df_marche_badlines.empty:
+        if 'source' in df_marche_badlines.columns:
+            # Modification de la colonne 'source'
+            df_marche_badlines['source'] = df_marche_badlines['source'].apply(modifier_source)
+        if 'objet' not in df_marche_badlines.columns:
+            df_marche_badlines['objet'] = pd.NA
+        else:
+            df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\n', '\\n', regex=False)
+            df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\r', '\\r', regex=False)
+    convert_all_list_to_str(df_marche_badlines)
     df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-exclu-{data_format}.csv'), index=False,  header=True)
     
-    if 'objet' not in df_concession_badlines.columns:
-        df_concession_badlines['objet'] = pd.NA    
-    else:
-        df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\n', '\\n', regex=False)
-        df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\r', '\\r', regex=False)
+    if not df_concession_badlines.empty:
+        if 'source' in df_concession_badlines.columns:
+            # Modification de la colonne 'source'
+            df_concession_badlines['source'] = df_concession_badlines['source'].apply(modifier_source)
+        if 'objet' not in df_concession_badlines.columns:
+            df_concession_badlines['objet'] = pd.NA    
+        else:
+            df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\n', '\\n', regex=False)
+            df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\r', '\\r', regex=False)
+    convert_all_list_to_str(df_concession_badlines)
     df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-exclu-{data_format}.csv'), index=False,  header=True)
 
     # Concaténation des dataframes pour l'enrigissement (re-séparation après)
@@ -278,7 +323,7 @@ def reorder_columns(dfb:pd.DataFrame):
 def order_columns_marches(df: pd.DataFrame):
     """
     La fonction ordonne les colonnes d'une marché
-    du dataframe dans l'orde indiqué de la liste.
+    du dataframe dans l'ordre indiqué de la liste.
     """
     liste_col_ordonnes = [
     "titulaire_id_1",
@@ -295,6 +340,7 @@ def order_columns_marches(df: pd.DataFrame):
     "dureeMois",
     "dateNotification",
     "datePublicationDonnees",
+    'source',
     "montant",
     "formePrix",
     "attributionAvance",
@@ -304,7 +350,6 @@ def order_columns_marches(df: pd.DataFrame):
     "sousTraitanceDeclaree",
     "typeGroupementOperateurs",
     "idAccordCadre",
-    "source",
     "acheteur.id",
     "lieuExecution.code",
     "lieuExecution.typeCode",
@@ -564,8 +609,8 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
     def marche_check_empty(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
         col_name = ["id", "acheteur.id", "montant", "titulaire_id_1", "titulaire_typeIdentifiant_1", "dureeMois"]  # titulaire contient un dict avec des valeurs dont id
         for col in col_name:
-            dfb = pd.concat([dfb, df[~pd.notna(df[col])]])
-            df = df[pd.notna(df[col])]
+            dfb = pd.concat([dfb, df[~pd.notna(df[col])|df[col]=="<NA>"]])
+            df = df[pd.notna(df[col])&df[col]!="<NA>"]
             dfb = populate_error(dfb,f"Champ {col} non renseigné")
         return df, dfb
 
@@ -798,21 +843,21 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
 
     df_marche_badlines_["Erreurs"] = pd.NA
     
-    df_marche_tmp, df_marche_badlines_ = marche_check_empty(df_marche_, df_marche_badlines_)
-    df_marche_tmp, df_marche_badlines_ = marche_check_type(df_marche_, df_marche_badlines_)
-    df_marche_tmp, df_marche_badlines_ = marche_cpv_object(df_marche_, df_marche_badlines_)
-    df_marche_tmp, df_marche_badlines_ = marche_date(df_marche_, df_marche_badlines_)
+    df_marche_, df_marche_badlines_ = marche_check_empty(df_marche_, df_marche_badlines_)
+    df_marche_, df_marche_badlines_ = marche_check_type(df_marche_, df_marche_badlines_)
+    df_marche_, df_marche_badlines_ = marche_cpv_object(df_marche_, df_marche_badlines_)
+    df_marche_, df_marche_badlines_ = marche_date(df_marche_, df_marche_badlines_)
 
-    df_marche_tmp, df_marche_badlines_ = check_montant(df_marche_, df_marche_badlines_, "montant",3000000000)
-    df_marche_tmp, df_marche_badlines_ = check_siret(df_marche_, df_marche_badlines_, "acheteur.id")
+    df_marche_, df_marche_badlines_ = check_montant(df_marche_, df_marche_badlines_, "montant",3000000000)
+    df_marche_, df_marche_badlines_ = check_siret(df_marche_, df_marche_badlines_, "acheteur.id")
     
-    df_marche_tmp, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'SIRET')
-    df_marche_tmp, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'TVA')
-    df_marche_tmp, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'TAHITI')
-    df_marche_tmp, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'RIDET')
-    df_marche_tmp, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'FRWF')
-    df_marche_tmp, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'IREP')
-    df_marche_tmp, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'HORS-UE')
+    df_marche_, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'SIRET')
+    df_marche_, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'TVA')
+    df_marche_, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'TAHITI')
+    df_marche_, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'RIDET')
+    df_marche_, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'FRWF')
+    df_marche_, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'IREP')
+    df_marche_, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'HORS-UE')
 
     df_cpv = pd.read_excel("data/cpv_2008_fr.xls", engine="xlrd")  #engine=openpyxl   xlrd
 
@@ -829,24 +874,24 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
     # delete df_cpv to free memory
     del df_cpv
 
-    df_marche_tmp, df_marche_badlines_ = check_duree_contrat(df_marche_, df_marche_badlines_, 180)
-    df_marche_tmp, df_marche_badlines_ = marche_dateNotification(df_marche_, df_marche_badlines_, data_format)
+    df_marche_, df_marche_badlines_ = check_duree_contrat(df_marche_, df_marche_badlines_, 180)
+    df_marche_, df_marche_badlines_ = marche_dateNotification(df_marche_, df_marche_badlines_, data_format)
 
-    df_marche_tmp, df_marche_badlines_ = check_id_format(df_marche_, df_marche_badlines_)
+    df_marche_, df_marche_badlines_ = check_id_format(df_marche_, df_marche_badlines_)
 
     # Les étapes précédente ont pu créer des lignes en doublon avec un message d'erreur différent, on élimine ici les doublons et concatene les erreurs
-    group_columns = feature_doublons_marche # all columns - Erreur: df_marche_badlines_.columns.difference(['Erreurs']).tolist()
-    if "idModification" in df_marche_badlines_:
-        group_columns.append("idModification")
-    grouped = df_marche_badlines_.groupby(group_columns).agg({
-            'Erreurs': lambda x: ', '.join(x)  # Concatenation des valeurs de la colonne "Erreurs"
-        }).reset_index()
-    df_no_errors = df_marche_badlines_.drop(columns=['Erreurs'])
-    df_marche_badlines_ = pd.merge(df_no_errors, grouped, on=group_columns, how='left')
+    #group_columns = feature_doublons_marche # all columns - Erreur: df_marche_badlines_.columns.difference(['Erreurs']).tolist()
+    #if "idModification" in df_marche_badlines_:
+    #    group_columns.append("idModification")
+    #grouped = df_marche_badlines_.groupby(group_columns).agg({
+    #        'Erreurs': lambda x: ', '.join(x)  # Concatenation des valeurs de la colonne "Erreurs"
+    #    }).reset_index()
+    #df_no_errors = df_marche_badlines_.drop(columns=['Erreurs'])
+    #df_marche_badlines_ = pd.merge(df_no_errors, grouped, on=group_columns, how='left')
 
-    # On enlève de df_marche_ les lignes en erreur de df_marche_badlines_
-    merged = df_marche_.merge(df_marche_badlines_[group_columns], on=group_columns, how='left', indicator=True)
-    df_marche_ = merged[merged['_merge'] == 'left_only'].drop(columns=['_merge'])
+    # On enlève de df_marche_ les lignes en erreur qui ont été déplacées vers df_marche_badlines_
+    #merged = df_marche_.merge(df_marche_badlines_[group_columns], on=group_columns, how='left', indicator=True)
+    #df_marche_ = merged[merged['_merge'] == 'left_only'].drop(columns=['_merge'])
 
     df_marche_badlines_ = reorder_columns(df_marche_badlines_)
     df_marche_ = order_columns_marches(df_marche_)
@@ -1295,10 +1340,10 @@ def check_montant(df: pd.DataFrame, dfb: pd.DataFrame, col: str, montant : int =
     dfb = (dfb.copy() if df[df[col] > montant].empty else df[df[col] > montant].copy() if dfb.empty
        else pd.concat([dfb, df[df[col] > montant]])
       )
-    df = df[df[col] <= montant]
+    df = df[~(df[col] > montant)]
 
     if not "Erreurs" in dfb:
-        dfb["Erreurs"] = ""
+        dfb["Erreurs"] = pd.NA
 
     dfb = populate_error(dfb,f"Valeur du champ {col} trop élevée")
 
@@ -1310,7 +1355,7 @@ def check_montant(df: pd.DataFrame, dfb: pd.DataFrame, col: str, montant : int =
     if "Erreurs" not in dfb.columns:
         dfb["Erreurs"] = pd.NA
 
-    df = df[df[col] >= 1]
+    df = df[~(df[col] < 1)]
 
     dfb = populate_error(dfb,f"Valeur du champ {col} inférieur à 1")
 
@@ -1734,7 +1779,7 @@ def marche_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
     df = mark_bad_format_float_field(df,"origineFrance")
     df = mark_bad_format_field(df,"ccag",r'^(Travaux|Maitrise d\'œuvre|Fournitures courantes et services|Marchés industriels|Prestations intellectuelles|Techniques de l\'information et de la communication|Pas de CCAG)$')
     df = mark_bad_format_int_field(df,"offresRecues")
-    df = mark_bad_format_float_field(df,"montant")
+    #df = mark_bad_format_float_field(df,"montant")
     df = mark_bad_format_field(df,"formePrix",r'^(Unitaire|Forfaitaire|Mixte)$')
     df = mark_bad_format_multi_field(df,"typesPrix",r'^(Définitif ferme|Définitif actualisable|Définitif révisable|Provisoire)$')
     df = mark_bad_format_field(df,"attributionAvance",r'^(True|False|0|1|oui|non)$')
