@@ -797,7 +797,7 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
 
         return df, dfb
 
-    def marche_dateNotification(df: pd.DataFrame, dfb: pd.DataFrame,data_format:str) -> pd.DataFrame:
+    def marche_date_valid(df: pd.DataFrame, dfb: pd.DataFrame,data_format:str,col:str) -> pd.DataFrame:
         """
         Format AAAA-MM-JJ
             Si MM<01 ou>12,
@@ -809,15 +809,18 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         """
 
         # vérification du format de la date de notification (AAAA-MM-JJ) et correction si besoin création d'un dataframe avec les lignes à corriger
-        #df["dateNotification"] = pd.to_datetime(df["dateNotification"], format='%Y-%m-%d', errors='ignore')
-        format_regex = r'^2\d{3}-\d{2}-\d{2}$'
-        invalid_dates = df[~df["dateNotification"].str.match(format_regex, na=False)]
-        df = df[df["dateNotification"].str.match(format_regex, na=False)]
-        invalid_dates["dateNotification"] = invalid_dates["datePublicationDonnees"]
-        still_invalid_dates = invalid_dates[~invalid_dates["dateNotification"].str.match(format_regex, na=False)]
-        no_more_invalide_dates = invalid_dates[invalid_dates["dateNotification"].str.match(format_regex, na=False)]
-        df = pd.concat([df, no_more_invalide_dates])
-        dfb = pd.concat([dfb, still_invalid_dates])
+        #df[col] = pd.to_datetime(df[col], format='%Y-%m-%d', errors='ignore')
+        format_regex = r'^20\d{2}-\d{2}-\d{2}$'
+        invalid_dates = df[~df[col].str.match(format_regex, na=False)]
+        df = df[df[col].str.match(format_regex, na=False)]
+        if col== "dateNotification":
+            invalid_dates["dateNotification"] = invalid_dates["datePublicationDonnees"]
+            still_invalid_dates = invalid_dates[~invalid_dates[col].str.match(format_regex, na=False)]
+            no_more_invalide_dates = invalid_dates[invalid_dates[col].str.match(format_regex, na=False)]
+            df = pd.concat([df, no_more_invalide_dates])
+            dfb = pd.concat([dfb, still_invalid_dates])
+        else:
+            dfb = dfb = pd.concat([dfb, invalid_dates])
 
         if data_format=='2019':
             current_year = str(datetime.now().year)
@@ -875,7 +878,8 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
     del df_cpv
 
     df_marche_, df_marche_badlines_ = check_duree_contrat(df_marche_, df_marche_badlines_, 180)
-    df_marche_, df_marche_badlines_ = marche_dateNotification(df_marche_, df_marche_badlines_, data_format)
+    df_marche_, df_marche_badlines_ = marche_date_valid(df_marche_, df_marche_badlines_, data_format, "dateNotification")
+    df_marche_, df_marche_badlines_ = marche_date_valid(df_marche_, df_marche_badlines_, data_format, "datePublicationDonnees")
 
     df_marche_, df_marche_badlines_ = check_id_format(df_marche_, df_marche_badlines_)
 
