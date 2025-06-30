@@ -176,7 +176,7 @@ class SourceProcess:
 
             ## Code for generate all files for months and year between given dates 
             # Filter by date in title, url
-
+            """
             begin_date_txt = "2025-01-01"
             end_date_txt = "2025-12-31"
             begin_date = datetime.strptime(begin_date_txt, "%Y-%m-%d")
@@ -205,7 +205,7 @@ class SourceProcess:
                         filtered_title.append(t)
             url = filtered_url
             title = filtered_title
-            
+            """
 
             #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
             if os.path.exists(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json"):
