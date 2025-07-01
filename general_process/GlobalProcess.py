@@ -436,6 +436,8 @@ class GlobalProcess:
             api = config["url_api"]
             dataset_id = config["dataset_id"]
             data_gouv_api_key = config["data_gouv_api_key"]
+            month_previous_update = config["resource_month"]
+            year_previous_update = config["resource_year"]
 
         headers = {
             "X-API-KEY": data_gouv_api_key
@@ -452,7 +454,18 @@ class GlobalProcess:
                 years += [suffix_year]
                 resource_id_year = self._get_ressource_id(headers,api,dataset_id,suffix_year)
                 resource_id_year = self._upload_file(headers,api,dataset_id,resource_id_year,suffix_year)
+        
+        current_month = int(self.get_current_date().strftime('%m'))
+        current_year = int(self.get_current_date().strftime('%Y'))
+        if not current_month == month_previous_update:
+            resource_id_year = self._get_ressource_id(headers,api,dataset_id,year_previous_update)
+            resource_id_year = self._upload_file(headers,api,dataset_id,resource_id_year,year_previous_update)
             
+            config["resource_month"] = current_month
+            config["resource_year"] = current_year
+            
+            with open(config_file, "w") as file:
+                json.dump(config, file, indent=4)
 
     @StepMngmt().decorator(Step.EXPORT,None)
     def export(self,local:bool):
