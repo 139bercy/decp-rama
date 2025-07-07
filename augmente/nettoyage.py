@@ -1478,7 +1478,7 @@ def check_id_format(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
     """
     Si le format de l'id est mauvais alors INEXPLOITABLE donc mis en exclu
     """
-    pattern = r'^[A-Za-z0-9\-_ ]{1,16}$'
+    pattern = r'^[A-Za-z0-9/\-_ ]{1,16}$'
 
     dfb = pd.concat([dfb, df[~df["id"].str.match(pattern,na=False)]])
     df = df[df["id"].str.match(pattern,na=False)]
@@ -1763,7 +1763,7 @@ def marche_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
     df = mark_optional_field(df,"datePublicationDonneesModificationActeSousTraitance")
 
     # Format check
-    df = mark_bad_format_field(df,"id",r'^[A-Za-z0-9\-_.\\/]{1,16}$')
+    #df = mark_bad_format_field(df,"id",r'^[A-Za-z0-9\-_.\\/]{1,16}$')
     df = mark_bad_insee_field(df,"acheteur.id")
     df = mark_bad_format_field(df,"nature",r'^(?:Marché|Marché de partenariat|Marché de défense ou de sécurité)$')
     df = mark_bad_format_field(df,"objet",r'^.{0,1000}$')
@@ -1862,7 +1862,7 @@ def concession_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
     df = mark_optional_field(df,"concessionnaire_id_3")
     df = mark_optional_field(df,"concessionnaire_typeIdentifiant_3")
 
-    df = mark_bad_format_field(df,"id",r'^[A-Za-z0-9\-_ ]{1,16}$')
+    df = mark_bad_format_field(df,"id",r'^[A-Za-z0-9/\-_ ]{1,16}$')
     # Caractéristiques de l’autorité concédante
     df = mark_bad_insee_field(df,"idAutoriteConcedante")
     # Caractéristiques du contrat de concession
