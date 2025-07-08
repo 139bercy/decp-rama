@@ -609,9 +609,15 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
     def marche_check_empty(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
         col_name = ["id", "acheteur.id", "montant", "titulaire_id_1", "titulaire_typeIdentifiant_1", "dureeMois"]  # titulaire contient un dict avec des valeurs dont id
         for col in col_name:
-            dfb = pd.concat([dfb, df[~pd.notna(df[col])|df[col]=="<NA>"]])
-            df = df[pd.notna(df[col])&df[col]!="<NA>"]
-            dfb = populate_error(dfb,f"Champ {col} non renseigné")
+            #dfb = pd.concat([dfb, df[~pd.notna(df[col])|df[col]=="<NA>"]])
+            #df = df[pd.notna(df[col])&df[col]!="<NA>"]
+            #dfb = populate_error(dfb,f"Champ {col} non renseigné")
+            mask_col_vide = df[col].isna() | (df[col] == '<NA>')
+            df.loc[mask_col_vide, 'Erreurs'] = (
+                df.loc[mask_col_vide, 'Erreurs'].fillna('') +
+                (df.loc[mask_col_vide, 'Erreurs'].notna().map(lambda x: '; ' if x else '')) +
+                f"Champ {col} non renseigné"
+            )            
         return df, dfb
 
     def marche_replace_titulaire_type(df: pd.DataFrame) -> pd.DataFrame:
@@ -844,6 +850,7 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
 
     df_marche_ = marche_replace_titulaire_type(df_marche_)
 
+    df_marche_["Erreurs"] = pd.NA
     df_marche_badlines_["Erreurs"] = pd.NA
     
     df_marche_, df_marche_badlines_ = marche_check_empty(df_marche_, df_marche_badlines_)
@@ -1478,7 +1485,7 @@ def check_id_format(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
     """
     Si le format de l'id est mauvais alors INEXPLOITABLE donc mis en exclu
     """
-    pattern = r'^[A-Za-z0-9\-_ ]{1,16}$'
+    pattern = r'^[A-Za-z0-9/\-_ ]{1,16}$'
 
     dfb = pd.concat([dfb, df[~df["id"].str.match(pattern,na=False)]])
     df = df[df["id"].str.match(pattern,na=False)]
@@ -1694,7 +1701,7 @@ def mark_bad_insee_field(df: pd.DataFrame,field_name:str,field_type:str = None) 
 @compute_execution_time
 def marche_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
 
-    df = mark_mandatory_field(df,"id")
+    #df = mark_mandatory_field(df,"id")
     df = mark_mandatory_field(df,"nature")
     df = mark_mandatory_field(df,"objet")
     df = mark_mandatory_field(df,"techniques")
@@ -1763,7 +1770,7 @@ def marche_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
     df = mark_optional_field(df,"datePublicationDonneesModificationActeSousTraitance")
 
     # Format check
-    df = mark_bad_format_field(df,"id",r'^[A-Za-z0-9\-_.\\/]{1,16}$')
+    #df = mark_bad_format_field(df,"id",r'^[A-Za-z0-9\-_.\\/]{1,16}$')
     df = mark_bad_insee_field(df,"acheteur.id")
     df = mark_bad_format_field(df,"nature",r'^(?:Marché|Marché de partenariat|Marché de défense ou de sécurité)$')
     df = mark_bad_format_field(df,"objet",r'^.{0,1000}$')
@@ -1832,7 +1839,7 @@ def marche_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
 @compute_execution_time
 def concession_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
 
-    df = mark_mandatory_field(df,"id")
+    #df = mark_mandatory_field(df,"id")
     df = mark_mandatory_field(df,"nature")
     df = mark_mandatory_field(df,"objet")
     df = mark_mandatory_field(df,"procedure")
@@ -1862,7 +1869,7 @@ def concession_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
     df = mark_optional_field(df,"concessionnaire_id_3")
     df = mark_optional_field(df,"concessionnaire_typeIdentifiant_3")
 
-    df = mark_bad_format_field(df,"id",r'^[A-Za-z0-9\-_ ]{1,16}$')
+    #df = mark_bad_format_field(df,"id",r'^[A-Za-z0-9/\-_ ]{1,16}$')
     # Caractéristiques de l’autorité concédante
     df = mark_bad_insee_field(df,"idAutoriteConcedante")
     # Caractéristiques du contrat de concession
