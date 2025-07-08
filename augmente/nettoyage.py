@@ -307,6 +307,14 @@ def populate_error(dfb:pd.DataFrame,error_message:str,message_for_all:bool=False
 
     return dfb
 
+def df_add_error(df:pd.DataFrame,selection,message:str) -> pd.DataFrame:
+    df.loc[selection, 'Erreurs'] = (
+        df.loc[selection, 'Erreurs'].fillna('') +
+        (df.loc[selection, 'Erreurs'].notna().map(lambda x: '; ' if x else '')) +
+        message
+    )
+    return df    
+
 def reorder_columns(dfb:pd.DataFrame):
     """
     La fonction a pour but de mettre en première position 
@@ -613,12 +621,8 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
             #df = df[pd.notna(df[col])&df[col]!="<NA>"]
             #dfb = populate_error(dfb,f"Champ {col} non renseigné")
             mask_col_vide = df[col].isna() | (df[col] == '<NA>')
-            df.loc[mask_col_vide, 'Erreurs'] = (
-                df.loc[mask_col_vide, 'Erreurs'].fillna('') +
-                (df.loc[mask_col_vide, 'Erreurs'].notna().map(lambda x: '; ' if x else '')) +
-                f"Champ {col} non renseigné"
-            )            
-        return df, dfb
+            df = df_add_error(df,mask_col_vide,f"Champ {col} non renseigné")
+        return df
 
     def marche_replace_titulaire_type(df: pd.DataFrame) -> pd.DataFrame:
         bad_label = df["titulaire_typeIdentifiant_1"].str.match("FRW", na=True)
@@ -630,25 +634,34 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         return df
 
     def marche_check_type(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
-        dfb = pd.concat(
-            [dfb, df[~((df['titulaire_typeIdentifiant_1'].str[0:] == "SIRET") 
+        mask_bad_type = ~((df['titulaire_typeIdentifiant_1'].str[0:] == "SIRET") 
                 | (df['titulaire_typeIdentifiant_1'].str[0:] == "TVA")
                 | (df['titulaire_typeIdentifiant_1'].str[0:] == "TAHITI")
                 | (df['titulaire_typeIdentifiant_1'].str[0:] == "RIDET")
                 | (df['titulaire_typeIdentifiant_1'].str[0:] == "FRWF")
                 | (df['titulaire_typeIdentifiant_1'].str[0:] == "IREP")
                 | (df['titulaire_typeIdentifiant_1'].str[0:] == "HORS-UE")
-                )]])
-        df = df[((df['titulaire_typeIdentifiant_1'].str[0:] == "SIRET") 
-                | (df['titulaire_typeIdentifiant_1'].str[0:] == "TVA")
-                | (df['titulaire_typeIdentifiant_1'].str[0:] == "TAHITI")
-                | (df['titulaire_typeIdentifiant_1'].str[0:] == "RIDET")
-                | (df['titulaire_typeIdentifiant_1'].str[0:] == "FRWF")
-                | (df['titulaire_typeIdentifiant_1'].str[0:] == "IREP")
-                | (df['titulaire_typeIdentifiant_1'].str[0:] == "HORS-UE")
-                )]
-        dfb = populate_error(dfb,f"Type erroné pour la colonne titulaire_typeIdentifiant_1")
-        return df, dfb
+                )
+        df = df_add_error(df,mask_bad_type,f"Type erroné pour la colonne titulaire_typeIdentifiant_1")
+        #dfb = pd.concat(
+        #    [dfb, df[~((df['titulaire_typeIdentifiant_1'].str[0:] == "SIRET") 
+        #        | (df['titulaire_typeIdentifiant_1'].str[0:] == "TVA")
+        #        | (df['titulaire_typeIdentifiant_1'].str[0:] == "TAHITI")
+        #        | (df['titulaire_typeIdentifiant_1'].str[0:] == "RIDET")
+        #        | (df['titulaire_typeIdentifiant_1'].str[0:] == "FRWF")
+        #        | (df['titulaire_typeIdentifiant_1'].str[0:] == "IREP")
+        #        | (df['titulaire_typeIdentifiant_1'].str[0:] == "HORS-UE")
+        #        )]])
+        #df = df[((df['titulaire_typeIdentifiant_1'].str[0:] == "SIRET") 
+        #        | (df['titulaire_typeIdentifiant_1'].str[0:] == "TVA")
+        #        | (df['titulaire_typeIdentifiant_1'].str[0:] == "TAHITI")
+        #        | (df['titulaire_typeIdentifiant_1'].str[0:] == "RIDET")
+        #        | (df['titulaire_typeIdentifiant_1'].str[0:] == "FRWF")
+        #        | (df['titulaire_typeIdentifiant_1'].str[0:] == "IREP")
+        #        | (df['titulaire_typeIdentifiant_1'].str[0:] == "HORS-UE")
+        #        )]
+        #dfb = populate_error(dfb,f"Type erroné pour la colonne titulaire_typeIdentifiant_1")
+        return df#, dfb
 
     def marche_cpv_object(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
         # Si CPV manquant et objet du marché manquant ou < 5 caractères (V4), alors le marché est mis de côté
@@ -657,21 +670,30 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
             df["objet"] = df["objet"].replace("\n", "\\n").infer_objects(copy=False)
             df["objet"] = df["objet"].replace("\r", "\\r").infer_objects(copy=False)
         
-        dfb = pd.concat(
-            [dfb, df[~pd.notna(df["codeCPV"]) & ~pd.notna(df["objet"])]])
-        df = df[pd.notna(df["codeCPV"]) | pd.notna(df["objet"])]
+        mask_bad_cpv = ( ~pd.notna(df["codeCPV"]) & ~pd.notna(df["objet"])) 
+        df = df_add_error(df,mask_bad_cpv,f"Champs codeCPV et objet manquants")
         
-        dfb = pd.concat(
-            [dfb, df[(df['codeCPV'].str.len() < 10) & ~pd.notna(df["objet"])]])
-        df = df[(df['codeCPV'].str.len() >= 10) | pd.notna(df["objet"])]
+        mask_bad_cpv = (df['codeCPV'].str.len() < 10) & ~pd.notna(df["objet"])
+        df = df_add_error(df,mask_bad_cpv,f"Champ codeCPV renseigné mais objet manquants")
         
-        dfb = pd.concat(
-            [dfb, df[(df['codeCPV'].str.len() < 10) & (df['objet'].str.len()<5)]])
-        df = df[~((df['codeCPV'].str.len() < 10) & (df['objet'].str.len()<5))]
+        mask_bad_cpv = (df['codeCPV'].str.len() < 10) & (df['objet'].str.len()<5)
+        df = df_add_error(df,mask_bad_cpv,f"Champ codeCPV renseigné mais objet incomplet")
+                                                        
+        #dfb = pd.concat(
+        #    [dfb, df[~pd.notna(df["codeCPV"]) & ~pd.notna(df["objet"])]])
+        #df = df[pd.notna(df["codeCPV"]) | pd.notna(df["objet"])]
+        
+        #dfb = pd.concat(
+        #    [dfb, df[(df['codeCPV'].str.len() < 10) & ~pd.notna(df["objet"])]])
+        #df = df[(df['codeCPV'].str.len() >= 10) | pd.notna(df["objet"])]
+        
+        #dfb = pd.concat(
+        #    [dfb, df[(df['codeCPV'].str.len() < 10) & (df['objet'].str.len()<5)]])
+        #df = df[~((df['codeCPV'].str.len() < 10) & (df['objet'].str.len()<5))]
 
-        dfb = populate_error(dfb,f"Champs codeCPV et objet manquants")
+        #dfb = populate_error(dfb,f"Champs codeCPV et objet manquants")
 
-        return df, dfb
+        return df#, dfb
 
     @compute_execution_time
     def marche_cpv(df: pd.DataFrame, cpv_2008_df: pd.DataFrame, data_format:str) -> pd.DataFrame:
@@ -794,14 +816,17 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
 
     def marche_date(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
         # Si la date de notification et la date de publication est manquante, alors le marché est mis de côté
-        dfb = pd.concat([dfb, df[
-            ~pd.notna(df["dateNotification"]) | ~pd.notna(df["datePublicationDonnees"])]])
-        df = df[
-            pd.notna(df["dateNotification"]) | pd.notna(df["datePublicationDonnees"])]
+        #dfb = pd.concat([dfb, df[
+        #    ~pd.notna(df["dateNotification"]) | ~pd.notna(df["datePublicationDonnees"])]])
+        #df = df[
+        #    pd.notna(df["dateNotification"]) | pd.notna(df["datePublicationDonnees"])]
+        #
+        #dfb = populate_error(dfb,"Champ dateNotification ou datePublicationDonnees manquant")
 
-        dfb = populate_error(dfb,"Champ dateNotification ou datePublicationDonnees manquant")
+        mask_empty_date =  ~pd.notna(df["dateNotification"]) | ~pd.notna(df["datePublicationDonnees"])
+        df = df_add_error(df,mask_empty_date,"Champ dateNotification ou datePublicationDonnees manquant")
 
-        return df, dfb
+        return df#, dfb
 
     def marche_date_valid(df: pd.DataFrame, dfb: pd.DataFrame,data_format:str,col:str) -> pd.DataFrame:
         """
@@ -815,18 +840,20 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         """
 
         # vérification du format de la date de notification (AAAA-MM-JJ) et correction si besoin création d'un dataframe avec les lignes à corriger
-        #df[col] = pd.to_datetime(df[col], format='%Y-%m-%d', errors='ignore')
+        ##df[col] = pd.to_datetime(df[col], format='%Y-%m-%d', errors='ignore')
         format_regex = r'^20\d{2}-\d{2}-\d{2}$'
         invalid_dates = df[~df[col].str.match(format_regex, na=False)]
-        df = df[df[col].str.match(format_regex, na=False)]
+        #df = df[df[col].str.match(format_regex, na=False)]
         if col== "dateNotification":
             invalid_dates["dateNotification"] = invalid_dates["datePublicationDonnees"]
-            still_invalid_dates = invalid_dates[~invalid_dates[col].str.match(format_regex, na=False)]
-            no_more_invalide_dates = invalid_dates[invalid_dates[col].str.match(format_regex, na=False)]
-            df = pd.concat([df, no_more_invalide_dates])
-            dfb = pd.concat([dfb, still_invalid_dates])
+            #still_invalid_dates = invalid_dates[~invalid_dates[col].str.match(format_regex, na=False)]
+            #no_more_invalide_dates = invalid_dates[invalid_dates[col].str.match(format_regex, na=False)]
+            #df = pd.concat([df, no_more_invalide_dates])
+            #dfb = pd.concat([dfb, still_invalid_dates])
+            mask_bad_col = ~df[col].str.match(format_regex, na=False) | ~df["datePublicationDonnees"].str.match(format_regex, na=False)
         else:
-            dfb = dfb = pd.concat([dfb, invalid_dates])
+            #dfb = dfb = pd.concat([dfb, invalid_dates])
+            mask_bad_col = ~df[col].str.match(format_regex, na=False)
 
         if data_format=='2019':
             current_year = str(datetime.now().year)
@@ -838,9 +865,10 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
             df = pd.concat([df, no_more_invalide_dates])
             dfb = pd.concat([dfb, still_invalid_dates])
         else:
-            dfb = populate_error(dfb,"Champ dateNotification ou datePublicationDonnees erroné")
+            #dfb = populate_error(dfb,"Champ dateNotification ou datePublicationDonnees erroné")
+            df = df_add_error(df,mask_bad_col,"Champ dateNotification ou datePublicationDonnees erroné")
 
-        return df, dfb    
+        return df#, dfb    
 
     feature_doublons_marche = ["id", "acheteur.id", "titulaire_id_1", "montant", "dateNotification"] 
 
@@ -853,21 +881,21 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
     df_marche_["Erreurs"] = pd.NA
     df_marche_badlines_["Erreurs"] = pd.NA
     
-    df_marche_, df_marche_badlines_ = marche_check_empty(df_marche_, df_marche_badlines_)
-    df_marche_, df_marche_badlines_ = marche_check_type(df_marche_, df_marche_badlines_)
-    df_marche_, df_marche_badlines_ = marche_cpv_object(df_marche_, df_marche_badlines_)
-    df_marche_, df_marche_badlines_ = marche_date(df_marche_, df_marche_badlines_)
+    df_marche_ = marche_check_empty(df_marche_, df_marche_badlines_)
+    df_marche_ = marche_check_type(df_marche_, df_marche_badlines_)
+    df_marche_ = marche_cpv_object(df_marche_, df_marche_badlines_)
+    df_marche_ = marche_date(df_marche_, df_marche_badlines_)
 
-    df_marche_, df_marche_badlines_ = check_montant(df_marche_, df_marche_badlines_, "montant",3000000000)
-    df_marche_, df_marche_badlines_ = check_siret(df_marche_, df_marche_badlines_, "acheteur.id")
+    df_marche_ = check_montant(df_marche_, df_marche_badlines_, "montant",3000000000)
+    df_marche_ = check_siret(df_marche_, df_marche_badlines_, "acheteur.id")
     
-    df_marche_, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'SIRET')
-    df_marche_, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'TVA')
-    df_marche_, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'TAHITI')
-    df_marche_, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'RIDET')
-    df_marche_, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'FRWF')
-    df_marche_, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'IREP')
-    df_marche_, df_marche_badlines_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'HORS-UE')
+    df_marche_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'SIRET')
+    df_marche_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'TVA')
+    df_marche_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'TAHITI')
+    df_marche_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'RIDET')
+    df_marche_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'FRWF')
+    df_marche_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'IREP')
+    df_marche_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'HORS-UE')
 
     df_cpv = pd.read_excel("data/cpv_2008_fr.xls", engine="xlrd")  #engine=openpyxl   xlrd
 
@@ -884,11 +912,14 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
     # delete df_cpv to free memory
     del df_cpv
 
-    df_marche_, df_marche_badlines_ = check_duree_contrat(df_marche_, df_marche_badlines_, 180)
-    df_marche_, df_marche_badlines_ = marche_date_valid(df_marche_, df_marche_badlines_, data_format, "dateNotification")
-    df_marche_, df_marche_badlines_ = marche_date_valid(df_marche_, df_marche_badlines_, data_format, "datePublicationDonnees")
+    df_marche_ = check_duree_contrat(df_marche_, df_marche_badlines_, 180)
+    df_marche_ = marche_date_valid(df_marche_, df_marche_badlines_, data_format, "dateNotification")
+    df_marche_ = marche_date_valid(df_marche_, df_marche_badlines_, data_format, "datePublicationDonnees")
 
-    df_marche_, df_marche_badlines_ = check_id_format(df_marche_, df_marche_badlines_)
+    df_marche_ = check_id_format(df_marche_, df_marche_badlines_)
+
+    df_marche_badlines_ = //TODO get all line with Erreurs = ~isna()
+    df_marche_ = // TODO df_marche_ - df_marche_badlines_
 
     # Les étapes précédente ont pu créer des lignes en doublon avec un message d'erreur différent, on élimine ici les doublons et concatene les erreurs
     #group_columns = feature_doublons_marche # all columns - Erreur: df_marche_badlines_.columns.difference(['Erreurs']).tolist()
@@ -1348,46 +1379,58 @@ def check_montant(df: pd.DataFrame, dfb: pd.DataFrame, col: str, montant : int =
 
     # 1
     #dfb = pd.concat([dfb, df[df[col] > montant]])
-    dfb = (dfb.copy() if df[df[col] > montant].empty else df[df[col] > montant].copy() if dfb.empty
-       else pd.concat([dfb, df[df[col] > montant]])
-      )
-    df = df[~(df[col] > montant)]
+    #dfb = (dfb.copy() if df[].empty else df[df[col] > montant].copy() if dfb.empty
+    #   else pd.concat([dfb, df[df[col] > montant]])
+    #  )
+    #df = df[~(df[col] > montant)]df[col] > montant
 
-    if not "Erreurs" in dfb:
-        dfb["Erreurs"] = pd.NA
+    #if not "Erreurs" in dfb:
+    #    dfb["Erreurs"] = pd.NA
 
-    dfb = populate_error(dfb,f"Valeur du champ {col} trop élevée")
+    #dfb = populate_error(dfb,f"Valeur du champ {col} trop élevée")
+
+    mask_high_montant = df[col] > montant
+    df = df_add_error(df,mask_high_montant,f"Valeur du champ {col} trop élevée")
 
     # 2
     #Fix FutureWarning dfb = pd.concat([dfb, df[df[col] < 1]])
-    dfb = (dfb.copy() if df[df[col] < 1].dropna(axis=1, how='all').empty else df[df[col] < 1].dropna(axis=1, how='all').copy() if dfb.empty
-       else pd.concat([dfb, df[df[col] < 1].dropna(axis=1, how='all')]) # if both DataFrames non empty
-      )
-    if "Erreurs" not in dfb.columns:
-        dfb["Erreurs"] = pd.NA
+    #dfb = (dfb.copy() if df[df[col] < 1].dropna(axis=1, how='all').empty else df[df[col] < 1].dropna(axis=1, how='all').copy() if dfb.empty
+    #   else pd.concat([dfb, df[df[col] < 1].dropna(axis=1, how='all')]) # if both DataFrames non empty
+    #  )
+    #if "Erreurs" not in dfb.columns:
+    #    dfb["Erreurs"] = pd.NA
 
-    df = df[~(df[col] < 1)]
+    #df = df[~(df[col] < 1)]
 
-    dfb = populate_error(dfb,f"Valeur du champ {col} inférieur à 1")
+    #dfb = populate_error(dfb,f"Valeur du champ {col} inférieur à 1")
+
+    mask_low_montant = df[col] < 1
+    df = df_add_error(df,mask_low_montant,f"Valeur du champ {col} inférieur à 1")
 
     # 3.1
     # si le même chiffre autre que 0 est répété plus de 6 fois pour les montants supérieur à 100 000 000 alors INEXPLOITABLE
     same_digit_count = df[col].astype(str).apply(lambda x: max(x.count('1'),x.count('2'),x.count('3'),x.count('4'),x.count('5'),x.count('7'),x.count('8'),x.count('9')))
     # error: not only first pzrameter
-    selected_rows = df[(same_digit_count > 6) & (df[col].astype(str).str[0] != "0") & (df[col] > 100000000)]
-    dfb = pd.concat([dfb, selected_rows.reset_index(drop=True)])
-    df = df.drop(selected_rows.index)
+    #selected_rows = df[(same_digit_count > 6) & (df[col].astype(str).str[0] != "0") & (df[col] > 100000000)]
+    #dfb = pd.concat([dfb, selected_rows.reset_index(drop=True)])
+    #df = df.drop(selected_rows.index)
+
+    mask_bad_montant = (same_digit_count > 6) & (df[col].astype(str).str[0] != "0") & (df[col] > 100000000)
+    df = df_add_error(df,mask_bad_montant,f"Champ {col} probablement erroné")
 
     # 3.2
     # si le montant commence par 123456789 alors INEXPLOITABLE
-    dfb = pd.concat([dfb, df[(df[col].astype(str).str[0:9] == "123456789")]])
-    df = df[(df[col].astype(str).str[0:9] != "123456789")]
+    #dfb = pd.concat([dfb, df[(df[col].astype(str).str[0:9] == "123456789")]])
+    #df = df[(df[col].astype(str).str[0:9] != "123456789")]
 
-    dfb = populate_error(dfb,f"Champ {col} probablement erroné")
+    #dfb = populate_error(dfb,f"Champ {col} probablement erroné")
 
-    dfb[col] = dfb[col].astype(float)
+    mask_bad_montant = (df[col].astype(str).str[0:9] == "123456789")
+    df = df_add_error(df,mask_bad_montant,f"Champ {col} probablement erroné")
 
-    return df, dfb
+    #dfb[col] = dfb[col].astype(float)
+
+    return df#, dfb
 
 
 def check_siret(df: pd.DataFrame, dfb: pd.DataFrame, col: str) -> pd.DataFrame:
@@ -1396,12 +1439,16 @@ def check_siret(df: pd.DataFrame, dfb: pd.DataFrame, col: str) -> pd.DataFrame:
     L’identifiant autorité concédante est INEXPLOITABLE s’il ne respecte pas le format.
     Si INEXPLOITABLE, le contrat est mis de côté.
     """
-    dfb = pd.concat([dfb, df[~df[col].astype(str).str.match(
-        "^[0-9]{14}$")]])
-    df = df[df[col].astype(str).str.match("^[0-9]{14}$")]
+    #dfb = pd.concat([dfb, df[~df[col].astype(str).str.match(
+    #    "^[0-9]{14}$")]])
+    #df = df[df[col].astype(str).str.match("^[0-9]{14}$")]
 
-    dfb = populate_error(dfb,f"Numéro SIRET erroné pour le champ {col}")
-    return df, dfb
+    #dfb = populate_error(dfb,f"Numéro SIRET erroné pour le champ {col}")
+    
+    mask_bad_siret = ~df[col].astype(str).str.match("^[0-9]{14}$")
+    df = df_add_error(df,mask_bad_siret,f"Numéro SIRET erroné pour le champ {col}")
+
+    return df#, dfb
 
 def check_siret_ext(df: pd.DataFrame, dfb: pd.DataFrame, col: str, type:str) -> pd.DataFrame:
     """
@@ -1429,14 +1476,23 @@ def check_siret_ext(df: pd.DataFrame, dfb: pd.DataFrame, col: str, type:str) -> 
         expression =  "^[A-Z]{2}[a-zA-Z0-9]{0,16}$"
   
     if expression!=None:
-        dfb = pd.concat([dfb, df[(df[col_type]==type) & (~df[col_id].astype(str).str.match(
-            expression))]])
-        df = df[(((df[col_type]==type) & (df[col_id].astype(str).str.match(expression))) | (df[col_type]!=type))]
+        #dfb = pd.concat([dfb, df[(df[col_type]==type) & (~df[col_id].astype(str).str.match(
+        #    expression))]])
+        #df = df[(((df[col_type]==type) & (df[col_id].astype(str).str.match(expression))) | (df[col_type]!=type))]
+        #if type=='SIRET' and (col_id=='titulaire_id_1' or col_id=='concessionnaire_id_1'):
+        #    dfb = pd.concat([dfb, df[(df[col_type]==type) & (~df[col_id].apply(check_insee_field))]])
+        #    df = df[(((df[col_type]==type) & (df[col_id].apply(check_insee_field))) | (df[col_type]!=type))]
+        #dfb = populate_error(dfb,f"Numéro {type} erroné pour le champ {col}")
+        
+        mask_bad_col = (df[col_type]==type) & (~df[col_id].astype(str).str.match(expression))
+        
         if type=='SIRET' and (col_id=='titulaire_id_1' or col_id=='concessionnaire_id_1'):
-            dfb = pd.concat([dfb, df[(df[col_type]==type) & (~df[col_id].apply(check_insee_field))]])
-            df = df[(((df[col_type]==type) & (df[col_id].apply(check_insee_field))) | (df[col_type]!=type))]
-        dfb = populate_error(dfb,f"Numéro {type} erroné pour le champ {col}")
-    return df, dfb
+            mask_bad_col = (df[col_type]==type) & (~df[col_id].apply(check_insee_field))
+            df = df_add_error(df,mask_bad_col,f"Numéro {type} erroné pour le champ {col}")
+
+        df = df_add_error(df,mask_bad_col,f"Numéro {type} erroné pour le champ {col}")
+
+    return df#, dfb
 
 
 def check_id(df: pd.DataFrame, dfb: pd.DataFrame, col: str) -> pd.DataFrame:
@@ -1465,20 +1521,26 @@ def check_duree_contrat(df: pd.DataFrame, dfb: pd.DataFrame, month: int) -> pd.D
     df["dureeMois"] = df["dureeMois"].astype(int)
 
     # Fixed FutureWarning
-    #dfb = pd.concat([dfb, df[df["dureeMois"] > month]])
-    df_filtered = df[df["dureeMois"] > month].dropna(axis=1, how='all')
-    if not df_filtered.empty:  # Vérifier si le DataFrame filtré n'est pas vide
-        dfb = pd.concat([dfb, df_filtered])
-    df = df[df["dureeMois"] <= month]
+    ##dfb = pd.concat([dfb, df[df["dureeMois"] > month]])
+    #df_filtered = df[df["dureeMois"] > month].dropna(axis=1, how='all')
+    #if not df_filtered.empty:  # Vérifier si le DataFrame filtré n'est pas vide
+    #    dfb = pd.concat([dfb, df_filtered])
+    #df = df[df["dureeMois"] <= month]
 
-    dfb = populate_error(dfb,f"Champ dureeMois trop grand")
+    #dfb = populate_error(dfb,f"Champ dureeMois trop grand")
 
-    dfb = pd.concat([dfb, df[df["dureeMois"] <= 0]])
-    df = df[df["dureeMois"] > 0]
+    mask_bad_col = df["dureeMois"] > month
+    df = df_add_error(df,mask_bad_col,f"Champ dureeMois trop grand")
 
-    dfb = populate_error(dfb,f"Champ dureeMois trop petit")
+    #dfb = pd.concat([dfb, df[df["dureeMois"] <= 0]])
+    #df = df[df["dureeMois"] > 0]
 
-    return df, dfb
+    #dfb = populate_error(dfb,f"Champ dureeMois trop petit")
+
+    mask_bad_col = df["dureeMois"] <= 0
+    df = df_add_error(df,mask_bad_col,f"Champ dureeMois trop petit")
+
+    return df#, dfb
 
 
 def check_id_format(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
@@ -1487,12 +1549,15 @@ def check_id_format(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
     """
     pattern = r'^[A-Za-z0-9/\-_ ]{1,16}$'
 
-    dfb = pd.concat([dfb, df[~df["id"].str.match(pattern,na=False)]])
-    df = df[df["id"].str.match(pattern,na=False)]
+    #dfb = pd.concat([dfb, df[~df["id"].str.match(pattern,na=False)]])
+    #df = df[df["id"].str.match(pattern,na=False)]
 
-    dfb = populate_error(dfb,f"Champ id au mauvais format")
-
-    return df, dfb
+    #dfb = populate_error(dfb,f"Champ id au mauvais format")
+    
+    mask_bad_col = ~df["id"].str.match(pattern,na=False)
+    df = df_add_error(df,mask_bad_col, f"Champ id au mauvais format")
+    
+    return df#, dfb
 
 def mark_mandatory_field(df: pd.DataFrame,field_name:str) -> pd.DataFrame:
     """
