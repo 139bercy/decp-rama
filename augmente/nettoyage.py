@@ -1694,7 +1694,7 @@ def mark_bad_insee_field(df: pd.DataFrame,field_name:str,field_type:str = None) 
 @compute_execution_time
 def marche_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
 
-    df = mark_mandatory_field(df,"id")
+    #df = mark_mandatory_field(df,"id")
     df = mark_mandatory_field(df,"nature")
     df = mark_mandatory_field(df,"objet")
     df = mark_mandatory_field(df,"techniques")
@@ -1832,7 +1832,7 @@ def marche_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
 @compute_execution_time
 def concession_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
 
-    df = mark_mandatory_field(df,"id")
+    #df = mark_mandatory_field(df,"id")
     df = mark_mandatory_field(df,"nature")
     df = mark_mandatory_field(df,"objet")
     df = mark_mandatory_field(df,"procedure")
@@ -1862,7 +1862,7 @@ def concession_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
     df = mark_optional_field(df,"concessionnaire_id_3")
     df = mark_optional_field(df,"concessionnaire_typeIdentifiant_3")
 
-    df = mark_bad_format_field(df,"id",r'^[A-Za-z0-9/\-_ ]{1,16}$')
+    #df = mark_bad_format_field(df,"id",r'^[A-Za-z0-9/\-_ ]{1,16}$')
     # Caractéristiques de l’autorité concédante
     df = mark_bad_insee_field(df,"idAutoriteConcedante")
     # Caractéristiques du contrat de concession
