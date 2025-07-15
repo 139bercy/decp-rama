@@ -6,7 +6,7 @@ import subprocess
 
 current_year = 2025
 current_month = 7  # C'est juin 2025
-date_prefix = '2025-07-14'
+date_prefix = '2025-07-15'
 
 data_dir = '/mnt/c/projets/decp-rama/data'  # Remplacez par le chemin correct
 
