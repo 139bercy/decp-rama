@@ -1,32 +1,4 @@
 {
-  "sample_xml":
-  {
-    "code": "sample_xml",
-    "description": "Données de test",
-    "url_source-VLAD-TEST": "http://127.0.0.1:4242/vlad-xml", 
-    "url_source": "http://127.0.0.1:4242/decp-xml", 
-    "url_source_OLD2": "http://127.0.0.1:8081/documents/marches_avec_modifications.xml",
-    "url_source-DEFAULT": "http://127.0.0.1:4242/data-2022-decp-xml",
-    "format": "xml",
-    "cle_api": [],
-    "url": "",
-    "validate" : true,
-    "convert_nc": false
-  },
-  "sample_json":
-  {
-    "code": "sample_json",
-    "description": "Données de test",
-    "url_source": "http://127.0.0.1:8081/documents/decp-09-08.json",
-    "url_source_DECP": "http://127.0.0.1:4242/decp-json", 
-    "url_source_VLAD": "http://127.0.0.1:4242/vlad-json", 
-    "url_source_DEFAULT": "http://127.0.0.1:4242/data-2022-decp-json",
-    "format": "json",
-    "cle_api": [],
-    "url": "",
-    "validate" : true,
-    "convert_nc": false
-  },
   "pes":
   {
     "code": "data.gouv.fr_pes",
@@ -158,7 +130,6 @@
   {
     "code": "data.gouv.fr_pes",
     "description": "Données des collectivités publiées via le PES Marché",
-    "url_source_OLD": "https://static.data.gouv.fr/resources/donnees-essentielles-de-la-commande-publique-transmises-via-le-pes-marche-depuis-2024/20241010-014720/decp-13000495500139-2024-10-10-01.xml",
     "url_source" : "https://www.data.gouv.fr/fr/datasets/r/5cbbd08d-1473-4098-b01a-bbc95b2611ef",
     "format": "xml",
     "cle_api": ["65cf3c55ec910b5a8e2fc084"],
@@ -217,8 +188,6 @@
     "code": "ppsmj",
     "description": "Données essentielles marché PPSMJ 2024 Région ile de France",
     "url_source": "https://www.data.gouv.fr/fr/datasets/67920206904b58f1a43a72a4",
-    "url_source_PREVIOUS_2": "https://static.data.gouv.fr/resources/marche-de-formation-professionnel-des-personnes-placees-sous-main-de-justice/20250123-084702/ppsmj-1.xml",
-    "url_source_PREVIOUS": "https://static.data.gouv.fr/resources/donnees-essentielles-marche-ppsmj-2024-region-ile-de-france/20250110-091617/ppsmj.xml",
     "format": "xml",
     "cle_api": ["67920206904b58f1a43a72a4"],
     "url": "",
