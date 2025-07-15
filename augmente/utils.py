@@ -42,6 +42,9 @@ def parse_args():
     parser.add_argument("-t", dest='test', action='store_true', help="run script in test mode with a small sample of data")
     parser.add_argument("-l", dest='local', action='store_true', help="run script locally")
     parser.add_argument("-r", dest='reset', action='store_true', help="run script locally")
+    parser.add_argument('-P', dest='process', type=str, help='run a specific process')
+    parser.add_argument("-m", dest='rama', action='store_true', help="Execute only decp-rama")
+    parser.add_argument("-a", dest='augmente', action='store_true', help="Execute only decp-augmente")
     #parser.add_argument("-f", dest='format', type=str, help="run script for format 2019")
     return parser.parse_args()
 
