@@ -801,6 +801,8 @@ class SourceProcess:
 
         if "datePublicationDonnees" in self.df.columns:
             self.df['backup__datePublicationDonnees'] = self.df['datePublicationDonnees']
+        else:
+            self.df['backup__datePublicationDonnees'] = pd.NA
                 
         logging.info(f"Fix de {self.source} OK")
         logging.info(f"Nombre de marchés et de concession dans {self.source} après fix : {len(self.df)}")
