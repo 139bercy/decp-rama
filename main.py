@@ -10,13 +10,8 @@ import augmente.utils
 import argparse
 import os
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-P', dest='process', type=str, help='run a specific process')
-parser.add_argument("-l", dest='local', action='store_true', help="run script locally")
-parser.add_argument("-t", dest='test', action='store_true', help="run script without loading reference files")
-parser.add_argument("-r", dest='reset', action='store_true', help="Erase previous step history before running procese")
-#parser.add_argument("-f", dest='format', type=str, help="run script for format 2019")
-args = parser.parse_args()
+
+args = augmente.utils.parse_args()
 
 step = StepMngmt()
     
@@ -88,6 +83,16 @@ if __name__ == "__main__":
     logging.info("                      NOUVELLE EXECUTION")
     logging.info("---------------------------------------------------------------")
 
+    if args.rama:
+        logging.info("Option exécution decp-rama activée")
+    else:
+        logging.info("Option exécution decp-rama désactivée")
+
+    if args.augmente:
+        logging.info("Option exécution decp-augmente activée")
+    else:
+        logging.info("Option exécution decp-augmente désactivée")
+
     if args.local:
         logging.info("Option exécution local activée")
     else:
@@ -110,10 +115,12 @@ if __name__ == "__main__":
         logging.info(f"                Traitement pour le format {data_format}")
         logging.info( "---------------------------------------------------------------")
         
-        report = Report('decp-rama',False)
+        report = Report('decp-rama-augmente',False)
         try:
-            main(report,data_format)
-            main_augmente(data_format)
+            if not args.augmente:
+                main(report,data_format)
+            if not args.rama:
+                main_augmente(data_format)
             step.reset()
             report.db_end_session('OK')
         except Exception as err:

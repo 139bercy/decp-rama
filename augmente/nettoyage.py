@@ -823,8 +823,8 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         #
         #dfb = populate_error(dfb,"Champ dateNotification ou datePublicationDonnees manquant")
 
-        mask_empty_date =  ~pd.notna(df["dateNotification"]) | ~pd.notna(df["datePublicationDonnees"])
-        df = df_add_error(df,mask_empty_date,"Champ dateNotification ou datePublicationDonnees manquant")
+        mask_empty_date =  ~pd.notna(df["dateNotification"]) & ~pd.notna(df["datePublicationDonnees"])
+        df = df_add_error(df,mask_empty_date,"Champs dateNotification et datePublicationDonnees manquants")
 
         return df#, dfb
 
@@ -850,7 +850,7 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
             #no_more_invalide_dates = invalid_dates[invalid_dates[col].str.match(format_regex, na=False)]
             #df = pd.concat([df, no_more_invalide_dates])
             #dfb = pd.concat([dfb, still_invalid_dates])
-            mask_bad_col = ~df[col].str.match(format_regex, na=False) | ~df["datePublicationDonnees"].str.match(format_regex, na=False)
+            mask_bad_col = ~df[col].str.match(format_regex, na=False) & ~df["datePublicationDonnees"].str.match(format_regex, na=False)
         else:
             #dfb = dfb = pd.concat([dfb, invalid_dates])
             mask_bad_col = ~df[col].str.match(format_regex, na=False)
@@ -866,7 +866,7 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
             dfb = pd.concat([dfb, still_invalid_dates])
         else:
             #dfb = populate_error(dfb,"Champ dateNotification ou datePublicationDonnees erroné")
-            df = df_add_error(df,mask_bad_col,"Champ dateNotification ou datePublicationDonnees erroné")
+            df = df_add_error(df,mask_bad_col,f"Champ {col} erroné")
 
         return df#, dfb    
 
@@ -918,8 +918,8 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
 
     df_marche_ = check_id_format(df_marche_, df_marche_badlines_)
 
-    df_marche_badlines_ = //TODO get all line with Erreurs = ~isna()
-    df_marche_ = // TODO df_marche_ - df_marche_badlines_
+    df_marche_badlines_ = df_marche_[df_marche_['Erreurs'].notna()] # get all line with Erreurs = ~isna()
+    df_marche_ = df_marche_[~df_marche_['Erreurs'].notna()] # df_marche_ - df_marche_badlines_
 
     # Les étapes précédente ont pu créer des lignes en doublon avec un message d'erreur différent, on élimine ici les doublons et concatene les erreurs
     #group_columns = feature_doublons_marche # all columns - Erreur: df_marche_badlines_.columns.difference(['Erreurs']).tolist()
@@ -1091,98 +1091,121 @@ def regles_concession(df_concession_: pd.DataFrame,data_format:str) -> pd.DataFr
         return df
 
     def concession_check_type(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
-        dfb = pd.concat(
-            [dfb, df[~((df['concessionnaire_typeIdentifiant_1'].str[0:] == "SIRET") 
+        #dfb = pd.concat(
+        #    [dfb, df[~((df['concessionnaire_typeIdentifiant_1'].str[0:] == "SIRET") 
+        #        | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "TVA")
+        #        | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "TAHITI")
+        #        | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "RIDET")
+        #        | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "FRWF")
+        #        | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "IREP")
+        #        | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "HORS-UE")
+        #        )]])
+        #df = df[((df['concessionnaire_typeIdentifiant_1'].str[0:] == "SIRET") 
+        #        | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "TVA")
+        #        | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "TAHITI")
+        #        | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "RIDET")
+        #        | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "FRWF")
+        #        | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "IREP")
+        #        | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "HORS-UE")
+        #        )]
+        
+        #dfb = populate_error(dfb,f"Champ concessionnaire_typeIdentifiant_1 erroné")
+        mask_bad_col = ~((df['concessionnaire_typeIdentifiant_1'].str[0:] == "SIRET") 
                 | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "TVA")
                 | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "TAHITI")
                 | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "RIDET")
                 | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "FRWF")
                 | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "IREP")
                 | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "HORS-UE")
-                )]])
-        df = df[((df['concessionnaire_typeIdentifiant_1'].str[0:] == "SIRET") 
-                | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "TVA")
-                | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "TAHITI")
-                | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "RIDET")
-                | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "FRWF")
-                | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "IREP")
-                | (df['concessionnaire_typeIdentifiant_1'].str[0:] == "HORS-UE")
-                )]
-        
-        dfb = populate_error(dfb,f"Champ concessionnaire_typeIdentifiant_1 erroné")
-        
-        return df, dfb
+                )
+        df = df_add_error(df,mask_bad_col,f"Champ concessionnaire_typeIdentifiant_1 erroné")
+        return df#, dfb
 
     def concession_check_empty(df_con: pd.DataFrame, df_bad: pd.DataFrame) -> pd.DataFrame:
         col_name = ["id", "autoriteConcedante.id", "concessionnaire_id_1", "objet", "valeurGlobale",
                     "dureeMois"]
         for col in col_name:
-            if len(df_con[~pd.notna(df_con[col])])>0:
-                if len(df_bad) > 0:
-                    df_bad = pd.concat(
-                        [df_bad, df_con[~pd.notna(df_con[col])]])
-                else:
-                    df_bad = df_con[~pd.notna(df_con[col])]
-                    df_bad['Erreurs'] = pd.NA
-            df_con = df_con[pd.notna(df_con[col])]
-            df_bad = populate_error(df_bad,f"Champ {col} non renseigné")
-
-        return df_con, df_bad
+            #if len(df_con[~pd.notna(df_con[col])])>0:
+            #    if len(df_bad) > 0:
+            #        df_bad = pd.concat(
+            #            [df_bad, df_con[~pd.notna(df_con[col])]])
+            #    else:
+            #        df_bad = df_con[~pd.notna(df_con[col])]
+            #        df_bad['Erreurs'] = pd.NA
+            #df_con = df_con[pd.notna(df_con[col])]
+            #df_bad = populate_error(df_bad,f"Champ {col} non renseigné")
+            mask_bad_col = ~pd.notna(df_con[col])
+            df_con = df_add_error(df_con,mask_bad_col,f"Champ {col} non renseigné")
+        return df_con#, df_bad
 
     def concession_date(df_con: pd.DataFrame, df_bad: pd.DataFrame) -> pd.DataFrame:
         # Si la date de début d’exécution et la date de publication est manquante alors le contrat de concession est mis de côté
-        df_bad = pd.concat([df_bad, df_con[
-            ~pd.notna(df_con["dateDebutExecution"]) | ~pd.notna(df_con["datePublicationDonnees"])]])
-        df_con = df_con[
-            pd.notna(df_con["dateDebutExecution"]) | pd.notna(df_con["datePublicationDonnees"])]
-        return df_con, df_bad
+        #df_bad = pd.concat([df_bad, df_con[
+        #    ~pd.notna(df_con["dateDebutExecution"]) | ~pd.notna(df_con["datePublicationDonnees"])]])
+        #df_con = df_con[
+        #    pd.notna(df_con["dateDebutExecution"]) | pd.notna(df_con["datePublicationDonnees"])]
+
+        mask_bad_col =  ~pd.notna(df_con["dateDebutExecution"]) | ~pd.notna(df_con["datePublicationDonnees"])
+        df_con = df_add_error(df_con,mask_bad_col,f"Champs dateDebutExecution et datePublicationDonnees manquants")
+        
+        return df_con#, df_bad
 
     def concession_date_2022(df_con: pd.DataFrame, df_bad: pd.DataFrame) -> pd.DataFrame:
         # Si la date de début d’exécution et la date de publication est manquante alors le contrat de concession est mis de côté
-        df_bad = pd.concat([df_bad, df_con[
-            ~pd.notna(df_con["dateDebutExecution"]) & ~pd.notna(df_con["datePublicationDonnees"])]])
-        df_con = df_con[
-            pd.notna(df_con["dateDebutExecution"]) | pd.notna(df_con["datePublicationDonnees"])]
+        #df_bad = pd.concat([df_bad, df_con[
+        #    ~pd.notna(df_con["dateDebutExecution"]) & ~pd.notna(df_con["datePublicationDonnees"])]])
+        #df_con = df_con[
+        #    pd.notna(df_con["dateDebutExecution"]) | pd.notna(df_con["datePublicationDonnees"])]
 
-        df_bad = populate_error(df_bad,f"Champ dateDebutExecution ou datePublicationDonnees manquant")
+        #df_bad = populate_error(df_bad,f"Champ dateDebutExecution ou datePublicationDonnees manquant")
 
-        return df_con, df_bad
+        mask_bad_col = ~pd.notna(df_con["dateDebutExecution"]) & ~pd.notna(df_con["datePublicationDonnees"])
+        df_con = df_add_error(df_con,mask_bad_col,f"Champs dateDebutExecution et datePublicationDonnees manquants")
+
+        return df_con#, df_bad
 
     def concession_dateDebutExecution(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
         # vérification du format de la date de début d'execution (AAAA-MM-JJ) et correction si besoin création d'un dataframe avec les lignes à corriger
-        format_regex = r'^2\d{3}-\d{2}-\d{2}$'
-        invalid_dates = df[~df["dateDebutExecution"].str.match(format_regex, na=False)]
-        df = df[df["dateDebutExecution"].str.match(format_regex, na=False)]
-        invalid_dates["dateDebutExecution"] = invalid_dates["datePublicationDonnees"]
-        still_invalid_dates = invalid_dates[~invalid_dates["dateDebutExecution"].str.match(format_regex, na=False)]
-        no_more_invalide_dates = invalid_dates[invalid_dates["dateDebutExecution"].str.match(format_regex, na=False)]
-        df = pd.concat([df, no_more_invalide_dates])
-        dfb = pd.concat([dfb, still_invalid_dates])
+        format_regex = r'^20\d{2}-\d{2}-\d{2}$'
+        #invalid_dates = df[~df["dateDebutExecution"].str.match(format_regex, na=False)]
+        #df = df[df["dateDebutExecution"].str.match(format_regex, na=False)]
+        #invalid_dates["dateDebutExecution"] = invalid_dates["datePublicationDonnees"]
+        #still_invalid_dates = invalid_dates[~invalid_dates["dateDebutExecution"].str.match(format_regex, na=False)]
+        #no_more_invalide_dates = invalid_dates[invalid_dates["dateDebutExecution"].str.match(format_regex, na=False)]
+        #df = pd.concat([df, no_more_invalide_dates])
+        #dfb = pd.concat([dfb, still_invalid_dates])
 
-        current_year = str(datetime.now().year)
-        invalid_dates = df[(df["dateDebutExecution"].str[0:4] > current_year)]
-        df = df[df["dateDebutExecution"].str[0:4] <= current_year]
-        invalid_dates["dateDebutExecution"] = invalid_dates["datePublicationDonnees"]
-        still_invalid_dates = invalid_dates[invalid_dates["dateDebutExecution"].str[0:4] > current_year]
-        no_more_invalide_dates = invalid_dates[invalid_dates["dateDebutExecution"].str[0:4] <= current_year]
-        df = pd.concat([df, no_more_invalide_dates])
-        dfb = pd.concat([dfb, still_invalid_dates])
-        return df, dfb
+        #current_year = str(datetime.now().year)
+        #invalid_dates = df[(df["dateDebutExecution"].str[0:4] > current_year)]
+        #df = df[df["dateDebutExecution"].str[0:4] <= current_year]
+        #invalid_dates["dateDebutExecution"] = invalid_dates["datePublicationDonnees"]
+        #still_invalid_dates = invalid_dates[invalid_dates["dateDebutExecution"].str[0:4] > current_year]
+        #no_more_invalide_dates = invalid_dates[invalid_dates["dateDebutExecution"].str[0:4] <= current_year]
+        #df = pd.concat([df, no_more_invalide_dates])
+        #dfb = pd.concat([dfb, still_invalid_dates])
+
+        mask_bad_col = ~df["dateDebutExecution"].str.match(format_regex, na=False)
+        df_con = df_add_error(df_con,mask_bad_col,f"Champ dateDebutExecution erroné")
+
+        return df#, dfb
 
     def concession_dateDebutExecution_2022(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
         # vérification du format de la date de début d'execution (AAAA-MM-JJ) et correction si besoin création d'un dataframe avec les lignes à corriger
-        format_regex = r'^2\d{3}-\d{2}-\d{2}$'
-        invalid_dates = df[~df["dateDebutExecution"].str.match(format_regex, na=False)]
-        df = df[df["dateDebutExecution"].str.match(format_regex, na=False)]
-        invalid_dates["dateDebutExecution"] = invalid_dates["datePublicationDonnees"]
-        still_invalid_dates = invalid_dates[~invalid_dates["dateDebutExecution"].str.match(format_regex, na=False)]
-        no_more_invalide_dates = invalid_dates[invalid_dates["dateDebutExecution"].str.match(format_regex, na=False)]
-        df = pd.concat([df, no_more_invalide_dates])
-        dfb = pd.concat([dfb, still_invalid_dates])
+        format_regex = r'^20\d{2}-\d{2}-\d{2}$'
+        #invalid_dates = df[~df["dateDebutExecution"].str.match(format_regex, na=False)]
+        #df = df[df["dateDebutExecution"].str.match(format_regex, na=False)]
+        #invalid_dates["dateDebutExecution"] = invalid_dates["datePublicationDonnees"]
+        #still_invalid_dates = invalid_dates[~invalid_dates["dateDebutExecution"].str.match(format_regex, na=False)]
+        #no_more_invalide_dates = invalid_dates[invalid_dates["dateDebutExecution"].str.match(format_regex, na=False)]
+        #df = pd.concat([df, no_more_invalide_dates])
+        #dfb = pd.concat([dfb, still_invalid_dates])
 
-        dfb = populate_error(dfb,f"Champ dateDebutExecution ou datePublicationDonnees manquant")
+        #dfb = populate_error(dfb,f"Champ dateDebutExecution ou datePublicationDonnees manquant")
+        
+        mask_bad_col = ~df["dateDebutExecution"].str.match(format_regex, na=False) & ~df["datePublicationDonnees"].str.match(format_regex, na=False)
+        df = df_add_error(df,mask_bad_col,f"Champ dateDebutExecution erroné")
 
-        return df, dfb
+        return df#, dfb
 
     def concession_dateDebutExecutionOld(df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -1212,39 +1235,42 @@ def regles_concession(df_concession_: pd.DataFrame,data_format:str) -> pd.DataFr
     df_concession_badlines_['Erreurs'] = pd.NA
     df_concession_['Erreurs'] = pd.NA
     
-    df_concession_, df_concession_badlines_ = concession_check_empty(df_concession_, df_concession_badlines_)
-    df_concession_, df_concession_badlines_ = concession_check_type(df_concession_, df_concession_badlines_)
+    df_concession_ = concession_check_empty(df_concession_, df_concession_badlines_)
+    df_concession_ = concession_check_type(df_concession_, df_concession_badlines_)
     if data_format=='2019':
-        df_concession_, df_concession_badlines_ = concession_date(df_concession_, df_concession_badlines_)
-        df_concession_, df_concession_badlines_ = concession_dateDebutExecution(df_concession_, df_concession_badlines_)
+        df_concession_ = concession_date(df_concession_, df_concession_badlines_)
+        df_concession_ = concession_dateDebutExecution(df_concession_, df_concession_badlines_)
     else:
-        df_concession_, df_concession_badlines_ = concession_date_2022(df_concession_, df_concession_badlines_)
-        df_concession_, df_concession_badlines_ = concession_dateDebutExecution_2022(df_concession_, df_concession_badlines_)
+        df_concession_ = concession_date_2022(df_concession_, df_concession_badlines_)
+        df_concession_ = concession_dateDebutExecution_2022(df_concession_, df_concession_badlines_)
 
-    df_concession_, df_concession_badlines_ = check_montant(df_concession_, df_concession_badlines_, "valeurGlobale")
-    df_concession_, df_concession_badlines_ = check_siret(df_concession_, df_concession_badlines_, "autoriteConcedante.id")
+    df_concession_ = check_montant(df_concession_, df_concession_badlines_, "valeurGlobale")
+    df_concession_ = check_siret(df_concession_, df_concession_badlines_, "autoriteConcedante.id")
     if data_format=='2019':
-        df_concession_, df_concession_badlines_ = check_siret(df_concession_, df_concession_badlines_, "concessionnaire_id_1")
+        df_concession_ = check_siret(df_concession_, df_concession_badlines_, "concessionnaire_id_1")
     else:
-        df_concession_, df_concession_badlines_ = check_siret_ext(df_concession_, df_concession_badlines_, "concessionnaire","SIRET")
-        df_concession_, df_concession_badlines_ = check_siret_ext(df_concession_, df_concession_badlines_, "concessionnaire","TVA")
-        df_concession_, df_concession_badlines_ = check_siret_ext(df_concession_, df_concession_badlines_, "concessionnaire","TAHITI")
-        df_concession_, df_concession_badlines_ = check_siret_ext(df_concession_, df_concession_badlines_, "concessionnaire","RIDET")
-        df_concession_, df_concession_badlines_ = check_siret_ext(df_concession_, df_concession_badlines_, "concessionnaire","FRWF")
-        df_concession_, df_concession_badlines_ = check_siret_ext(df_concession_, df_concession_badlines_, "concessionnaire","IREP")
-        df_concession_, df_concession_badlines_ = check_siret_ext(df_concession_, df_concession_badlines_, "concessionnaire","HORS-UE")
-        df_concession_, df_concession_badlines_ = check_id_format(df_concession_, df_concession_badlines_)
+        df_concession_ = check_siret_ext(df_concession_, df_concession_badlines_, "concessionnaire","SIRET")
+        df_concession_ = check_siret_ext(df_concession_, df_concession_badlines_, "concessionnaire","TVA")
+        df_concession_ = check_siret_ext(df_concession_, df_concession_badlines_, "concessionnaire","TAHITI")
+        df_concession_ = check_siret_ext(df_concession_, df_concession_badlines_, "concessionnaire","RIDET")
+        df_concession_ = check_siret_ext(df_concession_, df_concession_badlines_, "concessionnaire","FRWF")
+        df_concession_ = check_siret_ext(df_concession_, df_concession_badlines_, "concessionnaire","IREP")
+        df_concession_ = check_siret_ext(df_concession_, df_concession_badlines_, "concessionnaire","HORS-UE")
+        df_concession_ = check_id_format(df_concession_, df_concession_badlines_)
 
-    df_concession_, df_concession_badlines_ = check_duree_contrat(df_concession_, df_concession_badlines_, 360)
+    df_concession_ = check_duree_contrat(df_concession_, df_concession_badlines_, 360)
+
+    df_concession_badlines_ = df_concession_[df_concession_['Erreurs'].notna()] # get all line with Erreurs = ~isna()
+    df_concession_ = df_concession_[~df_concession_['Erreurs'].notna()] # df_concession_ - df_concession__badlines_
 
     # Les étapes précédente ont pu créer des lignes en doublon avec un message d'erreur différent, on élimine ici les doublons et concatene les erreurs
-    group_columns = feature_doublons_concession # all columns - Erreur: df_marche_badlines_.columns.difference(['Erreurs']).tolist()
-    group_columns.append("idModification")
-    grouped = df_concession_badlines_.groupby(group_columns).agg({
-            'Erreurs': lambda x: ', '.join(x)  # Concatenation des valeurs de la colonne "Erreurs"
-        }).reset_index()
-    df_no_errors = df_concession_badlines_.drop(columns=['Erreurs'])
-    df_concession_badlines_ = pd.merge(df_no_errors, grouped, on=group_columns, how='left')
+    #group_columns = feature_doublons_concession # all columns - Erreur: df_marche_badlines_.columns.difference(['Erreurs']).tolist()
+    #group_columns.append("idModification")
+    #grouped = df_concession_badlines_.groupby(group_columns).agg({
+    #        'Erreurs': lambda x: ', '.join(x)  # Concatenation des valeurs de la colonne "Erreurs"
+    #    }).reset_index()
+    #df_no_errors = df_concession_badlines_.drop(columns=['Erreurs'])
+    #df_concession_badlines_ = pd.merge(df_no_errors, grouped, on=group_columns, how='left')
 
     #if data_format=='2019':
     #    del df_concession_badlines_['Erreurs']
@@ -1547,7 +1573,7 @@ def check_id_format(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
     """
     Si le format de l'id est mauvais alors INEXPLOITABLE donc mis en exclu
     """
-    pattern = r'^[A-Za-z0-9/\-_ ]{1,16}$'
+    pattern = r'^[A-Za-z0-9/\-_ .#]{1,16}$'
 
     #dfb = pd.concat([dfb, df[~df["id"].str.match(pattern,na=False)]])
     #df = df[df["id"].str.match(pattern,na=False)]
