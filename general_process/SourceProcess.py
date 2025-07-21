@@ -451,7 +451,7 @@ class SourceProcess:
             # Adding source and file_name for reporting
             rec['report__file'] = file_name
             if source not in rec:
-                rec['source'] = self.source
+                rec['source'] = source
             rec['report__position'] = position
             if error_message is not None:
                 rec['report__error'] = error_message
@@ -477,10 +477,17 @@ class SourceProcess:
         error_message = None
         aucun_marches = False
 
+        local_source = None
+
         if 'marche' in dico and isinstance(dico['marche'],list):
             while n < len(dico['marche']) :
                 #self.dico_2022_marche.append(dico['marche'][n])
                 if dico['marche'][n] is not None:
+                    if 'source' in dico['marche'][n]:
+                        local_source = dico['marche'][n]["source"]
+                        del dico['marche'][n]["source"]
+                    else:
+                        local_source = None
                     dico_test = {'marches': {'marche': [dico['marche'][n]], 'contrat-concession': []}}
 
                     valid,error_message,error_path = self.check_json_batch(dico_test,draft_validator)
@@ -488,7 +495,7 @@ class SourceProcess:
                         #self.dico_2022_marche.remove(dico['marche'][n])
                         dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,year_month,n,error_message,error_path))
                     else: 
-                        self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,year_month,n,error_message,error_path))
+                        self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source if local_source is None else local_source,file_name,year_month,n,error_message,error_path))
                         nb_good_marches+=1
                 n+=1
         elif 'marche' in dico:
@@ -504,6 +511,11 @@ class SourceProcess:
             while m < len(dico['contrat-concession']) :
                 #self.dico_2022_concession.append(dico['contrat-concession'][m])
                 if dico['contrat-concession'][m] is not None:
+                    if 'source' in dico['contrat-concession'][m]:
+                        local_source = dico['contrat-concession'][m]["source"]
+                        del dico['contrat-concession'][m]["source"]
+                    else:
+                        local_source = None
                     dico_test = {'marches': {'marche': [], 'contrat-concession': [dico['contrat-concession'][m]]}}
 
                     valid,error_message,error_path = self.check_json(dico_test)
@@ -511,7 +523,7 @@ class SourceProcess:
                         #self.dico_2022_concession.remove(dico['contrat-concession'][m])
                         dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,year_month,m,error_message,error_path))
                     else: 
-                        self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,year_month,m,error_message,error_path))
+                        self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source if local_source is None else local_source,file_name,year_month,m,error_message,error_path))
                         nb_good_concessions+=1
                 m+=1
         elif 'contrat-concession' in dico:
@@ -736,7 +748,7 @@ class SourceProcess:
         logging.info("--- ÉTAPE FIX")
         logging.info(f"Début de fix: Ajout source et suppression des doublons de {self.source}")
         # Ajout de source
-        self.df = self.df.assign(source=self.source)
+        #self.df = self.df.assign(source=self.source)
 
         # Application de la fonction de tri
         if 'titulaires' in self.df.columns:
