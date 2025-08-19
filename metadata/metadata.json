@@ -126,6 +126,17 @@
     "validate" : true,
     "convert_nc": false
   },
+  "modula_2024":
+    {
+    "code": "data.gouv.fr_modula",
+    "description": "Publication des données essentielles (MODULA DEMAT)",
+    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-3/",
+    "format": "xml",
+    "cle_api": ["6479af509328baa7fedbcfa6"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
   "pes_2024":
   {
     "code": "data.gouv.fr_pes",
@@ -193,7 +204,17 @@
     "url": "",
     "validate" : true,
     "convert_nc": false
-
+  },
+  "sample_json":
+  {
+    "code": "sample_json",
+    "description": "Données essentielles des marchés publics - Xmarchés",
+    "url_source": "http://127.0.0.1:4242/",
+    "format": "json",
+    "cle_api": [],
+    "url": "http://127.0.0.1:4242/",
+    "validate" : true,
+    "convert_nc": false
   },
   "geoflar":
   {
