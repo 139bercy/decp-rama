@@ -130,7 +130,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
     """
     def convert_list_to_str(df,col):
         if col in df.columns:
-            df[col] = df[col].str[1:-1] #.apply(lambda x: ', '.join(map(str, x)))
+            df[col] = df[col].str[2:-2] #.apply(lambda x: ', '.join(map(str, x)))
 
     def convert_all_list_to_str(df):
         convert_list_to_str(df,'considerationsSociales')
@@ -138,6 +138,16 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
         convert_list_to_str(df,'modalitesExecution')
         convert_list_to_str(df,'techniques')
         convert_list_to_str(df,'typesPrix')
+
+    def convert_col_boolean(df,col):
+        if col in df.columns:
+            df[col] = df[col].map({'True': True, 'False': False})
+            df[col] = df[col].apply(lambda x: 'oui' if x else 'non')
+
+    def convert_boolean(df):
+        convert_col_boolean(df,'marcheInnovant')
+        convert_col_boolean(df,'attributionAvance')
+        convert_col_boolean(df,'sousTraitanceDeclaree')
 
     # séparation des marchés et des concessions, car traitement différent
     df_marche = None
@@ -247,6 +257,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_concession['objet'] = df_concession['objet'].str.replace('\n', '\\n', regex=False)
             df_concession['objet'] = df_concession['objet'].str.replace('\r', '\\r', regex=False)
     convert_all_list_to_str(df_concession)
+    convert_boolean(df_concession)
     df_concession.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-{data_format}.csv'), index=False, header=True)
     
     if not df_marche.empty:
@@ -259,6 +270,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_marche['objet'] = df_marche['objet'].str.replace('\n', '\\n', regex=False)
             df_marche['objet'] = df_marche['objet'].str.replace('\r', '\\r', regex=False)
     convert_all_list_to_str(df_marche)
+    convert_boolean(df_marche)
     df_marche.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-{data_format}.csv'), index=False, header=True)
     
     if not df_marche_badlines.empty:
@@ -271,6 +283,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\n', '\\n', regex=False)
             df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\r', '\\r', regex=False)
     convert_all_list_to_str(df_marche_badlines)
+    convert_boolean(df_marche_badlines)
     df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-exclu-{data_format}.csv'), index=False,  header=True)
     
     if not df_concession_badlines.empty:
@@ -283,6 +296,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\n', '\\n', regex=False)
             df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\r', '\\r', regex=False)
     convert_all_list_to_str(df_concession_badlines)
+    convert_boolean(df_concession_badlines)
     df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-exclu-{data_format}.csv'), index=False,  header=True)
 
     # Concaténation des dataframes pour l'enrigissement (re-séparation après)
