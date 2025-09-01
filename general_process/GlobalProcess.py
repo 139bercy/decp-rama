@@ -1066,7 +1066,8 @@ class GlobalProcess:
                 # Convertir la valeur en entier
                 marche[cle] = int(marche[cle])
             except ValueError:
-                logging.warning(f"Erreur : la valeur de la clé '{cle}' ne peut pas être convertie en entier.")
+                None
+                #logging.warning(f"Erreur : la valeur de la clé '{cle}' ne peut pas être convertie en entier.")
             except TypeError:
                 logging.warning(f"Erreur : la valeur de la clé '{cle}' est de type incompatible pour la conversion.")
 
