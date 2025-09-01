@@ -26,12 +26,14 @@ class ProcessFactory:
         #self.processes = [Ppsmj2024Process]
         #self.processes = [Atexo2024Process]
         #self.processes = [SampleXmlProcess]
-        #self.processes = [AifeProcess]
+        #self.processes = [Aife2024Process]
         #self.processes = [Xmarches2024Process]
         #self.processes =[Aws2024Process]
         #self.processes = [Pes2024Process]
+        #self.processes = [Modula2024Process]
         # if data_format=='2022':
         # self.processes = [SampleXmlProcess] # For test ECO
+        #self.processes = [SampleJsonProcess] # For test ECO
         self.dataframes = []
         self.data_format = data_format
         self.report = report
