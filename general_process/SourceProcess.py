@@ -58,6 +58,7 @@ class SourceProcess:
         self.format = self.metadata[self.key]["format"]
         self.url_source = self.metadata[self.key]["url_source"]
         self.date_pattern = re.compile(r'\d{4}-\d{2}-\d{2}')
+        self.date_pattern_year = re.compile(r'-20\d{2}.')
         self.date_pattern_inv = re.compile(r'\d{2}\.{1}\d{2}\.{1}\d{4}')
             
         self.validate = self.metadata[self.key]["validate"]
@@ -177,8 +178,8 @@ class SourceProcess:
             ## Code for generate all files for months and year between given dates 
             # Filter by date in title, url
             """
-            begin_date_txt = "2025-01-01"
-            end_date_txt = "2025-12-31"
+            begin_date_txt = "2024-01-01"
+            end_date_txt = "2025-05-01"
             begin_date = datetime.strptime(begin_date_txt, "%Y-%m-%d")
             end_date = datetime.strptime(end_date_txt, "%Y-%m-%d")
             
@@ -187,7 +188,7 @@ class SourceProcess:
             for u, t in zip(url, title):
                 match = self.date_pattern.search(u)
                 if match:
-                    file_date = match.group()
+                    file_date = match.group() #[1:5]+"-01-01"
                     if begin_date_txt <= file_date <= end_date_txt:
                         filtered_url.append(u)
                         filtered_title.append(t)
@@ -199,10 +200,10 @@ class SourceProcess:
                             filtered_url.append(u)
                             filtered_title.append(t)
                     else:
-                        #if "-2024" in t or "-2025" in t:
-                        # Date not found in url, we keep the file for further analysis
-                        filtered_url.append(u)
-                        filtered_title.append(t)
+                        if "-2024" in t or "-2025" in t:
+                            # Date not found in url, we keep the file for further analysis
+                            filtered_url.append(u)
+                            filtered_title.append(t)
             url = filtered_url
             title = filtered_title
             """
@@ -321,7 +322,7 @@ class SourceProcess:
         Grâce à la fonction validation_format, une sélection est effectuée sur ces
         dictionnaires pour séparer les marchés et les concessions respectant le format 
         des "mauvais".
-        """        
+        """   
         logging.info("--- ÉTAPE CLEAN")
         logging.info("Début du nettoyage des nouveaux fichiers")
         #Ouverture des fichiers
