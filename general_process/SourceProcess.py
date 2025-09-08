@@ -179,7 +179,7 @@ class SourceProcess:
             # Filter by date in title, url
             """
             begin_date_txt = "2024-01-01"
-            end_date_txt = "2025-05-01"
+            end_date_txt = "2024-12-31"
             begin_date = datetime.strptime(begin_date_txt, "%Y-%m-%d")
             end_date = datetime.strptime(end_date_txt, "%Y-%m-%d")
             
@@ -768,12 +768,18 @@ class SourceProcess:
             self.enlever_nc_colonne(self.df,'variationPrix')
             self.enlever_nc_colonne_inside(self.df,'dureeMois','actesSousTraitance','acteSousTraitance')
             self.enlever_nc_colonne_inside(self.df,'variationPrix','actesSousTraitance','acteSousTraitance')
+        else:
+            self.simple_backup_colonne(self.df,['offresRecues','marcheInnovant','attributionAvance','sousTraitanceDeclaree','dureeMois','variationPrix'])
+            self.simple_backup_colonne_inside(self.df,'dureeMois','actesSousTraitance','acteSousTraitance')
+            self.simple_backup_colonne_inside(self.df,'variationPrix','actesSousTraitance','acteSousTraitance')
 
         # Transformation des acheteurs
         if "acheteur" in self.df.columns:
             df_marche = self.df.loc[self.df['nature'].str.contains('March', case=False, na=False)] #on récupère que les lignes de nature "marché"
             self.df.loc[df_marche.index,['id','acheteur']]= self.df.loc[df_marche.index,['id','acheteur']].apply(update_id,axis=1)
         # Force type integer on column offresRecues
+        if "dureeMois" in self.df.columns: 
+            self.df['dureeMois'] = self.df['dureeMois'].fillna(0).astype(int)
         if "offresRecues" in self.df.columns: 
             self.df['offresRecues'] = self.df['offresRecues'].fillna(0).astype(int)
         if "marcheInnovant" in self.df.columns:
@@ -820,6 +826,12 @@ class SourceProcess:
         logging.info(f"Fix de {self.source} OK")
         logging.info(f"Nombre de marchés et de concession dans {self.source} après fix : {len(self.df)}")
 
+    def simple_backup_colonne(self,df: pd.DataFrame,liste_colonnes:list):
+        for nom_colonne in liste_colonnes:
+            if nom_colonne in df.columns:
+                df['backup__' + nom_colonne] = df[nom_colonne]
+        return df
+    
 
     def enlever_nc_colonne(self,df: pd.DataFrame,nom_colonne:str) -> pd.DataFrame:
         if nom_colonne in df.columns:
@@ -831,7 +843,19 @@ class SourceProcess:
         
         return df
 
-
+    def simple_backup_colonne_inside(self,df: pd.DataFrame,nom_colonne:str,nom_noeud:str,nom_element:str) -> pd.DataFrame:
+        def backup_colonne (content,noeud:str,sous_element:str,colonne:str):
+            if isinstance(content,list):
+                for element in content:
+                    if sous_element in element and isinstance(element[sous_element],dict):
+                        element[sous_element]['backup__'+colonne] = element[sous_element][colonne]
+            return content
+        if nom_noeud in df.columns:
+            #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
+            df[nom_noeud] = df[nom_noeud].apply(backup_colonne,noeud=nom_noeud,sous_element=nom_element,colonne=nom_colonne)
+        
+        return df
+    
     def enlever_nc_colonne_inside(self,df: pd.DataFrame,nom_colonne:str,nom_noeud:str,nom_element:str) -> pd.DataFrame:
         def replace_nc (content,noeud:str,sous_element:str,colonne:str):
             if isinstance(content,list):

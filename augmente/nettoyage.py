@@ -130,14 +130,28 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
     """
     def convert_list_to_str(df,col):
         if col in df.columns:
-            df[col] = df[col].str[2:-2] #.apply(lambda x: ', '.join(map(str, x)))
+            df[col] = df[col].apply(lambda x: ', '.join(map(str, x)))
 
-    def convert_all_list_to_str(df):
-        convert_list_to_str(df,'considerationsSociales')
-        convert_list_to_str(df,'considerationsEnvironnementales')
-        convert_list_to_str(df,'modalitesExecution')
-        convert_list_to_str(df,'techniques')
-        convert_list_to_str(df,'typesPrix')
+    def convert_str_to_str(df,col):
+        if col in df.columns:
+            df[col] = df[col].str.strip("[]").str.strip("'") #str[2:-2] 
+
+    def convert_all_list_to_str(df,is_list:bool,is_marche:bool):
+        if is_list:
+            convert_list_to_str(df,'considerationsSociales')
+            convert_list_to_str(df,'considerationsEnvironnementales')
+            if is_marche:
+                convert_list_to_str(df,'modalitesExecution')
+                convert_list_to_str(df,'techniques')
+                convert_list_to_str(df,'typesPrix')
+        else:
+            convert_str_to_str(df,'considerationsSociales')
+            convert_str_to_str(df,'considerationsEnvironnementales')
+            if is_marche:
+                convert_str_to_str(df,'modalitesExecution')
+                convert_str_to_str(df,'techniques')
+                convert_str_to_str(df,'typesPrix')
+
 
     def convert_col_boolean(df,col):
         if col in df.columns:
@@ -256,8 +270,9 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
         else:
             df_concession['objet'] = df_concession['objet'].str.replace('\n', '\\n', regex=False)
             df_concession['objet'] = df_concession['objet'].str.replace('\r', '\\r', regex=False)
-    convert_all_list_to_str(df_concession)
-    convert_boolean(df_concession)
+            df_concession['objet'] = df_concession['objet'].str.replace('\x85', '\\r\\n', regex=False)
+        convert_all_list_to_str(df_concession,False,False)
+        convert_boolean(df_concession)
     df_concession.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-{data_format}.csv'), index=False, header=True)
     
     if not df_marche.empty:
@@ -269,8 +284,9 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
         else:
             df_marche['objet'] = df_marche['objet'].str.replace('\n', '\\n', regex=False)
             df_marche['objet'] = df_marche['objet'].str.replace('\r', '\\r', regex=False)
-    convert_all_list_to_str(df_marche)
-    convert_boolean(df_marche)
+            df_marche['objet'] = df_marche['objet'].str.replace('\x85', '\\r\\n', regex=False)
+        convert_all_list_to_str(df_marche,False,True)
+        convert_boolean(df_marche)
     df_marche.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-{data_format}.csv'), index=False, header=True)
     
     if not df_marche_badlines.empty:
@@ -282,8 +298,9 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
         else:
             df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\n', '\\n', regex=False)
             df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\r', '\\r', regex=False)
-    convert_all_list_to_str(df_marche_badlines)
-    convert_boolean(df_marche_badlines)
+            df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\x85', '\\r\\n', regex=False)
+        convert_all_list_to_str(df_marche_badlines,True,True)
+        convert_boolean(df_marche_badlines)
     df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-exclu-{data_format}.csv'), index=False,  header=True)
     
     if not df_concession_badlines.empty:
@@ -295,8 +312,9 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
         else:
             df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\n', '\\n', regex=False)
             df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\r', '\\r', regex=False)
-    convert_all_list_to_str(df_concession_badlines)
-    convert_boolean(df_concession_badlines)
+            df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\x85', '\\r\\n', regex=False)
+        convert_all_list_to_str(df_concession_badlines,True,False)
+        convert_boolean(df_concession_badlines)
     df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-exclu-{data_format}.csv'), index=False,  header=True)
 
     # Concaténation des dataframes pour l'enrigissement (re-séparation après)
@@ -399,6 +417,7 @@ def order_columns_marches(df: pd.DataFrame):
     "dateNotificationModificationModification",
     "datePublicationDonneesModificationModification",
     "idModificationActeSousTraitance",
+    "typeIdentifiantModificationActeSousTraitance",
     "dureeMoisModificationActeSousTraitance",
     "dateNotificationModificationSousTraitanceModificationActeSousTraitance",
     "montantModificationActeSousTraitance",
@@ -815,23 +834,24 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         # vérification du format de la date de notification (AAAA-MM-JJ) et correction si besoin création d'un dataframe avec les lignes à corriger
         format_regex = r'^20\d{2}-\d{2}-\d{2}$'
         invalid_dates = df[~df[col].str.match(format_regex, na=False)]
-        if col== "dateNotification":
-            invalid_dates["dateNotification"] = invalid_dates["datePublicationDonnees"]
-            mask_bad_col = ~df[col].str.match(format_regex, na=False) & ~df["datePublicationDonnees"].str.match(format_regex, na=False)
-        else:
-            mask_bad_col = ~df[col].str.match(format_regex, na=False)
+        if not invalid_dates.empty:
+            if col== "dateNotification":
+                invalid_dates["dateNotification"] = invalid_dates["datePublicationDonnees"]
+                mask_bad_col = ~df[col].str.match(format_regex, na=False) & ~df["datePublicationDonnees"].str.match(format_regex, na=False)
+            else:
+                mask_bad_col = ~df[col].str.match(format_regex, na=False)
 
-        if data_format=='2019':
-            current_year = str(datetime.now().year)
-            invalid_dates = df[(df["dateNotification"].str[0:4] > current_year)]
-            df = df[df["dateNotification"].str[0:4] <= current_year]
-            invalid_dates["dateNotification"] = invalid_dates["datePublicationDonnees"]
-            still_invalid_dates = invalid_dates[invalid_dates["dateNotification"].str[0:4] > current_year]
-            no_more_invalide_dates = invalid_dates[invalid_dates["dateNotification"].str[0:4] <= current_year]
-            df = pd.concat([df, no_more_invalide_dates])
-            dfb = pd.concat([dfb, still_invalid_dates])
-        else:
-            df = df_add_error(df,mask_bad_col,f"Champ {col} erroné")
+            if data_format=='2019':
+                current_year = str(datetime.now().year)
+                invalid_dates = df[(df["dateNotification"].str[0:4] > current_year)]
+                df = df[df["dateNotification"].str[0:4] <= current_year]
+                invalid_dates["dateNotification"] = invalid_dates["datePublicationDonnees"]
+                still_invalid_dates = invalid_dates[invalid_dates["dateNotification"].str[0:4] > current_year]
+                no_more_invalide_dates = invalid_dates[invalid_dates["dateNotification"].str[0:4] <= current_year]
+                df = pd.concat([df, no_more_invalide_dates])
+                dfb = pd.concat([dfb, still_invalid_dates])
+            else:
+                df = df_add_error(df,mask_bad_col,f"Champ {col} erroné")
 
         return df
     
@@ -1403,6 +1423,41 @@ def check_id_format(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
+def _add_mq_to_empty_field(value,mark:str):
+    if isinstance(value,list) and not value:
+        value = [mark]
+    elif not isinstance(value,list) and pd.isna(value):
+        value = mark + " <NA>"
+    elif not isinstance(value,list) and (value == np.nan):
+        value = mark + " nan"
+    elif not isinstance(value,list) and (value =='nan' or value == 'NC' or value == ''):
+        value = mark +' '+ value
+    return value
+
+
+def _mark_null_field(df:pd.DataFrame,field_name:str,mark:str):
+    """
+        Appel la fonction _add_mq_to_empty_field de vérification des valeurs nulles (nan, 'nan', 'NC') 
+        sur toutes les valeurs de la colonne pour y ajouter le cas échéchéant la marque "mark" (MQ ou CDL)
+        Si la colonne est de type float64 et qu'elle contient de valeur nan on la convertie en str et on marque les valeur avec "mark" (MQ ou CDL)
+    """
+    if field_name in df.columns:
+        if df[field_name].dtype == 'float64':
+            # Il peux y avoir une valeur nan, dans ce cas on modifie le type de la colonne en sring pour ajouter la marque MQ
+            if df[field_name].isna().any():
+                df[field_name] = df[field_name].fillna(mark).astype(str)
+        else:
+            df[field_name] = df[field_name].apply(_add_mq_to_empty_field,mark=mark)
+        #empty_mandatory = ~pd.notna(df[field_name]) | pd.isnull(df[field_name]) \
+        # | (df[field_name]=='<NA>') | (df[field_name]=='nan')
+        #if not empty_mandatory.empty:
+        #    df[field_name] = df[field_name].astype('str')
+        #    df.loc[empty_mandatory,field_name] = 'MQ'  
+    else:
+        df[field_name] = mark
+    return df
+
+
 def mark_mandatory_field(df: pd.DataFrame,field_name:str) -> pd.DataFrame:
     """
     Le contenu de la colonne "field_name" du dataframe "df" est vérifié.
@@ -1410,13 +1465,8 @@ def mark_mandatory_field(df: pd.DataFrame,field_name:str) -> pd.DataFrame:
     Les cases vides sont complétées par le tag "MQ", qui signifie 
     "manquant".
     """
-    if field_name in df.columns:
-        empty_mandatory = ~pd.notna(df[field_name]) | pd.isnull(df[field_name]) \
-         | (df[field_name]=='<NA>') | (df[field_name]=='nan')
-        if not empty_mandatory.empty:
-            df[field_name] = df[field_name].astype('str')
-            df.loc[empty_mandatory,field_name] = 'MQ'  
-    return df
+    return _mark_null_field(df,field_name,'MQ')
+    
 
 def mark_mixed_field(df:pd.DataFrame, field_name:str) -> pd.DataFrame:
     """
@@ -1471,22 +1521,16 @@ def mark_mixed_field(df:pd.DataFrame, field_name:str) -> pd.DataFrame:
 def mark_optional_field(df: pd.DataFrame,field_name:str) -> pd.DataFrame:
     """
     Le contenu de la colonne "field_name" du dataframe "df" est vérifié.
-    La colonne "filed_name" est un colonne optionnelle.
+    La colonne "field_name" est un colonne optionnelle.
     Les cases vides sont complétées par le tag "CDL", qui signifie 
     "conditionnelle".
     """
-    if field_name in df.columns:
-        empty_optional  = ~pd.notna(df[field_name]) | pd.isnull(df[field_name]) | \
-            (df[field_name]=='') | (df[field_name]=='<NA>') | (df[field_name]=='nan')
-        if not empty_optional.empty:
-            df[field_name] = df[field_name].astype('str')
-            df.loc[empty_optional,field_name] = 'CDL'
-    return df
+    return _mark_null_field(df,field_name,'CDL')
 
 def mark_bad_format_field(df: pd.DataFrame,field_name:str,pattern:str) -> pd.DataFrame:
     if field_name in df.columns:
-        empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) & \
-            ~df[field_name].str.match(r'^(?:MQ|CDL|INX)$', na=False, case=False) & \
+        empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) & ~(df[field_name]=='') & \
+            ~df[field_name].str.match(r'^(?:MQ|CDL|INX)', na=False, case=False) & \
             ~df[field_name].str.match(pattern, na=False, case=False)
         if not empty_mandatory.empty:
             df.loc[empty_mandatory,field_name] = 'INX '+df.loc[empty_mandatory,field_name]
@@ -1494,8 +1538,8 @@ def mark_bad_format_field(df: pd.DataFrame,field_name:str,pattern:str) -> pd.Dat
 
 def mark_bad_format_field_list(df: pd.DataFrame,field_name:str,pattern:str) -> pd.DataFrame:
     if field_name in df.columns:
-        empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) & \
-            ~df[field_name].str.match(r'^(?:MQ|CDL)$', na=False, case=False) & \
+        empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) & ~(df[field_name]=='') & \
+            ~df[field_name].str.match(r'^(?:MQ|CDL|INX)', na=False, case=False) & \
             ~df[field_name].str.match(pattern, na=False, case=False)
         if not empty_mandatory.empty and type(df.loc[empty_mandatory,field_name]) == list:
             df.loc[empty_mandatory,field_name] = 'INX '+df.loc[empty_mandatory,field_name]
@@ -1503,65 +1547,57 @@ def mark_bad_format_field_list(df: pd.DataFrame,field_name:str,pattern:str) -> p
 
 def mark_bad_value_field(df: pd.DataFrame,field_name:str,field_name_2:str,pattern:str) -> pd.DataFrame:
     if field_name in df.columns:
-        empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) & \
+        empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) & ~(df[field_name]=='') & \
             df[field_name].str.match(r'^(?:true|oui|1)$', na=False, case=False) & \
             df[field_name_2].str.match(pattern, na=False, case=False)
         if not empty_mandatory.empty:
             df.loc[empty_mandatory,field_name_2] = 'INX '+df.loc[empty_mandatory,field_name_2]
     return df
 
-def has_at_least_one(data:list):
-    if isinstance(data,list):
-        return len(data)>0
-    else:
-        return ((data != None) and (data != ''))
 
-def evaluate_field_value(data:list,pattern:str):
-    if isinstance(data,list):
-        for num, value in enumerate(data, start=0):
-            if isinstance(value,list):
-                for num, value in enumerate(value, start=0):
-                    if not re.match(pattern, value, re.IGNORECASE):
-                        data[num] = "INX "+data[num]
-                        return False
-            else:
-                if not re.match(pattern, value[0], re.IGNORECASE):
-                    data[num] = "INX "+data[num]
-                    return False
+def _evaluate_field_value(value,pattern:str):
+    if isinstance(value,list):
+        for num, value in enumerate(value, start=0):
+            if not re.match(pattern, value, re.IGNORECASE) and not re.match(r'^(?:MQ|CDL|INX)',value, re.IGNORECASE):
+                value = "INX "+value
     else:
-        if not re.match(pattern, data, re.IGNORECASE):
-            data = "INX "+data
-            return False
+        if not re.match(pattern, value, re.IGNORECASE) and not re.match(r'^(?:MQ|CDL|INX)',value, re.IGNORECASE):
+            value = "INX "+value
+    return value
 
-    return True
+def _has_at_least_one(value:list):
+    if isinstance(value,list) and not value:
+        value = ['MQ']
+    return value
 
 def mark_bad_format_multi_field(df: pd.DataFrame,field_name:str,pattern:str) -> pd.DataFrame:
     if field_name in df.columns:
-        empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) & ~df[field_name].apply(evaluate_field_value,pattern=pattern)
-        empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) & ~df[field_name].apply(has_at_least_one)
-        if not empty_mandatory.empty:
-            df.loc[empty_mandatory,field_name] = 'MQ'
+        df[field_name] = df[field_name].apply(_evaluate_field_value,pattern=pattern)
+        df[field_name] = df[field_name].apply(_has_at_least_one)
+        #empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) & ~df[field_name].apply(_has_at_least_one)
+        #if not empty_mandatory.empty:
+        #    df.loc[empty_mandatory,field_name] = 'MQ'
     return df
 
 def mark_bad_format_int_field(df: pd.DataFrame,field_name:str,pattern:str = r'^[0-9]{1,12}(\.0{1,4})?$') -> pd.DataFrame:
     if field_name in df.columns:
-        empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) & \
-            ~df[field_name].astype(str).str.match(r'^(?:MQ|CDL)$', na=False, case=False) & \
+        empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) & ~(df[field_name]=='') & \
+            ~df[field_name].astype(str).str.match(r'^(?:MQ|CDL|INX)', na=False, case=False) & \
             ~df[field_name].astype(str).str.match(pattern, na=False, case=False)
-        if not empty_mandatory.empty:
+        if not df.loc[empty_mandatory].empty:
             df.loc[empty_mandatory,field_name] = 'INX '+df.loc[empty_mandatory,field_name].astype(str)
             
         #Les lignes dont le contenu est de la forme "XXXX.0" sont transformés en entier. On ne garde que la partie entière car la partie décimale est nulle
         almost_int = df[field_name].astype(str).str.match(r'^[0-9]+\.(0+)$', na=False, case=False)
-        df.loc[almost_int, field_name] = df.loc[almost_int, field_name].apply(lambda x: x.split('.')[0])
+    df.loc[almost_int, field_name] = df.loc[almost_int, field_name].apply(lambda x: int(float(x)))
     return df
 
 def mark_bad_format_float_field(df: pd.DataFrame,field_name:str,pattern:str = r'^[0-9]{1,12}.{0,1}[0-9]{0,4}$') -> pd.DataFrame:
     if field_name in df.columns:
-        empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) & \
-            ~df[field_name].astype(str).str.match(r'^(?:MQ|CDL)$', na=False, case=False) & \
+        empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) & ~(df[field_name]=='') & \
+            ~df[field_name].astype(str).str.match(r'^(?:MQ|CDL|INX)', na=False, case=False) & \
             ~df[field_name].astype(str).str.match(pattern, na=False, case=False)
-        if not empty_mandatory.empty:
+        if not df.loc[empty_mandatory].empty:
             df.loc[empty_mandatory,field_name] = 'INX '+df.loc[empty_mandatory,field_name].astype(str)
     return df
 
@@ -1593,13 +1629,13 @@ def mark_bad_insee_field(df: pd.DataFrame,field_name:str,field_type:str = None) 
     if field_name in df.columns:
         if field_type == None:
             empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) &  \
-                ~df[field_name].astype(str).str.match(r'^(?:MQ|CDL)$', na=False, case=False) & \
+                ~df[field_name].astype(str).str.match(r'^(?:MQ|CDL|INX)', na=False, case=False) & \
                 (~df[field_name].str.match(pattern, na=False) | ~df[field_name].apply(check_insee_field))
             if not empty_mandatory.empty:
                 df.loc[empty_mandatory,field_name] = 'INX '+df.loc[empty_mandatory,field_name]
         else:
             empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) &  \
-                ~df[field_name].astype(str).str.match(r'^(?:MQ|CDL)$', na=False, case=False) & \
+                ~df[field_name].astype(str).str.match(r'^(?:MQ|CDL|INX)', na=False, case=False) & \
                 ((~df[field_type].astype(str).str.match('SIRET')) & (~df[field_type].astype(str).str.match('TVA')) \
                 & (~df[field_name].astype(str).str.match(pattern, na=False)) | \
                 ((df[field_type].astype(str).str.match('SIRET')) & (~df[field_name].apply(check_insee_field))) )
