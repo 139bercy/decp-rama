@@ -211,7 +211,9 @@ class GlobalProcess:
                 ascending=[True, True, True, True, True, True, True]
             )
             index_to_keep = df_marche.drop_duplicates(subset=feature_doublons_marche, keep='last').index.tolist()
-
+        else:
+            index_to_keep = []
+            
         # Mémoriser la nombre de marchés en double
         nb_duplicated_marches = len(df_marche)-len(index_to_keep)
         if add_report:
@@ -416,7 +418,7 @@ class GlobalProcess:
                 self.file_dump(file_path,dico)
             else:
                 if 'marches' in dico_file:
-                    keys_to_backup = ['offresRecues','marcheInnovant','attributionAvance','sousTraitanceDeclaree','dureeMois','variationPrix']
+                    keys_to_backup = ['offresRecues','marcheInnovant','attributionAvance','sousTraitanceDeclaree','dureeMois','variationPrix','montant']
                     for el in dico_file['marches']:
                         for key in keys_to_backup:
                             if key in el:
