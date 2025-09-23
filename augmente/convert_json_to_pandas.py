@@ -269,11 +269,13 @@ def recuperation_colonne_a_modifier(data: dict, liste_indices: list) -> dict:
     colonne_to_modify = {}
     for indice in liste_indices:
         # colonne_modifiees = list(data["marches"][indice]["modifications"][0].keys())
-        for col in data["marches"][indice]["modifications"][0].keys():
-            if "Modification" not in col:
-                col += "Modification"
-            if col not in liste_colonne:
-                liste_colonne += [col]
+        modifications = data["marches"][indice]["modifications"]
+        if modifications and isinstance(modifications, list) and isinstance(modifications[0], dict):
+            for col in modifications[0].keys():
+                if "Modification" not in col:
+                    col += "Modification"
+                if col not in liste_colonne:
+                    liste_colonne += [col]
     for col in liste_colonne:
         if "Modification" in col and col != "objetModification":
             name_col = col.replace("Modification", "")
