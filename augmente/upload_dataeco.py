@@ -10,7 +10,7 @@ import logging
 
 import ftplib
 def upload_dataeco(file_to_upload : str, remote_path : str) -> None : 
-    logging.info(f"Upload {file_to_upload} to data.eco")
+    #logging.info(f"Upload {file_to_upload} to data.eco")
 
     path_file_to_upload = "data/" + file_to_upload
     # PATH_FILE_CONFIG = "confs/config_data.json"
@@ -57,17 +57,19 @@ def upload_dataeco(file_to_upload : str, remote_path : str) -> None :
         myFTP.cwd(remote_path)
         myFTP.encoding="utf-8"
     except:
-        logging.error("Erreur dans la connexion au serveur FTP")
-    if os.path.isfile(path_file_to_upload):
+        logging.error(f"Erreur lors de la connexion au serveur FTP pour uploader le fichier {path_file_to_upload}")
+        myFTP = None
+    if os.path.isfile(path_file_to_upload) and myFTP:
+        logging.info(f"Upload {file_to_upload} to data.eco")
         try:
             fh = open(path_file_to_upload, 'rb')
             myFTP.storbinary(f'STOR {file_to_upload}', fh)
             fh.close()
             logging.info(f"Vous avez upload {path_file_to_upload} depuis votre version local vers {remote_path}")
         except:
-            logging.error("Erreur dans l'upload des fichiers")
+            logging.error("Erreur dans l'upload du fichier {path_file_to_upload}")
     else:
-        logging.info ("Source File does not exist")
+        logging.info (f"Le fichier {path_file_to_upload} n'existe pas")
 
 
 

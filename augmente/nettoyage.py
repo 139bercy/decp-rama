@@ -273,7 +273,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_concession['objet'] = df_concession['objet'].str.replace('\x85', '\\r\\n', regex=False)
         convert_all_list_to_str(df_concession,False,False)
         convert_boolean(df_concession)
-    df_concession.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-{data_format}.csv'), index=False, header=True)
+        df_concession.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-{data_format}.csv'), index=False, header=True)
     
     if not df_marche.empty:
         if 'source' in df_marche.columns:
@@ -287,7 +287,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_marche['objet'] = df_marche['objet'].str.replace('\x85', '\\r\\n', regex=False)
         convert_all_list_to_str(df_marche,False,True)
         convert_boolean(df_marche)
-    df_marche.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-{data_format}.csv'), index=False, header=True)
+        df_marche.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-{data_format}.csv'), index=False, header=True)
     
     if not df_marche_badlines.empty:
         if 'source' in df_marche_badlines.columns:
@@ -301,7 +301,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\x85', '\\r\\n', regex=False)
         convert_all_list_to_str(df_marche_badlines,True,True)
         convert_boolean(df_marche_badlines)
-    df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-exclu-{data_format}.csv'), index=False,  header=True)
+        df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-exclu-{data_format}.csv'), index=False,  header=True)
     
     if not df_concession_badlines.empty:
         if 'source' in df_concession_badlines.columns:
@@ -315,7 +315,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\x85', '\\r\\n', regex=False)
         convert_all_list_to_str(df_concession_badlines,True,False)
         convert_boolean(df_concession_badlines)
-    df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-exclu-{data_format}.csv'), index=False,  header=True)
+        df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-exclu-{data_format}.csv'), index=False,  header=True)
 
     # Concaténation des dataframes pour l'enrigissement (re-séparation après)
     df = pd.concat([df_concession, df_marche])
@@ -1427,9 +1427,9 @@ def _add_mq_to_empty_field(value,mark:str):
     if isinstance(value,list) and not value:
         value = [mark]
     elif not isinstance(value,list) and pd.isna(value):
-        value = mark + " <NA>"
+        value = mark #+ " <NA>"
     elif not isinstance(value,list) and (value == np.nan):
-        value = mark + " nan"
+        value = mark #+ " nan"
     elif not isinstance(value,list) and (value =='nan' or value == 'NC' or value == ''):
         value = mark +' '+ value
     return value
