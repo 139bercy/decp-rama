@@ -766,8 +766,9 @@ class GlobalProcess:
             if 'backup__montant' in marche_in:
                 marche['montant'] = marche['backup__montant']
                 del marche['backup__montant']
-            if 'backup__datePublicationDonnees' in marche_in and not marche['backup__datePublicationDonnees'] == np.nan:
-                marche['datePublicationDonnees'] = marche['backup__datePublicationDonnees']
+            if 'backup__datePublicationDonnees' in marche_in:
+                if not pd.isnull(marche['backup__datePublicationDonnees']):
+                    marche['datePublicationDonnees'] = marche['backup__datePublicationDonnees']
                 del marche['backup__datePublicationDonnees']
             
             self._restore_attributes_by_prefix(marche,'backup__')

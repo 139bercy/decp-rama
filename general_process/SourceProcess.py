@@ -56,6 +56,7 @@ class SourceProcess:
             self.metadata = json.load(f)
         self.source = self.metadata[self.key]["code"]
         self.format = self.metadata[self.key]["format"]
+        self.encoding = self.metadata[self.key]['encoding'] if 'encoding' in self.metadata[self.key] else 'utf-8'
         self.url_source = self.metadata[self.key]["url_source"]
         self.date_pattern = re.compile(r'\d{4}-\d{2}-\d{2}')
         self.date_pattern_year = re.compile(r'-20\d{2}.')
@@ -76,7 +77,7 @@ class SourceProcess:
         self.dico_2022_concession = []
 
         # Chargement du schemas json
-        scheme_path = 'schemes/schema_decp_v2.0.3.json'
+        scheme_path = 'schemes/schema_decp_v2.0.4.json'
         with open(scheme_path, "r",encoding='utf-8') as json_file:
             self.json_scheme = json.load(json_file)
             json_file.close
@@ -170,7 +171,8 @@ class SourceProcess:
             if old_ressources==[]:
                 url = url + [d["url"] for d in ressources if
                             (d["url"].endswith("xml") or d["url"].endswith("json"))]
-                title = title + [prefix+d["title"] for d in ressources]
+                title = title + [prefix+d["title"] for d in ressources if
+                            (d["url"].endswith("xml") or d["url"].endswith("json"))]
             else: 
                 url, title = self.check_date_file(url,title, ressources, old_ressources,prefix)
             
@@ -339,7 +341,7 @@ class SourceProcess:
         for i in range(len(self.title)):            
             if self.format == 'xml':
                 try:
-                    with open(f"sources/{self.source}/{self.title[i]}", encoding='utf-8') as xml_file:
+                    with open(f"sources/{self.source}/{self.title[i]}", encoding=self.encoding if self.encoding else 'utf-8') as xml_file:
                         dico = xmltodict.parse(xml_file.read(), dict_constructor=dict, \
                             force_list=('marche','contrat-concession',
                                 'titulaires','donneesExecution','modifications',

@@ -132,10 +132,12 @@
     "description": "Publication des données essentielles (MODULA DEMAT)",
     "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-3/",
     "format": "xml",
-    "cle_api": ["6479af509328baa7fedbcfa6"],
+    "cle_api_OLD": ["6479af509328baa7fedbcfa6"],
+    "cle_api": ["68c951f5501fc2243b7996b1","68c955112e0cc622a82626b8","68c953c24aa801f3ce4289ea","68c9571b7d6a0e64a5f7582b","68c959a6fecb75ff0b47f079","68c93247fda0dc4d2aa52a86"],
     "url": "",
     "validate" : true,
-    "convert_nc": false
+    "convert_nc": false,
+    "encoding": "ISO-8859-15"
   },
   "pes_2024":
   {
@@ -155,8 +157,9 @@
     "url_source" : "https://www.data.gouv.fr/fr/organizations/atexo-decp/",
     "format": "json",
     "cle_api_atexo": ["673f323ec296c295e64c5dc0"],
-    "cle_api": ["672721aaec64ca6d86444166","672720eb3d9ba78898cbb6aa","67272199922b37b9b2f1b654","672720d97c0997c624f8e336","67272093922b37b9b2f1b653","672720b0b8b33f91e6032bfe","672720321f1de4860c84baff","672720fa753525dfd8368aca","6727201449625899ea32c0d4","67271f9e05321453957baec7","672720cb97702d39796f4edc","67272196d3c5ca95c62e7c63","672720b5cc0f6e1e1dba8f00","672721d097702d39796f4edd","672720dbd3c5ca95c62e7c62","67271fa6290200f00fce1fcc","672720e0cdbaec7aa4f43f4f","672720e2753525dfd8368ac8","67271f982276221b3ffd463d","67272125cc0f6e1e1dba8f01","6727211e60854f01267aaf19","672720f0f12888a874bc2861","672720e71f1de4860c84bb01","672720f51f1de4860c84bb02","672721842b370d8b3227704d","67271fda43aad6253355b458","672720bb3b056f39537f239f","672720e451bcff5f90f6f9e4","67271f8e43aad6253355b457","672720ee720fd33a184a47a3","6727210c720fd33a184a47a4","67271fa3f265db6119a6b6b0","6727217e51bcff5f90f6f9e5","67305b223bb03813db8efe33","672720b71f1de4860c84bb00","672720f8753525dfd8368ac9","672720b2acd2250747936742"],
-    "url": "",
+    "cle_api_ALL": ["672721aaec64ca6d86444166","672720eb3d9ba78898cbb6aa","67272199922b37b9b2f1b654","672720d97c0997c624f8e336","67272093922b37b9b2f1b653","672720b0b8b33f91e6032bfe","672720321f1de4860c84baff","672720fa753525dfd8368aca","6727201449625899ea32c0d4","67271f9e05321453957baec7","672720cb97702d39796f4edc","67272196d3c5ca95c62e7c63","672720b5cc0f6e1e1dba8f00","672721d097702d39796f4edd","672720dbd3c5ca95c62e7c62","67271fa6290200f00fce1fcc","672720e0cdbaec7aa4f43f4f","672720e2753525dfd8368ac8","67271f982276221b3ffd463d","67272125cc0f6e1e1dba8f01","6727211e60854f01267aaf19","672720f0f12888a874bc2861","672720e71f1de4860c84bb01","672720f51f1de4860c84bb02","672721842b370d8b3227704d","67271fda43aad6253355b458","672720bb3b056f39537f239f","672720e451bcff5f90f6f9e4","67271f8e43aad6253355b457","672720ee720fd33a184a47a3","6727210c720fd33a184a47a4","67271fa3f265db6119a6b6b0","6727217e51bcff5f90f6f9e5","67305b223bb03813db8efe33","672720b71f1de4860c84bb00","672720f8753525dfd8368ac9","672720b2acd2250747936742"],
+    "cle_api": ["67271f9e05321453957baec7"],
+	"url": "",
     "validate" : true,
     "convert_nc": false
   },
@@ -205,6 +208,81 @@
     "validate" : true,
     "convert_nc": false
   },
+  "proxilegales":
+  {
+    "code": "proxilegales",
+    "description": "Données Essentielles - www.proxilegales.fr",
+    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-www-proxilegales-fr/informations",
+    "format": "xml",
+    "cle_api": ["68c951f5501fc2243b7996b1"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false,
+    "encoding": "ISO-8859-15"
+  },  
+  "achatspublicscorse":
+  {
+    "code": "achatspublicscorse",
+    "description": "Données Essentielles - www.achatspublicscorse.com",
+    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-www-achatspublicscorse-com/community-resources",
+    "format": "xml",
+    "cle_api": ["68c955112e0cc622a82626b8"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false,
+    "encoding": "ISO-8859-15"
+  },
+  "marchespublicspro":
+  {
+    "code": "marchespublicspro",
+    "description": "Données Essentielles - www.marchespublics.pro",
+    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-www-marchespublics-pro/",
+    "format": "xml",
+    "cle_api": ["68c953c24aa801f3ce4289ea"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false,
+    "encoding": "ISO-8859-15"
+  },
+  "provencecorse":
+  {
+    "code": "provencecorse",
+    "description": "Données Essentielles - www.antilles-legales.fr et www.guyane-legales.fr",
+    "url_source": "Données Essentielles - www.laprovencemarchespublics.com et www.corsematinmarchespublics.com/",
+    "format": "xml",
+    "cle_api": ["68c9571b7d6a0e64a5f7582b"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false,
+    "encoding": "ISO-8859-15"
+  },
+  "antilleslegales":
+  {
+    "code": "antilleslegales",
+    "description": "Données Essentielles - www.antilles-legales.fr et www.guyane-legales.fr",
+    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-www-antilles-legales-fr-et-www-guyane-legales-fr/",
+    "format": "xml",
+    "cle_api": ["68c959a6fecb75ff0b47f079"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false,
+    "encoding": "ISO-8859-15"
+  },
+  "marchesdemat":
+  {
+    "code": "marchesdemat",
+    "description": "Données Essentielles - www.marches-demat.com",
+    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-www-marches-demat-com/",
+    "format": "xml",
+    "cle_api": ["68c93247fda0dc4d2aa52a86"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false,
+    "encoding": "ISO-8859-15"
+  },
+  
+  
+
   "sample_json":
   {
     "code": "sample_json",

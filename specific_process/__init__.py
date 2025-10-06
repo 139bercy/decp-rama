@@ -19,3 +19,11 @@ from .Ppsmj2024Process import Ppsmj2024Process
 from .SampleXmlProcess import SampleXmlProcess
 from .SampleJsonProcess import SampleJsonProcess
 from .Xmarches2024Process import Xmarches2024Process
+from .Modulademat2024Process import Modulademat2024Process
+#=
+#from .Proxilegales2024Process import Proxilegales2024Process
+#from .Achatspublicscorse2024Process import Achatspublicscorse2024Process
+#from .Marchespublicspro2024Process import Marchespublicspro2024Process
+#from .Provencecorse2024Process import Provencecorse2024Process
+#from .Antilleslegales2024Process import Antilleslegales2024Process
+#from .Marchedemat2024Process import Marchedemat2024Process
