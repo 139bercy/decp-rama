@@ -202,13 +202,35 @@ class SourceProcess:
                             filtered_url.append(u)
                             filtered_title.append(t)
                     else:
-                        if "-2024" in t or "-2025" in t:
+                        if  "-2024" in t or t == 'PPSMJ 1.xml':
                             # Date not found in url, we keep the file for further analysis
                             filtered_url.append(u)
                             filtered_title.append(t)
             url = filtered_url
             title = filtered_title
             """
+
+            """
+            # Fichier 2024
+            filtered_url = []
+            filtered_title = []
+            for u, t in zip(url, title):
+                if '2024' in t or (t == 'PPSMJ 1.xml'): 
+                    filtered_url.append(u)
+                    filtered_title.append(t)
+            url = filtered_url
+            title = filtered_title
+            """
+            
+            # Fichiers 2025
+            filtered_url = []
+            filtered_title = []
+            for u, t in zip(url, title):
+                if '2025' in t and not '2024' in t: 
+                    filtered_url.append(u)
+                    filtered_title.append(t)
+            url = filtered_url
+            title = filtered_title
 
             #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
             if os.path.exists(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json"):
@@ -266,11 +288,13 @@ class SourceProcess:
             dl = Pypdl(allow_reuse=True)
             for i in range(len(self.url)):
                 try:
-                    if os.path.exists(f"sources/{self.source}/{self.title[i]}"):
-                        os.remove(f"sources/{self.source}/{self.title[i]}")
-                        logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
+                #    if os.path.exists(f"sources/{self.source}/{self.title[i]}"):
+                #        os.remove(f"sources/{self.source}/{self.title[i]}")
+                #        logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
                     #wget.download(self.url[i], f"sources/{self.source}/{self.title[i]}")
-                    dl.start(url=self.url[i],file_path=f"sources/{self.source}/{self.title[i]}",retries=10,display=False)
+                    if not os.path.exists(f"sources/{self.source}/{self.title[i]}"):
+                        dl.start(url=self.url[i],file_path=f"sources/{self.source}/{self.title[i]}",retries=10,display=False)
+                        logging.info(f"Fichier : {self.title[i]} telechargé ")
                 except:
                     logging.error(f"Problème de téléchargement du fichier {self.url[i]}")
         logging.info(f"Téléchargement : {len(self.url)} fichier(s) OK")
@@ -464,7 +488,9 @@ class SourceProcess:
             return rec
 
         # Get year-month suffix for this data set for merging data in export
-        year_month = self._get_year_month(file_name)
+        year_month = None #self._get_year_month(file_name)
+        #if self.source == 'marches-publics_aws':
+        #    year_month = None
 
         nb_total_marches,nb_total_concessions = self.get_nb_enregistrements(dico);
 
