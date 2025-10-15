@@ -439,7 +439,7 @@ class GlobalProcess:
             self.file_dump(file_path,dico)
         return dico
     
-    def upload_on_datagouv(self):
+    def upload_on_datagouv(self, suffixes):
         logging.info(f"Uploading file ...")
         config_file = "config.json"
         # read info from config.son
@@ -456,16 +456,18 @@ class GlobalProcess:
         }
         years = []
 
-        for suffix_month, _ in self.df.groupby('tmp__annee_mois'):
+        for suffix_month in suffixes:
             logging.info(f"Uploading file decp-{suffix_month}.json")
             resource_id_month = self._get_ressource_id(headers,api,dataset_id,suffix_month)
             resource_id_month = self._upload_file(headers,api,dataset_id,resource_id_month,suffix_month)
             suffix_year = suffix_month[0:4]
-            if suffix_year in years:
-                logging.info(f"Uploading file decp-{suffix_year}.json")
+            if not suffix_year in years:
                 years += [suffix_year]
-                resource_id_year = self._get_ressource_id(headers,api,dataset_id,suffix_year)
-                resource_id_year = self._upload_file(headers,api,dataset_id,resource_id_year,suffix_year)
+
+        for suffix_year in years:
+            logging.info(f"Uploading file decp-{suffix_year}.json")
+            resource_id_year = self._get_ressource_id(headers,api,dataset_id,suffix_year)
+            resource_id_year = self._upload_file(headers,api,dataset_id,resource_id_year,suffix_year)
         
         current_month = int(self.get_current_date().strftime('%m'))
         current_year = int(self.get_current_date().strftime('%Y'))
@@ -495,14 +497,26 @@ class GlobalProcess:
         ## Exportation des données dans des fichiers mensuels 
         self._nan_correction_dico(self.df)
 
+        suffixes = []
+        for year_month, group in self.df.groupby('tmp__annee_mois'):
+            suffixes = [year_month]
+            output_file = f"results/decp-{year_month}.json"
+            marches = group[group['_type'].str.contains("Marché")]
+            concessions = group[~group['_type'].str.contains("Marché")]
+            marches_json = marches.to_dict(orient='records')
+            concessions_json = concessions.to_dict(orient='records')
+            #concessions_json = []
+            logging.info(f"Ajout de {len(marches_json)} marchés et {len(concessions_json)} concessions au fichier results/decp-{year_month}")
+            self._merge_in_file(output_file,{'marches': marches_json, 'concessions': concessions_json})
+
         for year_month, group in self.df.groupby('tmp__annee_mois'):
             output_file = f"results/decp-{year_month}.json"
             marches = group[group['_type'].str.contains("Marché")]
             concessions = group[~group['_type'].str.contains("Marché")]
             marches_json = marches.to_dict(orient='records')
             concessions_json = concessions.to_dict(orient='records')
+            #concessions_json = []
             logging.info(f"Ajout de {len(marches_json)} marchés et {len(concessions_json)} concessions au fichier results/decp-{year_month}")
-            self._merge_in_file(output_file,{'marches': marches_json, 'concessions': concessions_json})
             output_file_year = output_file[0:17] + '.json'
             self._merge_in_file(output_file_year,{'marches': marches_json, 'concessions': concessions_json})
 
@@ -615,6 +629,7 @@ class GlobalProcess:
         self.file_dump(path_result_daily,dico)
 
         logging.info("Exportation JSON OK")
+        return suffixes
     
         
     def file_load(self,path:str) ->dict:
