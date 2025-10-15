@@ -144,7 +144,7 @@
           "title": "Type de groupement d'opérateurs",
           "description": "Le type de groupement d'entreprises ou d'opérateurs économiques",
           "type": "string",
-          "enum": ["Conjoint", "Solidaire", "Pas de groupement"]
+          "enum": ["Conjoint", "Soliidaire", "Pas de groupement"]
         },
         "sousTraitanceDeclaree": {
           "title": "Sous-traitance déclarée",
