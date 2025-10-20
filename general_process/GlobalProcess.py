@@ -190,12 +190,6 @@ class GlobalProcess:
         nb_duplicated_marches = 0
         nb_duplicated_concessions = 0
 
-        # On complete la colonne backup montant pour les marches ajoutés depuisl'export qui ne sont pas passé par fix
-        if "montant" in self.df.columns and 'backup__montant' in self.df.columns \
-            and df.loc[df['_type'] == 'Marché', 'backup__montant'].isna().any():
-            df.loc[(df['backup__montant'].isna()) & (df['_type'] == 'Marché'), 'backup__montant'] = df['montant']
-            df.loc[df['_type'] == 'Marché', 'montant'] = df.loc[df['_type'] == 'Marché', 'montant'].apply(lambda x: int(x) if pd.notna(x) else np.nan)
-
         #Critères de dédoublonnage
         feature_doublons_marche = ["id", "acheteur", "titulaires", "dateNotification", "montant"] 
         feature_doublons_marche_order = ["id", "acheteur", "titulaires", "dateNotification", "montant",'tmp__dateModification','tmp__idModification'] 
@@ -403,7 +397,7 @@ class GlobalProcess:
             if "tmp__idModification" not in df_concessions.columns:
                 df_concessions['tmp__idModification'] = 0
             
-    def _merge_in_file(self, file_path:str, dico:dict) -> dict:
+    def _merge_in_file(self, file_path:str, df_new:pd.DataFrame):#dico:dict) -> dict:
         """
         La fonction _merge_in_file permet de fusionner un dictionnaires en entrée avec 
         le dictionnaire contenu dans un fichier
@@ -415,30 +409,54 @@ class GlobalProcess:
         if os.path.exists(file_path):
             dico_file = self.file_load(file_path)
             if dico_file=={}:
-                self.file_dump(file_path,dico)
+                self.file_dump(file_path,df_new.to_dict(orient='records'))
             else:
-                if 'marches' in dico_file:
-                    keys_to_backup = ['offresRecues','marcheInnovant','attributionAvance','sousTraitanceDeclaree','dureeMois','variationPrix','montant']
-                    for el in dico_file['marches']:
-                        for key in keys_to_backup:
-                            if key in el:
-                                el[f'backup__{key}'] = el[key]
-                        
-                        #self.simple_backup_colonne_inside(self.df,'dureeMois','actesSousTraitance','acteSousTraitance')
-                        #self.simple_backup_colonne_inside(self.df,'variationPrix','actesSousTraitance','acteSousTraitance')
-
-                dico_global = dico['marches'] + dico_file['marches']
-                #On transforme les dictionnaires en dataframes pour les dédoublonner
+                dico_global = dico_file['marches']
+                #On transforme le dictionnaires en dataframes pour dédoublonner les nouvelles données
                 df_global = pd.DataFrame.from_dict(dico_global)
+                
+                # On complete les colonnes backup  pour les marches ajoutés depuis l'export qui ne sont pas passé par fix
+                keys_to_backup = ['offresRecues','marcheInnovant','attributionAvance','sousTraitanceDeclaree','dureeMois','variationPrix', 'montant', 'valeurGlobale']
+                for key in keys_to_backup:
+                    if key in df_global.columns:
+                        df_global[f'backup__{key}'] = df_global[key]
+
+                # On complete la colonne backup montant pour les marches ajoutés depuis l'export qui ne sont pas passé par fix
+                if "montant" in df_global.columns and 'backup__montant' in df_global.columns \
+                    and df_global.loc[df_global['_type'] == 'Marché', 'backup__montant'].isna().any():
+                    df_global.loc[(df_global['backup__montant'].isna()) & (df_global['_type'] == 'Marché'), 'backup__montant'] = df_global['montant']
+                    df_global.loc[df_global['_type'] == 'Marché', 'montant'] = df_global.loc[df_global['_type'] == 'Marché', 'montant'].apply(lambda x: int(x) if pd.notna(x) else np.nan)
+                
+                self._nan_correction_dico(df_global)
+                
+                # on ajoute les nouvelles données au données extraite du fichier pour pouvoir ensuite faire le dédoublonnage sur tout le fichier
+                df_global = pd.concat([df_global, df_new], ignore_index=True)
+
                 df_global = self.dedoublonnage(df_global)
-                dico_final = self._nan_correction_dico(df_global)
-                self.file_dump(file_path,dico_final)     
-                return dico_final              
+                
+                dico_final = {'marches': df_global.to_dict(orient='records')}
+
+                self.file_dump(file_path,dico_final)                
         else:
             # Le fichier n'existait pas on ajoute le nouveau dictionnaire dedans
-            self.file_dump(file_path,dico)
-        return dico
+            self.file_dump(file_path,df_new.to_dict(orient='records'))
     
+    def _make_copy_for_data_gouv(self,suffix):
+        file_path = f"results/decp-{suffix}.json"
+        file_path_copy = f"results/decp-{suffix}_data_gouv.json"
+        if os.path.exists(file_path):
+            dico = self.file_load(file_path)
+            if 'marches' in dico:
+                keys_to_backup = ['offresRecues','marcheInnovant','attributionAvance','sousTraitanceDeclaree','dureeMois','variationPrix','montant']
+                for el in dico['marches']:
+                    for key in keys_to_backup:
+                        if key in el:
+                            el[f'backup__{key}'] = el[key]
+
+        dico = self._dico_purge(dico)
+        with open(file_path_copy, 'w', encoding="utf-8") as f:
+            json.dump(dico, f, indent=2, ensure_ascii=False)
+
     def upload_on_datagouv(self, suffixes):
         logging.info(f"Uploading file ...")
         config_file = "config.json"
@@ -457,7 +475,9 @@ class GlobalProcess:
         years = []
 
         for suffix_month in suffixes:
-            logging.info(f"Uploading file decp-{suffix_month}.json")
+            logging.info(f"Uploading file decp-{suffix_month}_data_gouv.json")
+            if(not os.path.exists(f'results/decp-{suffix_month}_data_gouv.json')):
+                self._make_copy_for_data_gouv(suffix_month)
             resource_id_month = self._get_ressource_id(headers,api,dataset_id,suffix_month)
             resource_id_month = self._upload_file(headers,api,dataset_id,resource_id_month,suffix_month)
             suffix_year = suffix_month[0:4]
@@ -465,7 +485,10 @@ class GlobalProcess:
                 years += [suffix_year]
 
         for suffix_year in years:
-            logging.info(f"Uploading file decp-{suffix_year}.json")
+            file_path = f'results/decp-{suffix_year}_data_gouv.json'
+            logging.info(f"Uploading file {file_path}")
+            if(not os.path.exists(file_path)):
+                self._make_copy_for_data_gouv(suffix_year)
             resource_id_year = self._get_ressource_id(headers,api,dataset_id,suffix_year)
             resource_id_year = self._upload_file(headers,api,dataset_id,resource_id_year,suffix_year)
         
@@ -497,28 +520,37 @@ class GlobalProcess:
         ## Exportation des données dans des fichiers mensuels 
         self._nan_correction_dico(self.df)
 
+        current_year_month  = f"{datetime.now().year}-{datetime.now().month:02d}"
         suffixes = []
+        years = []
         for year_month, group in self.df.groupby('tmp__annee_mois'):
-            suffixes = [year_month]
-            output_file = f"results/decp-{year_month}.json"
-            marches = group[group['_type'].str.contains("Marché")]
-            concessions = group[~group['_type'].str.contains("Marché")]
-            marches_json = marches.to_dict(orient='records')
-            concessions_json = concessions.to_dict(orient='records')
-            #concessions_json = []
-            logging.info(f"Ajout de {len(marches_json)} marchés et {len(concessions_json)} concessions au fichier results/decp-{year_month}")
-            self._merge_in_file(output_file,{'marches': marches_json, 'concessions': concessions_json})
+            if year_month <= current_year_month:
+                suffixes += [year_month]
+                nb_marches = group[group['_type'].str.contains("Marché")].shape[0]
+                nb_concessions = group[~group['_type'].str.contains("Marché")].shape[0]
+                
+                output_file = f"results/decp-{year_month}.json"
+                logging.info(f"Ajout de {nb_marches} marchés et {nb_concessions} concessions au fichier {output_file}")
+                self._merge_in_file(output_file,group)
+                
+                suffix_year = year_month[0:4]
+                if not suffix_year in years:
+                    years += [suffix_year]
 
-        for year_month, group in self.df.groupby('tmp__annee_mois'):
-            output_file = f"results/decp-{year_month}.json"
-            marches = group[group['_type'].str.contains("Marché")]
-            concessions = group[~group['_type'].str.contains("Marché")]
-            marches_json = marches.to_dict(orient='records')
-            concessions_json = concessions.to_dict(orient='records')
-            #concessions_json = []
-            logging.info(f"Ajout de {len(marches_json)} marchés et {len(concessions_json)} concessions au fichier results/decp-{year_month}")
-            output_file_year = output_file[0:17] + '.json'
-            self._merge_in_file(output_file_year,{'marches': marches_json, 'concessions': concessions_json})
+        for year in years:
+            df_new = pd.DataFrame()
+            total_marches = 0
+            total_concessions = 0
+            for year_month, group in self.df.groupby('tmp__annee_mois'):
+                if year == year_month[0:4]:
+                    df_new = pd.concat([df_new,group],ignore_index=True)
+                    
+                    total_marches += group[group['_type'].str.contains("Marché")].shape[0]
+                    total_concessions += group[~group['_type'].str.contains("Marché")].shape[0]
+                    
+            output_file_year = f"results/decp-{year}.json"
+            logging.info(f"Ajout de {total_marches} marchés et {total_concessions} concessions au fichier {output_file_year} pour l'annee {year}")
+            self._merge_in_file(output_file_year,df_new)
 
 
         dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
@@ -527,104 +559,6 @@ class GlobalProcess:
         #Création du fichier daily
         path_result_daily = "results/decp-daily.json"
 
-        """
-        #Création des chemins des fichiers mensuel et annuel(global)
-        suffix_year = self.get_current_date().strftime('%Y')
-        path_result = f"results/decp-{suffix_year}.json"
-        
-        config_file = "config.json"
-        # read info from config.son
-        with open(config_file, "r") as f:
-            config = json.load(f)
-
-        # Cas du changement de mois 
-        # prenant en compte le cas de l'inactivité de l'application pendant plusieurs jours 
-        if ((self.get_current_date().month)!=config["resource_month"]) and config["resource_month"] is not None:
-            logging.info("Finalisation du fichier du mois précédent")
-            # On récupère la date du mois précédent  
-            # pour pouvoir retrouver le nom du fichier contenant les marchés et concession du mois précédent.
-            a_month_ago = self.get_current_date() - relativedelta(months=1)
-            suffix_month_ago = a_month_ago.strftime('%Y-%m')
-            path_result_last_month = f"results/decp-{suffix_month_ago}.json"
-
-
-            # Si l'execution de l'application ne s'est pas faite depuis plusieurs jours 
-            # il faut scinder le dico en 2: les données du mois précédent et celle du mois en cours
-            #self.df['datePublicationDonnees_comp'] = pd.to_datetime(self.df['datePublicationDonnees'],format='mixed',errors='coerce')
-            #self.df['dateModifications_tmp'] = self.df['modifications'].apply(self.extract_publication_dates)
-            #self.df['dateModifications_comp'] = self.df['dateModifications_tmp'].apply(lambda x: max(pd.to_datetime(x, errors='coerce')) if x else None)
-            #self.df['datePublication__max'] = self.df[['datePublicationDonnees_comp', 'dateModifications_comp']].max(axis=1)
-            #del self.df['datePublicationDonnees_comp']
-            #del self.df['dateModifications_tmp']
-            #del self.df['dateModifications_comp']
-            self._add_meta_modifications(self.df,pd.DataFrame(),False)
-
-            month_first_day = self.get_month_first_day(self.get_current_date())
-            df_prev_month = self.df[(self.df['datePublication__max'] < month_first_day) | self.df['datePublication__max'].isna()]
-            df_curr_month = self.df[(self.df['datePublication__max'] >= month_first_day)]
-            del df_prev_month['datePublication__max']
-            del df_curr_month['datePublication__max']
-            
-            dico_curr_month = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
-                                for m in df_curr_month.to_dict(orient='records')]}
-            # Modification des champs titulaires et modifications
-            #dico = self.dico_modifications(dico)
-
-            if not df_prev_month.empty:
-                dico_prev_month = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
-                                    for m in df_prev_month.to_dict(orient='records')]}
-                # On ajoute les nouvelles données (données journalières) au fichier de l'année en cours
-                dico_nouveau = self._merge_in_file(path_result_last_month,dico_prev_month)
-
-                self._merge_in_file(path_result,dico_nouveau)
-
-
-
-                
-            
-            dico_ancien = self.file_load(path_result)
-            dico_nouveau = self.file_load(path_result_last_month)
-            if not df_prev_month.empty:
-                logging.info(f"Mise à jour du fichier {path_result_last_month}")
-                dico_prev_month = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
-                                    for m in df_prev_month.to_dict(orient='records')]}
-                # dico_prev_month = self.dico_modifications(dico_prev_month)
-                dico_nouveau = self._dico_merge(dico_nouveau,dico_prev_month)
-                df_prev_month = pd.DataFrame.from_dict(dico_nouveau)
-                df_prev_month = self.dedoublonnage(df_prev_month)
-                dico_nouveau = self._nan_correction_dico(df_prev_month)
-                try:
-                    self.file_dump(path_result_last_month,dico_nouveau) 
-                except:
-                    logging.error(f"Erreur d'écriture dans le fichier {path_result_last_month}")
-            dico_global = self._dico_merge(dico_ancien,dico_nouveau)
-            #On transforme les dictionnaires en dataframes pour les dédoublonner
-            if dico_global!={}:
-                df_global = pd.DataFrame.from_dict(dico_global)
-                df_global = self.dedoublonnage(df_global)
-                dico_final = self._nan_correction_dico(df_global)
-                try:
-                    self.file_dump(path_result,dico_final) 
-                except:
-                    logging.error(f"Erreur d'écriture dans le fichier {path_result}")
-                    #Il faudra publier le fichier backup
-                self.file_dump(path_result_backup,dico_final)
-            elif dico_nouveau !={} :
-                try:
-                    self.file_dump(path_result,dico_nouveau)
-                except:
-                    logging.error("Erreur d'écriture dans le fichier {path_result}")
-                #self.file_dump(path_result_backup,dico_nouveau)
-            
-
-
-
-
-            self.file_dump(path_result_month,dico_curr_month)
-        else:
-            # On ajoute les nouvelles données au fichier du mois en cours
-            self._merge_in_file(path_result_month,dico)
-        """
         # Sauvegarde des données journalières
         self.file_dump(path_result_daily,dico)
 
@@ -922,11 +856,7 @@ class GlobalProcess:
             elif df[i].dtypes == 'int32':
                 df.fillna({i:0},inplace=True) 
             elif df[i].dtypes == 'object':
-                df.astype(str).fillna({i:""},inplace=False)
-            
-        dico_final = {'marches': df.to_dict(orient='records')}
-        return dico_final
-                
+                df.astype(str).fillna({i:""},inplace=False)              
 
     def upload_s3(self):
         """

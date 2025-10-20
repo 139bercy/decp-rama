@@ -70,7 +70,7 @@ class SourceProcess:
         self._clean_metadata_folder()
 
         # Récupération des urls
-        self._url_init() 
+        #self._url_init() 
 
         # Liste des dictionnaires pour l'étape de nettoyage
         self.dico_2022_marche = []
@@ -97,7 +97,7 @@ class SourceProcess:
         """_url_init permet la récupération de l'ensemble des url des fichiers qui doivent être
         téléchargés pour une source. Ces urls sont conservés dans self.metadata."""
 
-        logging.info("Initialisation")
+        logging.info("Initialisation des urls")
         os.makedirs(f"metadata/{self.source}", exist_ok=True) 
         os.makedirs(f"old_metadata/{self.source}", exist_ok=True)
         self.cle_api = self.metadata[self.key]["cle_api"]
@@ -278,6 +278,7 @@ class SourceProcess:
         """
         logging.info("--- ÉTAPE GET")
         logging.info(f"Début du téléchargement : {len(self.url)} fichier(s)")
+        self._url_init()
         os.makedirs(f"sources/{self.source}", exist_ok=True)
         if self.cle_api==[]:
             logging.info("Pas de clé api pour télécharger les données")
@@ -288,13 +289,13 @@ class SourceProcess:
             dl = Pypdl(allow_reuse=True)
             for i in range(len(self.url)):
                 try:
-                #    if os.path.exists(f"sources/{self.source}/{self.title[i]}"):
-                #        os.remove(f"sources/{self.source}/{self.title[i]}")
-                #        logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
+                    if os.path.exists(f"sources/{self.source}/{self.title[i]}"):
+                        os.remove(f"sources/{self.source}/{self.title[i]}")
+                        logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
                     #wget.download(self.url[i], f"sources/{self.source}/{self.title[i]}")
-                    if not os.path.exists(f"sources/{self.source}/{self.title[i]}"):
-                        dl.start(url=self.url[i],file_path=f"sources/{self.source}/{self.title[i]}",retries=10,display=False)
-                        logging.info(f"Fichier : {self.title[i]} telechargé ")
+                    #if not os.path.exists(f"sources/{self.source}/{self.title[i]}"):
+                    dl.start(url=self.url[i],file_path=f"sources/{self.source}/{self.title[i]}",retries=10,display=False)
+                    #    logging.info(f"Fichier : {self.title[i]} telechargé ")
                 except:
                     logging.error(f"Problème de téléchargement du fichier {self.url[i]}")
         logging.info(f"Téléchargement : {len(self.url)} fichier(s) OK")

@@ -27,7 +27,8 @@ light_errors = []
 
 
 logger = logging.getLogger("main.nettoyage2")
-logger.setLevel(logging.DEBUG)
+logger.handlers.clear()
+logger.setLevel(logging.INFO)
 pd.options.mode.chained_assignment = None  # default='warn'
 
 report = Report('augmente')

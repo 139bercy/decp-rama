@@ -57,6 +57,7 @@ class ProcessFactory:
                 logging.info( "---------------------------------------------------------------")
                 p = process(self.data_format,self.report)
                 if not self.step.bypass(p.source,Step.GET):
+                    p._url_init()
                     p.get()
                     self.step.snapshot(p.source,Step.GET)
                 loaded = 'get'
