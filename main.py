@@ -23,14 +23,16 @@ def main(report,data_format:str = "2022"):
     # Init reporting
     # Init resume
     # get arguments from command line to know which process to run, if there is no arguments run all processes
-    if args.process:
-        p = ProcessFactory(args.process,data_format,report)
-        p.run_process()
-    else:
-        p = ProcessFactory(None,data_format,report)
-        p.run_processes()
+    if not step.bypass("ALL",Step.FIX_ALL):
+        if args.process:
+            p = ProcessFactory(args.process,data_format,report)
+            p.run_process()
+        else:
+            p = ProcessFactory(None,data_format,report)
+            p.run_processes()
     gp = GlobalProcess(data_format,report)
-    gp.dataframes = p.dataframes
+    if not step.bypass("ALL",Step.FIX_ALL):
+        gp.dataframes = p.dataframes
     gp.merge_all() # on a l'équivalent de return DataProcessor().decorator("MonParamètre")(self.process_data)()
     gp.fix_all()
     #gp.drop_by_date_2024()
@@ -38,6 +40,7 @@ def main(report,data_format:str = "2022"):
     gp.report.fix_statistics('merged')
     suffixes = gp.export(args.local)
     gp.save_report()
+    gp.generate_global()
     if not args.local:
         # gp.upload_s3()
         gp.upload_on_datagouv(suffixes)
@@ -75,6 +78,7 @@ if __name__ == "__main__":
 
     # Obtenir le logger root
     logger = logging.getLogger()
+    logger.handlers.clear()
     logger.setLevel(logging.INFO)
 
     # Ajouter les handlers au logger root
@@ -84,31 +88,15 @@ if __name__ == "__main__":
     logging.info("                      NOUVELLE EXECUTION")
     logging.info("---------------------------------------------------------------")
 
-    if args.rama:
-        logging.info("Option exécution decp-rama activée")
-    else:
-        logging.info("Option exécution decp-rama désactivée")
-
-    if args.augmente:
-        logging.info("Option exécution decp-augmente activée")
-    else:
-        logging.info("Option exécution decp-augmente désactivée")
-
-    if args.local:
-        logging.info("Option exécution local activée")
-    else:
-        logging.info("Option exécution local désactivée")
-
-    if args.test:
-        logging.info("Option exécution de test activée")
-    else:
-        logging.info("Option exécution de test désactivée")
+    logging.info("(-m) Option exécution de decp-rama uniquement " + ("activée" if args.rama else "désactivée"))
+    logging.info("(-a) Option exécution de decp-augmente uniquement " + ("activée" if args.augmente else "désactivée"))
+    logging.info("(-l) Option exécution locale " + ("activée" if args.local else "désactivée"))
+    logging.info("(-t) Option exécution en mode test " + ("activée" if args.test else "désactivée"))
+    logging.info("(-r) Option reprise à la dernière étape exécutée " + ("desactivée" if args.reset else "activée"))
+    logging.info("(-b) Option reconstruction globale " + ("activée" if args.rebuild else "désactivée"))
 
     if args.reset:
-        logging.info("Reset previous execution step")
         step.reset()
-    else:
-        logging.info("Using previous execution history to continue processing")
 
     all_data_format = ['2022']
     for data_format in all_data_format:

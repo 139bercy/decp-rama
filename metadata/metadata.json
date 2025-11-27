@@ -208,78 +208,7 @@
     "validate" : true,
     "convert_nc": false
   },
-  "proxilegales":
-  {
-    "code": "proxilegales",
-    "description": "Données Essentielles - www.proxilegales.fr",
-    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-www-proxilegales-fr/informations",
-    "format": "xml",
-    "cle_api": ["68c951f5501fc2243b7996b1"],
-    "url": "",
-    "validate" : true,
-    "convert_nc": false,
-    "encoding": "ISO-8859-15"
-  },  
-  "achatspublicscorse":
-  {
-    "code": "achatspublicscorse",
-    "description": "Données Essentielles - www.achatspublicscorse.com",
-    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-www-achatspublicscorse-com/community-resources",
-    "format": "xml",
-    "cle_api": ["68c955112e0cc622a82626b8"],
-    "url": "",
-    "validate" : true,
-    "convert_nc": false,
-    "encoding": "ISO-8859-15"
-  },
-  "marchespublicspro":
-  {
-    "code": "marchespublicspro",
-    "description": "Données Essentielles - www.marchespublics.pro",
-    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-www-marchespublics-pro/",
-    "format": "xml",
-    "cle_api": ["68c953c24aa801f3ce4289ea"],
-    "url": "",
-    "validate" : true,
-    "convert_nc": false,
-    "encoding": "ISO-8859-15"
-  },
-  "provencecorse":
-  {
-    "code": "provencecorse",
-    "description": "Données Essentielles - www.antilles-legales.fr et www.guyane-legales.fr",
-    "url_source": "Données Essentielles - www.laprovencemarchespublics.com et www.corsematinmarchespublics.com/",
-    "format": "xml",
-    "cle_api": ["68c9571b7d6a0e64a5f7582b"],
-    "url": "",
-    "validate" : true,
-    "convert_nc": false,
-    "encoding": "ISO-8859-15"
-  },
-  "antilleslegales":
-  {
-    "code": "antilleslegales",
-    "description": "Données Essentielles - www.antilles-legales.fr et www.guyane-legales.fr",
-    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-www-antilles-legales-fr-et-www-guyane-legales-fr/",
-    "format": "xml",
-    "cle_api": ["68c959a6fecb75ff0b47f079"],
-    "url": "",
-    "validate" : true,
-    "convert_nc": false,
-    "encoding": "ISO-8859-15"
-  },
-  "marchesdemat":
-  {
-    "code": "marchesdemat",
-    "description": "Données Essentielles - www.marches-demat.com",
-    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-www-marches-demat-com/",
-    "format": "xml",
-    "cle_api": ["68c93247fda0dc4d2aa52a86"],
-    "url": "",
-    "validate" : true,
-    "convert_nc": false,
-    "encoding": "ISO-8859-15"
-  },
+
   
   
 
@@ -294,6 +223,7 @@
     "validate" : true,
     "convert_nc": false
   },
+  
   "geoflar":
   {
 	  "description": "Fichier permettant d'enrichir les champs : INSEE COM, Geo point, SUPERFICIE, POPULATION",

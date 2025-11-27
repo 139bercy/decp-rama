@@ -46,6 +46,7 @@ def parse_args():
     parser.add_argument("-m", dest='rama', action='store_true', help="Execute only decp-rama")
     parser.add_argument("-a", dest='augmente', action='store_true', help="Execute only decp-augmente")
     #parser.add_argument("-f", dest='format', type=str, help="run script for format 2019")
+    parser.add_argument("-b", dest='rebuild', type=str, help="Rebuild a given year")
     return parser.parse_args()
 
 args = parse_args()

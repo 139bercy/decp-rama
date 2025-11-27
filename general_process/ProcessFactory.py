@@ -57,7 +57,6 @@ class ProcessFactory:
                 logging.info( "---------------------------------------------------------------")
                 p = process(self.data_format,self.report)
                 if not self.step.bypass(p.source,Step.GET):
-                    p._url_init()
                     p.get()
                     self.step.snapshot(p.source,Step.GET)
                 loaded = 'get'
@@ -82,11 +81,13 @@ class ProcessFactory:
                 p.fix_statistics()
                 logging.info (f"Ajout des données de la source {process.__name__}")
                 self.dataframes.append(p.df)
+                p.df = None
                 logging.info( "---------------------------------------------------------------")
                 logging.info(f"             Fin du traitement {process.__name__}")
+                logging.info( "---------------------------------------------------------------")
             except Exception as err:
                 if loaded != '':
-                    logging.error(f"Erreur de traitement après l'opération {loaded}  - {err}")
+                    logging.error(f" {loaded}  - {err}")
                 else:
                     logging.error(f"Source introuvable - {err}")
 

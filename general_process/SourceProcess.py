@@ -1,9 +1,9 @@
 from __future__ import annotations
-import linecache
 from xml.etree import ElementTree
+from database.DbDecp import DbDecp
 import wget
-import ssl
-import urllib.request, ssl, certifi
+#import ssl
+import urllib.request, certifi
 import os
 import json
 import xml
@@ -32,6 +32,7 @@ from utils.NodeFormat import NodeFormat
 from utils.StepMngmt import StepMngmt
 from utils.Step import Step
 import re
+import traceback
 
 class SourceProcess:
 
@@ -58,14 +59,22 @@ class SourceProcess:
         self.format = self.metadata[self.key]["format"]
         self.encoding = self.metadata[self.key]['encoding'] if 'encoding' in self.metadata[self.key] else 'utf-8'
         self.url_source = self.metadata[self.key]["url_source"]
-        self.date_pattern = re.compile(r'\d{4}-\d{2}-\d{2}')
+        self.date_pattern = re.compile(r'20\d{2}-\d{2}-\d{2}')
         self.date_pattern_year = re.compile(r'-20\d{2}.')
-        self.date_pattern_inv = re.compile(r'\d{2}\.{1}\d{2}\.{1}\d{4}')
+        self.date_pattern_inv = re.compile(r'\d{2}\.{1}\d{2}\.{1}20\d{2}')
             
         self.validate = self.metadata[self.key]["validate"]
         self.convert_nc = self.metadata[self.key]["convert_nc"]
         self.df = pd.DataFrame()
         self.title = []
+        self.min_date = pd.to_datetime("2024-01-01")
+        self.max_date = datetime.now() # pd.to_datetime("2025-12-31")
+        self.start_date = datetime.now().replace(day=1)
+        # Regenerate all data for a given year ifnot None
+        self.rebuild_year = 2024 #None
+        if self.rebuild_year:
+            self.start_date = pd.to_datetime(f"{self.rebuild_year}-01-01")
+
         # Lavage des dossiers de la source
         self._clean_metadata_folder()
 
@@ -86,8 +95,7 @@ class SourceProcess:
     def _clean_metadata_folder(self) -> None:
         """La fonction _clean_metadata_folder permet le nettoyage de /metadata/{self.source}"""
         # Lavage des dossiers dans metadata
-        logging.info(f"Début du nettoyage de metadata/{self.source}")
-        logging.info(os.path.abspath('.'))
+        logging.info(f"Début du nettoyage de metadata/{self.source} dans {os.path.abspath('.')}")
         if os.path.exists(f"metadata/{self.source}"):
             shutil.rmtree(f"metadata/{self.source}")
         logging.info(f"Nettoyage metadata/{self.source} OK")
@@ -105,10 +113,9 @@ class SourceProcess:
         if self.cle_api==[]:
             self.url = [self.url_source]
         else:
-            self.url, self.title = self._create_metadata_file(len(self.cle_api))
+            self.url, self.title, self.date = self._create_metadata_file(len(self.cle_api))
         
-        logging.info(" ")
-        logging.info("Initialisation finie")
+        logging.info("Initialisation terminée")
     
     @staticmethod
     def _date_in_intervale(date_txt:str, date_begin, date_end) -> bool:
@@ -124,8 +131,8 @@ class SourceProcess:
     def _create_metadata_file(self,n:int)->tuple[list,list]:
         """
         Fonction réalisant le téléchargement des métadatas, la copie des
-        fichiers métadatas et la création des listes contenant les titres
-        et les urls des fichiers.
+        fichiers métadatas et la création des listes contenant les titres,
+         les urls et les dates des fichiers.
         
         Args: 
 
@@ -135,6 +142,7 @@ class SourceProcess:
         logging.info("Début de la récupération de la liste des urls")
         title = []  
         url = []    
+        created_at = []
         for i in range(n):
             #Téléchargement du fichier de metadata de self.source et création de la 1ere variable json pour la comparaison 
             try:
@@ -173,64 +181,36 @@ class SourceProcess:
                             (d["url"].endswith("xml") or d["url"].endswith("json"))]
                 title = title + [prefix+d["title"] for d in ressources if
                             (d["url"].endswith("xml") or d["url"].endswith("json"))]
+                #created_at = created_at + [d["created_at"] for d in ressources if
+                #            (d["url"].endswith("xml") or d["url"].endswith("json"))]
             else: 
                 url, title = self.check_date_file(url,title, ressources, old_ressources,prefix)
             
-
-            ## Code for generate all files for months and year between given dates 
-            # Filter by date in title, url
-            """
-            begin_date_txt = "2024-01-01"
-            end_date_txt = "2024-12-31"
-            begin_date = datetime.strptime(begin_date_txt, "%Y-%m-%d")
-            end_date = datetime.strptime(end_date_txt, "%Y-%m-%d")
+            # Filter file by date in title, url
             
-            filtered_url = []
-            filtered_title = []
-            for u, t in zip(url, title):
-                match = self.date_pattern.search(u)
-                if match:
-                    file_date = match.group() #[1:5]+"-01-01"
-                    if begin_date_txt <= file_date <= end_date_txt:
-                        filtered_url.append(u)
-                        filtered_title.append(t)
-                else:
-                    match = self.date_pattern_inv.search(u)
-                    if match:
-                        file_date = match.group()
-                        if SourceProcess._date_in_intervale(file_date, begin_date,end_date):
+            # Set filter
+            if self.rebuild_year:
+                # Fichiers 2024
+                if self.rebuild_year==2024:
+                    filtered_url = []
+                    filtered_title = []
+                    for u, t in zip(url, title):
+                        if '2024' in t or (t == 'PPSMJ 1.xml'): 
                             filtered_url.append(u)
                             filtered_title.append(t)
-                    else:
-                        if  "-2024" in t or t == 'PPSMJ 1.xml':
-                            # Date not found in url, we keep the file for further analysis
+                    url = filtered_url
+                    title = filtered_title
+                
+                # Fichiers 2025
+                if self.rebuild_year==2025:
+                    filtered_url = []
+                    filtered_title = []
+                    for u, t in zip(url, title):
+                        if '2025' in t and not '2024' in t: 
                             filtered_url.append(u)
                             filtered_title.append(t)
-            url = filtered_url
-            title = filtered_title
-            """
-
-            """
-            # Fichier 2024
-            filtered_url = []
-            filtered_title = []
-            for u, t in zip(url, title):
-                if '2024' in t or (t == 'PPSMJ 1.xml'): 
-                    filtered_url.append(u)
-                    filtered_title.append(t)
-            url = filtered_url
-            title = filtered_title
-            """
-            
-            # Fichiers 2025
-            filtered_url = []
-            filtered_title = []
-            for u, t in zip(url, title):
-                if '2025' in t and not '2024' in t: 
-                    filtered_url.append(u)
-                    filtered_title.append(t)
-            url = filtered_url
-            title = filtered_title
+                    url = filtered_url
+                    title = filtered_title           
 
             #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
             if os.path.exists(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json"):
@@ -277,8 +257,8 @@ class SourceProcess:
         la récupération de l'ensemble des fichiers présents sur chaque url.
         """
         logging.info("--- ÉTAPE GET")
-        logging.info(f"Début du téléchargement : {len(self.url)} fichier(s)")
         self._url_init()
+        logging.info(f"Début du téléchargement : {len(self.url)} fichier(s)")
         os.makedirs(f"sources/{self.source}", exist_ok=True)
         if self.cle_api==[]:
             logging.info("Pas de clé api pour télécharger les données")
@@ -289,13 +269,13 @@ class SourceProcess:
             dl = Pypdl(allow_reuse=True)
             for i in range(len(self.url)):
                 try:
-                    if os.path.exists(f"sources/{self.source}/{self.title[i]}"):
-                        os.remove(f"sources/{self.source}/{self.title[i]}")
-                        logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
-                    #wget.download(self.url[i], f"sources/{self.source}/{self.title[i]}")
-                    #if not os.path.exists(f"sources/{self.source}/{self.title[i]}"):
-                    dl.start(url=self.url[i],file_path=f"sources/{self.source}/{self.title[i]}",retries=10,display=False)
-                    #    logging.info(f"Fichier : {self.title[i]} telechargé ")
+                    #if os.path.exists(f"sources/{self.source}/{self.title[i]}"):
+                    #    os.remove(f"sources/{self.source}/{self.title[i]}")
+                    #    logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
+                    ##wget.download(self.url[i], f"sources/{self.source}/{self.title[i]}")
+                    if not os.path.exists(f"sources/{self.source}/{self.title[i]}"):
+                        dl.start(url=self.url[i],file_path=f"sources/{self.source}/{self.title[i]}",retries=10,display=False)
+                        logging.info(f"Fichier : {self.title[i]} telechargé ")
                 except:
                     logging.error(f"Problème de téléchargement du fichier {self.url[i]}")
         logging.info(f"Téléchargement : {len(self.url)} fichier(s) OK")
@@ -441,26 +421,27 @@ class SourceProcess:
             try:
                 self._validation_format(dico['marches'], self.title[i])    #On obtient 2 fichiers qui sont mis jour à chaque tour de boucle
             except Exception as err:
+                tb = traceback.format_exc()
                 logging.error(f"Exception lors de la validation du format des données: {err}")
 
         logging.info("Fin du nettoyage des nouveaux fichier")
 
-    def _get_year_month(self,file_name):
-        year_month = None
+    def _get_date_from_file_name(self,file_name):
+        default_date = None
         d = re.search(self.date_pattern, file_name)
         if d is not None:
             try:
-                year_month = pd.to_datetime(d.group()).strftime('%Y-%m')
+                default_date = pd.to_datetime(d.group()) #.strftime('%Y-%m')
             except Exception:
-                year_month = None
+                default_date = None
         else:
             d = re.search(self.date_pattern_inv, file_name)
             if d is not None:
                 try:
-                    year_month = pd.to_datetime(d.group(),format="%d.%m.%Y").strftime('%Y-%m')
+                    default_date = pd.to_datetime(d.group(),format="%d.%m.%Y") #.strftime('%Y-%m')
                 except Exception:
-                    year_month = None
-        return year_month
+                    default_date = None
+        return default_date
     
     def _validation_format(self, dico:dict, file_name:str) -> None:
         """
@@ -489,7 +470,7 @@ class SourceProcess:
             return rec
 
         # Get year-month suffix for this data set for merging data in export
-        year_month = None #self._get_year_month(file_name)
+        default_date = self._get_date_from_file_name(file_name)
         #if self.source == 'marches-publics_aws':
         #    year_month = None
 
@@ -498,7 +479,7 @@ class SourceProcess:
         # On mémorise le fichier source et les nombres de marchés et de concession
         self.report.db_add_file(self.source,file_name,nb_total_marches,nb_total_concessions)
 
-        logging.info(f"Nombre de marchés et concessions à valider dans {file_name}: {(nb_total_marches+nb_total_concessions)} ")
+        logging.info(f"{nb_total_marches:5} marchés et {nb_total_concessions:3} concessions à valider dans {file_name} (total: {(nb_total_marches+nb_total_concessions):5})")
 
         draft_validator = Draft7Validator(self.json_scheme)
         n, m = 0, 0
@@ -509,9 +490,12 @@ class SourceProcess:
 
         local_source = None
 
+        db = DbDecp()
+        id_source = db.find_or_add_source(self.source, 0)
+        id_file = db.find_or_add_file(file_name, id_source, nb_total_marches, nb_total_concessions)
+        
         if 'marche' in dico and isinstance(dico['marche'],list):
             while n < len(dico['marche']) :
-                #self.dico_2022_marche.append(dico['marche'][n])
                 if dico['marche'][n] is not None:
                     if 'source' in dico['marche'][n]:
                         local_source = dico['marche'][n]["source"]
@@ -520,11 +504,15 @@ class SourceProcess:
                         local_source = None
                     dico_test = {'marches': {'marche': [dico['marche'][n]], 'contrat-concession': []}}
 
+                    # Check data for json validity
                     valid,error_message,error_path = self.check_json_batch(dico_test,draft_validator)
-                    if self.validate and not valid:
-                        #self.dico_2022_marche.remove(dico['marche'][n])
+                    # Get max date and year_month prefix for category
+                    max_date, year_month = self._get_max_date(dico['marche'][n])
+                    if (self.validate and not valid) or max_date is None:
                         dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,year_month,n,error_message,error_path))
                     else: 
+                        dico['marche'][n]['db_id'] = self._db_add_marche(db,id_source,id_file,n,dico['marche'][n],max_date)
+                        dico['marche'][n]['tmp__max_date'] = max_date
                         self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source if local_source is None else local_source,file_name,year_month,n,error_message,error_path))
                         nb_good_marches+=1
                 n+=1
@@ -532,14 +520,13 @@ class SourceProcess:
             dico_ignored_concession.append(complete_util_info(dico['marche'],self.source,file_name,year_month,0,'Une liste de marchés est attendue',''))
         else:
             aucun_marches = True
-
+        
         # Mise a jour du nombre de marchés ignorés a    
         self.report.nb_in_bad_marches += len(dico_ignored_marche)
         self.report.nb_in_good_marches += nb_good_marches
 
         if 'contrat-concession' in dico and isinstance(dico['contrat-concession'],list):
             while m < len(dico['contrat-concession']) :
-                #self.dico_2022_concession.append(dico['contrat-concession'][m])
                 if dico['contrat-concession'][m] is not None:
                     if 'source' in dico['contrat-concession'][m]:
                         local_source = dico['contrat-concession'][m]["source"]
@@ -547,12 +534,15 @@ class SourceProcess:
                     else:
                         local_source = None
                     dico_test = {'marches': {'marche': [], 'contrat-concession': [dico['contrat-concession'][m]]}}
-
+                    # Check concession for json validity
                     valid,error_message,error_path = self.check_json(dico_test)
-                    if self.validate and not valid:
-                        #self.dico_2022_concession.remove(dico['contrat-concession'][m])
+                    # Get max date and year_month category
+                    max_date,year_month = self._get_max_date(dico['contrat-concession'][m])
+                    if (self.validate and not valid) or max_date is None:
                         dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,year_month,m,error_message,error_path))
                     else: 
+                        dico['contrat-concession'][m]['db_id'] = self._db_add_concession(db,id_source,id_file,m,dico['contrat-concession'][m],max_date)
+                        dico['contrat-concession'][m]['tmp__max_date'] = max_date
                         self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source if local_source is None else local_source,file_name,year_month,m,error_message,error_path))
                         nb_good_concessions+=1
                 m+=1
@@ -561,6 +551,7 @@ class SourceProcess:
         elif aucun_marches:
             self.report.db_add_error_file('Clean',self.report.E_VALIDATION,self.source,file_name,'Aucun marchés ni concessions n\'ont été retrouvé dans le fichier')
 
+        db.close()
         # Mise a jour du nombre de concessions ignorées  
         self.report.nb_in_bad_concessions += len(dico_ignored_concession)
         self.report.nb_in_good_concessions += nb_good_concessions
@@ -580,8 +571,61 @@ class SourceProcess:
             if len(self.dico_2022_concession)>0:
                 self.report.add_forced('Clean/Concession',self.report.E_VALIDATION,'Concession non valide mais ajoutée',self.dico_2022_concession)
 
-        logging.info(f"Nombre de marchés et concessions valides dans {file_name}:   {nb_good_marches+nb_good_concessions} (ignorés: {len(dico_ignored_marche)+len(dico_ignored_concession)})")
+        logging.info(f"{nb_good_marches:5} marchés et {nb_good_concessions:3} concessions valides dans {file_name} (total: {(nb_good_marches+nb_good_concessions):5}), (ignorés: {len(dico_ignored_marche)} et {len(dico_ignored_concession)})")
 
+    def _db_add_marche(self, db:DbDecp,id_source:int,id_file:int,n:int,marche,max_date) -> int:
+        if marche is not None:
+            id = marche['id']
+            acheteur_id = marche['acheteur']['id']
+            sorted_ids = sorted(item['titulaire']['id'] for item in marche['titulaires'])
+            titulaires = ','.join(sorted_ids)
+            date_notification = marche['dateNotification']
+            montant = int(marche['montant'])
+            objet = marche['objet']
+            
+            return db.add_marche(id_source,id_file,n,id,acheteur_id,titulaires,date_notification,montant,objet,max_date,marche)
+            
+    def _get_max_date(self,marche):
+        max_date_record = None
+        year_month = None
+        if 'datePublicationDonnees' in marche:
+            max_date_record = marche['datePublicationDonnees']
+        if 'modifications' in marche:
+            for m in marche['modifications']:
+                if not m is None and 'modification' in m:
+                    m = m['modification']
+                    if 'datePublicationDonneesModification' in m and m['datePublicationDonneesModification']>max_date_record:
+                        max_date_record = m['datePublicationDonneesModification']
+        if 'actesSousTraitance' in marche and isinstance(marche['actesSousTraitance'],list):
+            for m in marche['actesSousTraitance']:
+                if not m is None and 'acteSousTraitance' in m:
+                    m = m['acteSousTraitance']
+                    if 'datePublicationDonnees' in m and m['datePublicationDonnees']>max_date_record:
+                        max_date_record = m['datePublicationDonnees']
+        try:
+            tmp_date = pd.to_datetime(max_date_record)
+            if tmp_date<self.min_date or tmp_date>self.max_date:
+                #max_date_record=self.min_date
+                return None, None
+            if tmp_date < self.start_date:
+                tmp_date = self.start_date
+            year_month = tmp_date.strftime('%Y-%m')
+        except Exception as err:
+            max_date_record = None # default_date.strftime('%Y-%m-%d')
+            year_month = None #self.default_date # default_date
+        return max_date_record,year_month
+    
+    def _db_add_concession(self, db:DbDecp,id_source:int,id_file:int,n:int,concession,max_date) -> int:
+        if concession is not None:
+            id = concession['id']
+            autorite_concedante_id = concession['autoriteConcedante']['id']
+            sorted_ids = sorted(item['concessionnaire']['id'] for item in concession['concessionnaires'])
+            concessionnaires = ','.join(sorted_ids)
+            date_debut_execution = concession['dateDebutExecution']
+            valeur_globale = concession['valeurGlobale']
+            objet = concession['objet']
+
+            return db.add_concession(id_source,id_file,n,id,autorite_concedante_id,concessionnaires,date_debut_execution,valeur_globale,objet,max_date, concession)
 
     def _add_column_type(self, df: pd.DataFrame, default_type_name:str = None) -> None :
         """
@@ -610,7 +654,7 @@ class SourceProcess:
         dataframe. L'ensemble des dataframes est stocké dans une liste. 
         """
         logging.info("--- ÉTAPE CONVERT")
-        logging.info(f"Début de convert: mise au format DataFrame de {self.source}")
+        logging.info(f"Début de convert: mise au format DataFrame de {self.source} pour {len(self.dico_2022_marche)} marchés et {len(self.dico_2022_concession)} concessions")
 
         #Liste qui conservera les dataframes. 
         li = []
@@ -776,7 +820,7 @@ class SourceProcess:
             return sorted(concessionnaires, key=lambda x: x['concessionnaire']['id']) if isinstance(concessionnaires, list) else concessionnaires
 
         logging.info("--- ÉTAPE FIX")
-        logging.info(f"Début de fix: Ajout source et suppression des doublons de {self.source}")
+        logging.info(f"Début de fix: Ajout source et suppression des doublons (intégraux) de {self.source} pour {len(self.df)} marchés/concession.")
         # Ajout de source
         #self.df = self.df.assign(source=self.source)
 
@@ -832,18 +876,27 @@ class SourceProcess:
         df_str = self.df.astype(str)
         
         # For statistics purpose only
-        excluded_columns = ['report__file','report__error','report__position']
+        excluded_columns = ['report__file','report__nbtotal','report__error','report__position','db_id','tmp__max_date','tmp__annee_mois','backup__montant']
         df_marche = df_str[df_str['_type'].str.contains("Marché")]
         if len(df_marche[df_marche.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])>0:
+            nb = len(df_marche[df_marche.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])
             self.report.add('Fix/Marchés',self.report.D_DUPLICATE,'Doublon stricts dans la source',df_marche[df_marche.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])
             self.report.nb_duplicated_marches += len(df_marche[df_marche.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])
-    
+            logging.info(f"{nb} marchés en doublon")
+
         df_concession = df_str[~df_str['_type'].str.contains("Marché")]
         if len(df_concession[df_concession.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])>0:
+            nb = len(df_concession[df_concession.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])
             self.report.add('Fix/Concessions',self.report.D_DUPLICATE,'Doublon stricts dans la source',df_concession[df_concession.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])
             self.report.nb_duplicated_concessions += len(df_concession[df_concession.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])
+            logging.info(f"{nb} concessions en doublon")
 
-        index_to_keep = df_str.drop_duplicates(subset=df_marche.columns.difference(['report__file','report__nbtotal','report__error','report__position','tmp__annee_mois']), keep="last").index.tolist()
+        df_sorted = df_str.sort_values('tmp__max_date')
+        index_to_keep = df_sorted.drop_duplicates(
+            subset=df_marche.columns.difference(excluded_columns),
+            keep='last'
+            ).index.tolist()
+        #index_to_keep = df_str.drop_duplicates(subset=df_marche.columns.difference(['report__file','report__nbtotal','report__error','report__position','tmp__annee_mois']), keep="last").index.tolist()
         self.df = self.df.iloc[index_to_keep]
         self.df = self.df.reset_index(drop=True)
 

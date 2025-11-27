@@ -1,3 +1,4 @@
+from database.DbDecp import DbDecp
 import pandas as pd
 import numpy as np
 import ast
@@ -38,6 +39,12 @@ class GlobalProcess:
     date_pattern = r'\d{4}-\d{2}-\d{2}'
     date_pattern_inv = r'\d{2}.\d{2}.\d{4}'
 
+    #Critères de dédoublonnage
+    feature_doublons_marche = ["id", "acheteur", "titulaires", "dateNotification", "montant"] 
+    feature_doublons_concession = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale"]
+    feature_doublons_marche_order = ["id", "acheteur", "titulaires", "dateNotification", "montant",'tmp__max_date'] 
+    feature_doublons_concession_order = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale",'tmp__max_date']
+
     def __init__(self,data_format="2022", report:Report=None):
         """L'étape __init__ crée les variables associées à la classe GlobalProcess : le DataFrame et
         la liste des dataframes des différentes sources."""
@@ -53,9 +60,10 @@ class GlobalProcess:
         logging.info("--- ÉTAPE MERGE ALL")
         logging.info("Début de l'étape Merge des Dataframes")
         if len(self.dataframes)>0:
-            self.df = pd.concat(self.dataframes, ignore_index=True)
+            self.df = pd.concat(self.dataframes, ignore_index=True, copy=True)
             self.df = self.df.reset_index(drop=True)
             logging.info("Merge OK")
+            del self.dataframes
         else:
             logging.info("Aucune données à traiter")
         logging.info(f"Nombre de marchés dans le DataFrame fusionné après merge : {len(self.df)}")
@@ -178,146 +186,43 @@ class GlobalProcess:
         # Séparation des lignes selon la colonne "modifications"
         logging.info("Début de l'étape Suppression des doublons")
 
-        if 'source' in self.df.columns:
-            self.df.sort_values(by="source", inplace=True) 
-        else : 
-            self.df['source'] = pd.NA
-        self.df = self.dedoublonnage(self.df,True)
+        #if 'source' in self.df.columns:
+        #    self.df.sort_values(by="source", inplace=True) 
+        #else : 
+        #    self.df['source'] = pd.NA
+        self.dedoublonnage(self.df,True)
         logging.info("Suppression OK")
         logging.info(f"Nombre de marchés dans Df après suppression des doublons sur les nouvelles données : {len(self.df)}")
 
-    def dedoublonnage(self,df: pd.DataFrame,add_report=True) -> pd.DataFrame:
+    def dedoublonnage(self,df: pd.DataFrame, add_report=True) -> pd.DataFrame:
         nb_duplicated_marches = 0
         nb_duplicated_concessions = 0
 
-        #Critères de dédoublonnage
-        feature_doublons_marche = ["id", "acheteur", "titulaires", "dateNotification", "montant"] 
-        feature_doublons_marche_order = ["id", "acheteur", "titulaires", "dateNotification", "montant",'tmp__dateModification','tmp__idModification'] 
-        feature_doublons_concession = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale"]
-        feature_doublons_concession_order = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale",'tmp__dateModification','tmp__idModification']
-
-        #Séparation des marches et des concessions, suppression des doublons
-        df_marche = df[df['_type'].str.contains("Marché")]
-        if not df_marche.empty:
-            df_marche = df_marche.astype(str)
-            df_marche = df_marche.sort_values(
-                feature_doublons_marche_order,
-                ascending=[True, True, True, True, True, True, True]
-            )
-            index_to_keep = df_marche.drop_duplicates(subset=feature_doublons_marche, keep='last').index.tolist()
-        else:
-            index_to_keep = []
-            
-        # Mémoriser la nombre de marchés en double
-        nb_duplicated_marches = len(df_marche)-len(index_to_keep)
-        if add_report:
-            self.report.nb_duplicated_marches += nb_duplicated_marches
-
-        df_concession = df[~df['_type'].str.contains("Marché")]
-        if not df_concession.empty:
-            df_concession = df_concession.astype(str)
-            df_concession = df_concession.sort_values(
-                feature_doublons_concession_order,
-                ascending=[True, True, True, True, True, True, True]
-            )
-            index_to_keep += df_concession.drop_duplicates(subset=feature_doublons_concession, keep='last').index.tolist()
-
-        # Mémoriser la nombre de concessions après dédoublonnage
-        nb_duplicated_concessions = len(df_concession) - ( len(index_to_keep) - (len(df_marche) - nb_duplicated_marches) )
-        if add_report:
-            self.report.nb_duplicated_concessions += nb_duplicated_concessions
-
-        if add_report:
-            # Ajouter au reporting les doublons supprimés
-            self.report.add('FixAll/Marchés',self.report.D_DUPLICATE,'Marchés en doublon',df_marche[df_marche.duplicated(feature_doublons_marche)])
-            self.report.add('FixAll/Concessions',self.report.D_DUPLICATE,'Concessions en doublon',df_concession[df_concession.duplicated(feature_doublons_concession)])
-
-        df = df.loc[index_to_keep, :]
-        df = df.reset_index(drop=True)
+        df.sort_values(
+            by=['tmp__max_date'],
+            ascending=[False],  # max_date décroissant -> conserve la plus récente
+            inplace=True,
+            kind='mergesort'  # tri stable
+        )
         
-        logging.info(f"Dedoublonnage {nb_duplicated_marches + nb_duplicated_concessions} lignes supprimées")
-        return df
+        mask = df['_type'].eq('Marché')
+        to_drop = df.loc[mask, self.feature_doublons_marche].astype(str).duplicated(keep='last')
+        nb_duplicated_marches = df.loc[mask, self.feature_doublons_marche].astype(str).duplicated(keep='last').sum()
+        df.drop(index=to_drop[to_drop].index, inplace=True)
+        df.reset_index(drop=True, inplace=True)
 
-    def dedoublonnage_OLD(self,df: pd.DataFrame,add_report=True) -> pd.DataFrame:
-        nb_duplicated_marches = 0
-        nb_duplicated_concessions = 0
+        logging.info(f"Nombre de marché en doublon {nb_duplicated_marches}")
 
-        # On complete la colonne backup montant pour les marches ajoutés depuisl'export qui ne sont pas passé par fix
-        if "montant" in self.df.columns and 'backup__montant' in self.df.columns \
-            and df.loc[df['_type'] == 'Marché', 'backup__montant'].isna().any():
-            df.loc[(df['backup__montant'].isna()) & (df['_type'] == 'Marché'), 'backup__montant'] = df['montant']
-            df.loc[df['_type'] == 'Marché', 'montant'] = df.loc[df['_type'] == 'Marché', 'montant'].apply(lambda x: int(x) if pd.notna(x) else np.nan)
+        mask = df['_type'].ne('Marché')
+        to_drop = df.loc[mask, self.feature_doublons_concession].astype(str).duplicated(keep='last')
+        nb_duplicated_concessions = df.loc[mask, self.feature_doublons_concession].astype(str).duplicated(keep='last').sum()
+        df.drop(index=to_drop[to_drop].index, inplace=True)
+        df.reset_index(drop=True, inplace=True)
 
-        if "modifications" in df.columns: # Règles de dédoublonnages diffèrentes. On part du principe qu'en cas 
-            # de modifications, la colonne "modifications" est créée ou modifiée
-            df_modif = df[df.modifications.apply(lambda x: 0 if x == '' or
-                                                        str(x) in ['nan', 'None'] else len(x))>0]     #lignes avec modifs     
-            df_nomodif = df[df.modifications.apply(lambda x: 0 if x == '' or
-                                                        str(x) in ['nan', 'None'] else len(x))==0]  #lignes sans aucune modif
-        else:
-            df_modif = pd.DataFrame() 
-            df_nomodif = df
+        logging.info(f"Nombre de concession en doublon {nb_duplicated_concessions}")
 
-        #Critères de dédoublonnage
-        feature_doublons_marche = ["id", "acheteur", "titulaires", "dateNotification", "montant"] 
-        feature_doublons_concession = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale"]
 
-        #Séparation des marches et des concessions, suppression des doublons
-        df_nomodif_str = df_nomodif.astype(str)
-        df_nomodif_marche = df_nomodif_str[df_nomodif_str['_type'].str.contains("Marché")]
-        index_to_keep_nomodif = df_nomodif_marche.drop_duplicates(subset=feature_doublons_marche).index.tolist()
-
-        # Mémoriser la nombre de marchés en double
-        nb_duplicated_marches_no_modif = len(df_nomodif_marche)-len(index_to_keep_nomodif)
-        if add_report:
-            self.report.nb_duplicated_marches += nb_duplicated_marches_no_modif
-
-        df_nomodif_concession = df_nomodif_str[~df_nomodif_str['_type'].str.contains("Marché")]
-        index_to_keep_nomodif += df_nomodif_concession.drop_duplicates(subset=feature_doublons_concession).index.tolist()
-
-        # Mémoriser la nombre de concessions après dédoublonnage
-        nb_duplicated_concessions_no_modif = len(df_nomodif_concession) - ( len(index_to_keep_nomodif) - (len(df_nomodif_marche) - nb_duplicated_marches_no_modif) )
-        if add_report:
-            self.report.nb_duplicated_concessions += nb_duplicated_concessions_no_modif
-
-        if add_report:
-            # Ajouter au reporting les doublons supprimés
-            self.report.add('FixAll/Marchés',self.report.D_DUPLICATE,'Marchés en doublon',df_nomodif_marche[df_nomodif_marche.duplicated(feature_doublons_marche)])
-            self.report.add('FixAll/Concessions',self.report.D_DUPLICATE,'Concessions en doublon',df_nomodif_concession[df_nomodif_concession.duplicated(feature_doublons_concession)])
-
-        #Séparation des marches et des concessions, tri selon la date et suppression ses doublons
-        if not df_modif.empty:
-            df_modif_str  = df_modif.astype(str)     #en str pour réaliser le dédoublonnage
-            df_modif_str.sort_values(by=["datePublicationDonnees"], inplace=True)   #Tri
-            
-            df_modif_marche = df_modif_str[df_modif_str['_type'].str.contains("Marché")]
-            index_to_keep_modif = df_modif_marche.drop_duplicates(subset=feature_doublons_marche,keep='last').index.tolist()  #'last', permet de garder la ligne avec la date est la plus récente
-
-            # Mémoriser la nombre de marchés après dédoublonnage
-            nb_duplicated_marches = len(df_modif_marche)-len(index_to_keep_modif)
-            if add_report:
-                self.report.nb_duplicated_marches += nb_duplicated_marches
-
-            df_modif_concession = df_modif_str[~df_modif_str['_type'].str.contains("Marché")]
-            index_to_keep_modif += df_modif_concession.drop_duplicates(subset=feature_doublons_concession,keep='last').index.tolist()  #on ne garde que que les indexs pour récupérer les lignes qui sont dans df_modif (dont le type est dict)
-
-            # Mémoriser la nombre de concessions après dédoublonnage
-            nb_duplicated_concessions = len(df_modif_concession) - ( len(index_to_keep_modif) - ( len(df_modif_marche) - nb_duplicated_marches ) )
-            if add_report:
-                self.report.nb_duplicated_concessions += nb_duplicated_concessions
-
-            if add_report:
-                # Ajouter au reporting les doublons supprimés
-                self.report.add('FixAll/Merchés',self.report.D_DUPLICATE,'Marchés en doublon',df_nomodif_marche[df_nomodif_marche.duplicated(feature_doublons_marche)])
-                self.report.add('FixAll/Concessions',self.report.D_DUPLICATE,'Concessions en doublon',df_nomodif_concession[df_nomodif_concession.duplicated(feature_doublons_concession)])
-
-            df = pd.concat([df_nomodif.loc[index_to_keep_nomodif, :], df_modif.loc[index_to_keep_modif, :]])
-
-        else:
-            df = df_nomodif.loc[index_to_keep_nomodif, :]
-        df = df.reset_index(drop=True)
-        
-        logging.info(f"Dedoublonnage {nb_duplicated_marches_no_modif + nb_duplicated_concessions_no_modif + nb_duplicated_marches + nb_duplicated_concessions} lignes supprimées")
+        logging.info(f"Nombre de marchés / concesdion après dédoublonnage: {len(df)}")
         return df
 
     def extract_publication_dates(self, modifications_node) -> list:
@@ -379,7 +284,8 @@ class GlobalProcess:
                 df['datePublicationDonnees'] = df['datePublicationDonnees'].astype(str) 
 
         if not df_marches.empty:
-            df_marches['titulaires'] = df_marches['titulaires'].apply(_tri_titulaires)
+            if 'titulaires' in df_marches.columns:
+                df_marches['titulaires'] = df_marches['titulaires'].apply(_tri_titulaires)
             if process_dates:
                 _prepare_group_by(df_marches) # df_marches)
             if "tmp__dateModification" not in df_marches.columns:
@@ -409,7 +315,7 @@ class GlobalProcess:
         if os.path.exists(file_path):
             dico_file = self.file_load(file_path)
             if dico_file=={}:
-                self.file_dump(file_path,df_new.to_dict(orient='records'))
+                self.file_dump(file_path,{'marches': df_new.to_dict(orient='records')})
             else:
                 dico_global = dico_file['marches']
                 #On transforme le dictionnaires en dataframes pour dédoublonner les nouvelles données
@@ -439,7 +345,7 @@ class GlobalProcess:
                 self.file_dump(file_path,dico_final)                
         else:
             # Le fichier n'existait pas on ajoute le nouveau dictionnaire dedans
-            self.file_dump(file_path,df_new.to_dict(orient='records'))
+            self.file_dump(file_path,{'marches': df_new.to_dict(orient='records')})
     
     def _make_copy_for_data_gouv(self,suffix):
         file_path = f"results/decp-{suffix}.json"
@@ -559,13 +465,32 @@ class GlobalProcess:
         #Création du fichier daily
         path_result_daily = "results/decp-daily.json"
 
+        self.update_data(dico)
+
         # Sauvegarde des données journalières
         self.file_dump(path_result_daily,dico)
 
         logging.info("Exportation JSON OK")
         return suffixes
     
-        
+    def update_data(self, dico):
+        logging.info("Update data in database")
+        db = DbDecp()
+        if 'marches' in dico:
+            for marche in dico['marches']:
+                if not marche['db_id']==0:
+                    db.update_marche(marche['db_id'],marche)
+        if 'contrat-concession' in dico:
+            for concession in dico['contrat-concession']:
+                if not concession['db_id']==0:
+                    db.update_data(concession['db_id'],concession)
+        db.close()
+    
+    def generate_global(self):
+        db = DbDecp()
+        db.extract_json_to_file("results/decp-global.json")
+        db.close()
+
     def file_load(self,path:str) ->dict:
         """
         La fonction file_load essaie de lire un fichier JSON et de le convertir en dictionnaire.

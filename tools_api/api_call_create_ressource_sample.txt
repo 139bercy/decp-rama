@@ -1,0 +1,36 @@
+import requests
+import hashlib
+import json
+
+# Script de test pour créer une nouvelle resource
+
+api_host = "https://www.data.gouv.fr/api/1" # Poinr d'entrée de l'API data.gouv
+dataset_id = "XXXXXXXXXXXXXXXXXXXXXXXX"     # Le dataset où uploader la ressource (l'id de la page où il faut ajouterle fichier)
+resource_id = ""                            # Id de la ressource (du fichier) à uploader
+data_gouv_api_key = ""                      # Clé pour l'API data.gouv du fournisseur de données
+nom_fichier = "decp-2024.json"              # Nom du fichier à afficher sur data.gouv
+desc_fichier = "Fichier cumulatif des données essentielles de la commande publique pour l'année 2024"
+
+# Construction de l'url du point d'entrée
+url = f"{api_host}/datasets/{dataset_id}/resources/"
+
+# Ajout de la clé dans le header de la requête à l'API data.gouv
+headers = {
+    "X-API-KEY": data_gouv_api_key
+}
+
+data = {
+    "filetype": "remote",
+    "format": "json",
+    "title": nom_fichier,
+    "description": desc_fichier,
+    "type": "main",
+    "mime": "application/json",
+    "url": "https://www.data.gouv.fr/"
+}
+
+# Envoi de la requête à l'API (POST) avec les informations sur la clé et le méta données du futur fichier à uploader
+response = requests.post(url, headers=headers, json=data)
+
+print(f"Statut de la requête : {response.status_code}")
+print("Réponse : ", response.json())                    # Json contenant la nouvelle ressource_id a utiliser dans le deuxième script
