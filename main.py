@@ -1,3 +1,4 @@
+from database.DbDecp import DbDecp
 from general_process.ProcessFactory import ProcessFactory
 from general_process.GlobalProcess import GlobalProcess
 from reporting.Report import Report
@@ -36,7 +37,7 @@ def main(report,data_format:str = "2022"):
     gp.merge_all() # on a l'équivalent de return DataProcessor().decorator("MonParamètre")(self.process_data)()
     gp.fix_all()
     #gp.drop_by_date_2024()
-    gp.drop_duplicate()
+    #gp.drop_duplicate()
     gp.report.fix_statistics('merged')
     suffixes = gp.export(args.local)
     gp.save_report()
@@ -46,14 +47,14 @@ def main(report,data_format:str = "2022"):
         gp.upload_on_datagouv(suffixes)
 
 
-def main_augmente(data_format:str = '2022'):
+def main_augmente(session_id:str,data_format:str = '2022'):
     
     logger.info("Téléchargement des fichiers de données")
     augmente.data_management.main()
     logger.info("Fichiers mis à jour dans le dossier data")
 
     logger.info(f"Application règles métier format {data_format}")
-    augmente.nettoyage.main(data_format)
+    augmente.nettoyage.main(session_id,data_format)
 
     # Partie désactivé logger.info("Enrichissement des données")
     # enrichissement2.main()
@@ -103,13 +104,21 @@ if __name__ == "__main__":
         logging.info( "---------------------------------------------------------------")
         logging.info(f"                Traitement pour le format {data_format}")
         logging.info( "---------------------------------------------------------------")
-        
+
+        db = DbDecp()
+        session_id = db.add_session("decp-rama-augmente")
+        db.close()
         report = Report('decp-rama-augmente',False)
         try:
             if not args.augmente:
                 main(report,data_format)
             if not args.rama:
-                main_augmente(data_format)
+                main_augmente(session_id,data_format)
+
+            db = DbDecp()
+            db.end_session(session_id,"OK")
+            db.close()
+        
             step.reset()
             report.db_end_session('OK')
         except Exception as err:
@@ -120,11 +129,11 @@ if __name__ == "__main__":
             er = None
         finally:
             if not er is None:
+                logging.error(f"Une erreur est survenue lors du traitement pour le format {data_format} - {er}")
+                logging.error(tb)
                 report.save_report()
                 report.save_statistics()
                 report.db_end_session('KO ')
-                logging.error(f"Une erreur est survenue lors du traitement pour le format {data_format} - {er}")
-                logging.error(tb)
 
         logging.info(f"Traitement pour le format {data_format} terminé")
     

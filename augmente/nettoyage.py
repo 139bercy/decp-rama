@@ -11,6 +11,7 @@ import augmente.utils
 import time
 from datetime import datetime
 import augmente.convert_json_to_pandas
+from database.DbDecp import DbDecp
 from utils.StepMngmt import StepMngmt
 from utils.Step import Step
 
@@ -30,8 +31,6 @@ logger = logging.getLogger("main.nettoyage2")
 logger.handlers.clear()
 logger.setLevel(logging.INFO)
 pd.options.mode.chained_assignment = None  # default='warn'
-
-report = Report('augmente')
 
 with open(os.path.join("confs", "var_glob.json")) as f:
     conf_glob = json.load(f)
@@ -57,8 +56,11 @@ path_to_data = conf_data["path_to_data"]
 decp_file_name = conf_data["decp_file_name"]
 #path_to_data = conf_data["path_to_data"]  # Réécris
 
+# Initialisation du système de reporting
+report=Report('augmente',0)
 
-def main(data_format:str = '2022'):
+def main(session_id:str,data_format:str = '2022'):
+    report.session = session_id
     step = StepMngmt()
     if not step.bypass(StepMngmt.SOURCE_ALL,Step.AUGMENTE_CLEAN):
         logger.info("Chargement des données")
@@ -82,7 +84,7 @@ def main(data_format:str = '2022'):
         logger.info("Nettoyage des données")
         manage_data_quality(df,data_format)
 
-        #Étant donné qu'on ne fait pas l'enrichissement pour l'instant le programme s'arrête ici et on upload les 4 fichiers.
+        #Étant donné qu'on ne fait pas l'enrichissement pour l'instant le programme s'arrête
 
         step.snapshot_dataframe(StepMngmt.SOURCE_ALL,Step.AUGMENTE_CLEAN,df)
 
@@ -279,7 +281,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_concession['objet'] = df_concession['objet'].str.replace('\x85', '\\r\\n', regex=False)
         convert_all_list_to_str(df_concession,False,False)
         convert_boolean(df_concession)
-        df_concession.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-{data_format}.csv'), index=False, header=True)
+        df_concession.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-{data_format}.csv'), index=False, header=True, columns=conf_glob[f"df_concession_{data_format}"])
     
     if not df_marche.empty:
         if 'source' in df_marche.columns:
@@ -293,7 +295,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_marche['objet'] = df_marche['objet'].str.replace('\x85', '\\r\\n', regex=False)
         convert_all_list_to_str(df_marche,False,True)
         convert_boolean(df_marche)
-        df_marche.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-{data_format}.csv'), index=False, header=True)
+        df_marche.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-{data_format}.csv'), index=False, header=True,columns=conf_glob[f"df_marche_{data_format}"])
     
     if not df_marche_badlines.empty:
         if 'source' in df_marche_badlines.columns:
@@ -323,10 +325,38 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
         convert_boolean(df_concession_badlines)
         df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-exclu-{data_format}.csv'), index=False,  header=True)
 
-    # Concaténation des dataframes pour l'enrigissement (re-séparation après)
+    # Mise à jour en base des données retenues
+    dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
+                        for m in df_marche.to_dict(orient='records')]}
+    update_database(dico)
+
+    # Concaténation des dataframes pour l'enrichissement (re-séparation après)
     df = pd.concat([df_concession, df_marche])
 
     return df
+
+def update_database(dico):
+    logging.info("Update data_augmente in database")
+    db = DbDecp()
+    if 'marches' in dico:
+        i=0
+        pairs_marches=[]
+        for marche in dico['marches']:
+            if not marche['db_id']==0:
+                if marche["_type"]=='Marché':
+                    #db.update_marche_augmente(marche['db_id'],marche)
+                    pairs_marches.append([int(marche['db_id']),marche])
+                    i+=1
+                    if i % 10000 == 0:
+                        logging.info("Updating 10000 records")
+                        db.bulk_update_marche_augmente(pairs_marches)
+                        pairs_marches=[]
+                else:
+                    db.update_concession_augmente(marche['db_id'],marche)
+        if not pairs_marches==[]:
+            db.bulk_update_marche_augmente(pairs_marches)
+    logging.info("Data updated in database")
+    db.close()
 
 def delete_columns(df:pd.DataFrame,set:str):
     columns_to_delete = conf_glob["purge_df_"+set]
@@ -434,7 +464,8 @@ def order_columns_marches(df: pd.DataFrame):
     "backup__sousTraitanceDeclaree",
     "backup__dureeMois",
     "backup__dureeMoisActeSousTraitance",
-    "backup__variationPrixActeSousTraitance"
+    "backup__variationPrixActeSousTraitance",
+    "db_id"
 ]
     #On garde que les colonnes présentes dans le dataframe
     colonnes_presentes = [col for col in liste_col_ordonnes if col in df.columns]
@@ -477,7 +508,8 @@ def order_columns_concessions(df: pd.DataFrame):
     "donneesExecution.depensesInvestissement",
     "donneesExecution.intituleTarif",
     "donneesExecution.tarif",
-    "backup__dureeMois"
+    "backup__dureeMois",
+    "bd_id"
     ]
 
     #On garde que les colonnes présentes dans le dataframe
@@ -501,10 +533,12 @@ def stabilize_columns(df:pd.DataFrame,set:str,add_error_columnns:bool=False):
     for column in columns_reference:
         if column not in df.columns:
             df[column] = pd.NA
+
     # Delete columns in df which are not in columns_reference
     for column in df.columns:
-        if column not in columns_reference and not (add_error_columnns is True and column == 'Erreurs'):
+        if column not in columns_reference and not (add_error_columnns is True and column == 'Erreurs') and not column == 'db_id':
             df.drop(columns=[column], inplace=True)
+            
     return df[columns_reference]
 
 @compute_execution_time

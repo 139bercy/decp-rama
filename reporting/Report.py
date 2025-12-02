@@ -31,7 +31,7 @@ class Report:
     exclusion_tmp = {}
     
     # Constructor
-    def __init__(self, application:str,use_db:bool=False):
+    def __init__(self, application:str, session_id:int,use_db:bool=False):
         self.application = application
         self.init()
         self_path = os.path.basename(os. getcwd()).lower()
@@ -40,8 +40,7 @@ class Report:
         else:
             self.db = None
         if self.db is not None:
-            self.session = self.db.add_session(self_path)
-
+            self.session = session_id
     # Init statistics
     def init(self):
         self.nb_in_bad_marches = 0;

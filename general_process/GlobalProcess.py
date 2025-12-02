@@ -222,7 +222,7 @@ class GlobalProcess:
         logging.info(f"Nombre de concession en doublon {nb_duplicated_concessions}")
 
 
-        logging.info(f"Nombre de marchés / concesdion après dédoublonnage: {len(df)}")
+        logging.info(f"Nombre de marchés / concession après dédoublonnage: {len(df)}")
         return df
 
     def extract_publication_dates(self, modifications_node) -> list:
@@ -315,7 +315,11 @@ class GlobalProcess:
         if os.path.exists(file_path):
             dico_file = self.file_load(file_path)
             if dico_file=={}:
-                self.file_dump(file_path,{'marches': df_new.to_dict(orient='records')})
+                df_str = df_new.astype(str)
+                df_new = self.dedoublonnage(df_str)
+                dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
+                    for m in df_new.to_dict(orient='records')]}
+                self.file_dump(file_path,dico)
             else:
                 dico_global = dico_file['marches']
                 #On transforme le dictionnaires en dataframes pour dédoublonner les nouvelles données
@@ -340,12 +344,17 @@ class GlobalProcess:
 
                 df_global = self.dedoublonnage(df_global)
                 
-                dico_final = {'marches': df_global.to_dict(orient='records')}
-
+                dico_final = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
+                    for m in df_global.to_dict(orient='records')]}
+                
                 self.file_dump(file_path,dico_final)                
         else:
             # Le fichier n'existait pas on ajoute le nouveau dictionnaire dedans
-            self.file_dump(file_path,{'marches': df_new.to_dict(orient='records')})
+            df_str = df_new.astype(str)
+            df_new = self.dedoublonnage(df_str)
+            dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
+                for m in df_new.to_dict(orient='records')]}
+            self.file_dump(file_path,dico)
     
     def _make_copy_for_data_gouv(self,suffix):
         file_path = f"results/decp-{suffix}.json"
@@ -359,9 +368,9 @@ class GlobalProcess:
                         if key in el:
                             el[f'backup__{key}'] = el[key]
 
-        dico = self._dico_purge(dico)
-        with open(file_path_copy, 'w', encoding="utf-8") as f:
-            json.dump(dico, f, indent=2, ensure_ascii=False)
+            dico = self._dico_purge(dico)
+            with open(file_path_copy, 'w', encoding="utf-8") as f:
+                json.dump(dico, f, indent=2, ensure_ascii=False)
 
     def upload_on_datagouv(self, suffixes):
         logging.info(f"Uploading file ...")
@@ -474,16 +483,26 @@ class GlobalProcess:
         return suffixes
     
     def update_data(self, dico):
-        logging.info("Update data in database")
+        logging.info("Update data_out in database")
         db = DbDecp()
         if 'marches' in dico:
+            i=0
+            pairs_marches=[]
             for marche in dico['marches']:
                 if not marche['db_id']==0:
-                    db.update_marche(marche['db_id'],marche)
-        if 'contrat-concession' in dico:
-            for concession in dico['contrat-concession']:
-                if not concession['db_id']==0:
-                    db.update_data(concession['db_id'],concession)
+                    #db.update_marche(marche['db_id'],marche)
+                    if marche["_type"]=='Marché':
+                        pairs_marches.append([int(marche['db_id']),marche])
+                        i+=1
+                        if i % 10000 == 0:
+                            logging.info("Updating 10000 records")
+                            db.bulk_update_with_temp_table(pairs_marches)
+                            pairs_marches = []
+                    else:
+                        db.update_concession(marche['db_id'],marche)
+            if not pairs_marches == []:
+                db.bulk_update_marche_augmente(pairs_marches)
+        logging.info("Data updated in database")
         db.close()
     
     def generate_global(self):
