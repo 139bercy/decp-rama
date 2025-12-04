@@ -10,8 +10,6 @@ logger = logging.getLogger(__name__)
 locale.setlocale(locale.LC_ALL, 'fr_FR.UTF-8')
 
 class Db:
-    ERROR_MESSAGE_SESSION_BEGIN = "Une erreur s'est produite lors de la fermeture de la session"
-    ERROR_MESSAGE_SESSION_END = "Une erreur s'est produite lors de la fermeture de la session"
     ERROR_MESSAGE_STEP = "Une erreur s'est produite lors de la recherche ou de l'ajout de l'étape :"
     ERROR_MESSAGE_SOURCE = "Une erreur s'est produite lors de la recherche ou de l'ajout de la source"
     ERROR_MESSAGE_FILE = "Une erreur s'est produite lors de la recherche ou de l'ajout du fichier :"

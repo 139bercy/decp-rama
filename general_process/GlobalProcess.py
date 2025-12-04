@@ -435,6 +435,15 @@ class GlobalProcess:
         ## Exportation des données dans des fichiers mensuels 
         self._nan_correction_dico(self.df)
 
+        dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
+                            for m in self.df.to_dict(orient='records')]}
+        
+        self.update_data(dico)
+
+        # Sauvegarde des données journalières
+        path_result_daily = "results/decp-daily.json"
+        self.file_dump(path_result_daily,dico)
+
         current_year_month  = f"{datetime.now().year}-{datetime.now().month:02d}"
         suffixes = []
         years = []
@@ -467,18 +476,6 @@ class GlobalProcess:
             logging.info(f"Ajout de {total_marches} marchés et {total_concessions} concessions au fichier {output_file_year} pour l'annee {year}")
             self._merge_in_file(output_file_year,df_new)
 
-
-        dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
-                            for m in self.df.to_dict(orient='records')]}
-        
-        #Création du fichier daily
-        path_result_daily = "results/decp-daily.json"
-
-        self.update_data(dico)
-
-        # Sauvegarde des données journalières
-        self.file_dump(path_result_daily,dico)
-
         logging.info("Exportation JSON OK")
         return suffixes
     
@@ -496,12 +493,12 @@ class GlobalProcess:
                         i+=1
                         if i % 10000 == 0:
                             logging.info("Updating 10000 records")
-                            db.bulk_update_with_temp_table(pairs_marches)
+                            db.bulk_update_marche(pairs_marches)
                             pairs_marches = []
                     else:
                         db.update_concession(marche['db_id'],marche)
             if not pairs_marches == []:
-                db.bulk_update_marche_augmente(pairs_marches)
+                db.bulk_update_marche(pairs_marches)
         logging.info("Data updated in database")
         db.close()
     

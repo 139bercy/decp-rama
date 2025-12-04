@@ -75,7 +75,7 @@ class SourceProcess:
         self.start_date = datetime.now().replace(day=1)
         self.end_date = datetime.now()
         # Regenerate all data for a given year ifnot None
-        self.rebuild_year = 2024 # None
+        self.rebuild_year = 2025 # None
         if self.rebuild_year:
             self.start_date = pd.to_datetime(f"{self.rebuild_year}-01-01")
             self.end_date = pd.to_datetime(f"{self.rebuild_year}-12-31")
@@ -503,7 +503,7 @@ class SourceProcess:
                     else: 
                         # Get max date and year_month prefix for category
                         max_date = self._get_max_date(dico['marche'][n])
-                        dico['marche'][n]['db_id'] = self._db_add_marche(db,id_source,id_file,file_date,n,dico['marche'][n],max_date)
+                        dico['marche'][n]['db_id'] = self._db_add_marche(db,id_source,id_file,file_date_str,n,dico['marche'][n],max_date)
                         dico['marche'][n]['tmp__max_date'] = max_date
                         self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source if local_source is None else local_source,file_name,year_month,n,error_message,error_path))
                         nb_good_marches+=1
@@ -533,7 +533,7 @@ class SourceProcess:
                     else: 
                         # Get max date and year_month category
                         max_date = self._get_max_date(dico['contrat-concession'][m])
-                        dico['contrat-concession'][m]['db_id'] = self._db_add_concession(db,id_source,id_file,file_date,m,dico['contrat-concession'][m],max_date)
+                        dico['contrat-concession'][m]['db_id'] = self._db_add_concession(db,id_source,id_file,file_date_str,m,dico['contrat-concession'][m],max_date)
                         dico['contrat-concession'][m]['tmp__max_date'] = max_date
                         self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source if local_source is None else local_source,file_name,year_month,m,error_message,error_path))
                         nb_good_concessions+=1

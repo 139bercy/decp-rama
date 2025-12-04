@@ -279,9 +279,11 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_concession['objet'] = df_concession['objet'].str.replace('\n', '\\n', regex=False)
             df_concession['objet'] = df_concession['objet'].str.replace('\r', '\\r', regex=False)
             df_concession['objet'] = df_concession['objet'].str.replace('\x85', '\\r\\n', regex=False)
-        convert_all_list_to_str(df_concession,False,False)
+        convert_all_list_to_str(df_concession,True,False)
         convert_boolean(df_concession)
-        df_concession.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-{data_format}.csv'), index=False, header=True, columns=conf_glob[f"df_concession_{data_format}"])
+        cols = conf_glob[f"df_concession_{data_format}"]
+        cols.remove("Erreurs")
+        df_concession.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-{data_format}.csv'), index=False, header=True, columns=cols)
     
     if not df_marche.empty:
         if 'source' in df_marche.columns:
@@ -293,9 +295,11 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_marche['objet'] = df_marche['objet'].str.replace('\n', '\\n', regex=False)
             df_marche['objet'] = df_marche['objet'].str.replace('\r', '\\r', regex=False)
             df_marche['objet'] = df_marche['objet'].str.replace('\x85', '\\r\\n', regex=False)
-        convert_all_list_to_str(df_marche,False,True)
+        convert_all_list_to_str(df_marche,True,True)
         convert_boolean(df_marche)
-        df_marche.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-{data_format}.csv'), index=False, header=True,columns=conf_glob[f"df_marche_{data_format}"])
+        cols = conf_glob[f"df_marche_{data_format}"]
+        cols.remove("Erreurs")
+        df_marche.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-{data_format}.csv'), index=False, header=True, columns=cols)
     
     if not df_marche_badlines.empty:
         if 'source' in df_marche_badlines.columns:
@@ -328,7 +332,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
     # Mise à jour en base des données retenues
     dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
                         for m in df_marche.to_dict(orient='records')]}
-    update_database(dico)
+    #update_database(dico)
 
     # Concaténation des dataframes pour l'enrichissement (re-séparation après)
     df = pd.concat([df_concession, df_marche])
@@ -1627,9 +1631,12 @@ def mark_bad_value_field(df: pd.DataFrame,field_name:str,field_name_2:str,patter
 
 def _evaluate_field_value(value,pattern:str):
     if isinstance(value,list):
-        for num, value in enumerate(value, start=0):
-            if not re.match(pattern, value, re.IGNORECASE) and not re.match(r'^(?:MQ|CDL|INX)',value, re.IGNORECASE):
-                value = "INX "+value
+        new_values = []
+        for num, val in enumerate(value, start=0):
+            if not re.match(pattern, val, re.IGNORECASE) and not re.match(r'^(?:MQ|CDL|INX)',val, re.IGNORECASE):
+                val = "INX "+val
+            new_values.append(val)
+        value = new_values
     else:
         if not re.match(pattern, value, re.IGNORECASE) and not re.match(r'^(?:MQ|CDL|INX)',value, re.IGNORECASE):
             value = "INX "+value

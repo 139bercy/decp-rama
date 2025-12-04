@@ -4,12 +4,13 @@ import logging
 import os
 import psycopg2
 import pandas as pd
+from datetime import date
 from dotenv import load_dotenv
 from psycopg2 import sql
 from psycopg2.extras import execute_values, Json
 from os import environ as env
 
-from utils import UtilJson
+from utils.UtilsJson import UtilsJson
 
 logging.getLogger('db').propagate = False
 logger = logging.getLogger(__name__)
@@ -182,7 +183,7 @@ class DbDecp:
                 found_max_date = result[1]
                 # reprise globale >= si la date es la même on considère que le premier ibséré (cad le dernier en date de fichier) edt le bln, le reste est en doublon
                 # au jour le jour >
-                if file_date.date()<found_max_date:
+                if found_max_date is not None and file_date<found_max_date:
                     # Insérer le nouvel enregistrement directement dans les doublons
                     cursor.execute("""
                         INSERT INTO decp.marche_doublon (marche_doublon_id, source_id, file_id, indx, id, acheteur, titulaires, date_notification, montant, objet, max_date, date_creation, data_in)
@@ -265,6 +266,42 @@ class DbDecp:
         finally:
             # Fermeture systématique du curseur après utilisation
             cursor.close()
+
+    def bulk_update_marche(self, pairs, chunk_size=10000):
+        """
+        pairs: list of (marche_id (int), data_augmente (dict))
+        chunk_size: number of rows to insert per execute_values call
+        """
+        try:
+            with self.connection:
+                with self.connection.cursor() as cur:
+                    # create temp table that will be dropped at commit
+                    cur.execute("""
+                        CREATE TEMP TABLE tmp_updates(
+                            marche_id bigint PRIMARY KEY,
+                            data_out jsonb
+                        ) ON COMMIT DROP;
+                    """)
+
+                    insert_sql = "INSERT INTO tmp_updates (marche_id, data_out) VALUES %s"
+                    # insert in chunks
+                    for i in range(0, len(pairs), chunk_size):
+                        chunk = pairs[i:i + chunk_size]
+                        values = [(mid, Json(j)) for mid, j in chunk]
+                        execute_values(cur, insert_sql, values, page_size=1000)
+
+                    # single UPDATE joining the temp table, only where not already retained
+                    cur.execute("""
+                        UPDATE decp.marche
+                        SET data_out = t.data_out
+                        FROM tmp_updates t
+                        WHERE marche.marche_id = t.marche_id
+                        RETURNING marche.marche_id;
+                    """)
+                    updated = [r[0] for r in cur.fetchall()]
+                    return updated
+        finally:
+            cur.close()
 
     def bulk_update_marche_augmente(self, pairs, chunk_size=10000):
         """
@@ -350,7 +387,7 @@ class DbDecp:
 
             # Retrouver un enregistrement potentiellement en doublon
             cursor.execute("""
-                SELECT c.concession_id, c.source_id, c.file_id, c.indx, c.id, c.autorite_concedante, c.concessionnaires, c.date_debut_execution, c.valeur_globale, c.objet, c.max_date, c.date_creation
+                SELECT c.concession_id, c.max_date
                 FROM decp.concession c
                 WHERE (c.id = %s AND c.autorite_concedante = %s AND c.concessionnaires = %s AND c.date_debut_execution = %s AND c.valeur_globale = %s)
             """, (id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale,))
@@ -358,8 +395,8 @@ class DbDecp:
 
             if result:
                 found_concession_id = result[0]
-                found_max_date = result[11]
-                if  file_date.date()<found_max_date:
+                found_max_date = result[1]
+                if found_max_date is not None and file_date<found_max_date:
                     # Insérer le nouvel enregistrement directement dans les doublons
                     cursor.execute("""
                         INSERT INTO decp.concession_doublon (concession_doublon_id, source_id, file_id, indx, id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, date_creation, data_in)
@@ -396,7 +433,7 @@ class DbDecp:
             else:
                 # Insérer le nouvel enregistrement
                 cursor.execute("""
-                    INSERT INTO concession (concession_id, source_id, file_id, indx, id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, date_creation, data_in)
+                    INSERT INTO decp.concession (concession_id, source_id, file_id, indx, id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, date_creation, data_in)
                     VALUES (nextval('decp.s_concession'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (id,  autorite_concedante, concessionnaires, date_debut_execution, valeur_globale) 
                     DO NOTHING
@@ -447,18 +484,19 @@ class DbDecp:
     
     # Methodes utiles
 
-    def extract_json_to_file(self,file_path:str):
+    def extract_json_to_file_for_month(self,file_path:str,ref_date: str):
         """
         Génère le fichier decp-global.json à partir des enregistrements 
         des tables marché et concession ayant un data_out non null (données valides et nettoyées dans decp-rama)
         """
         try:
+            utilsJson = UtilsJson()
 
             # Connect to the PostgreSQL database
             cursor = self.connection.cursor()
 
             # Query to select the JSON data from the 'marche' table
-            query = "SELECT data_out FROM marche WHERE data_out is not null"
+            query = f"SELECT data_out FROM marche WHERE data_out is not null and substring(max_date,1,7)='{ref_date}'"
 
             # Execute the query
             cursor.execute(query)
@@ -467,7 +505,7 @@ class DbDecp:
             json_marche = cursor.fetchall()
 
             # Query to select the JSON data from the 'marche' table
-            query = "SELECT data_out FROM concession WHERE data_out is not null"
+            query = f"SELECT data_out FROM concession WHERE data_out is not null and substring(max_date,1,7)='{ref_date}'"
 
             # Execute the query
             cursor.execute(query)
@@ -476,23 +514,17 @@ class DbDecp:
             json_concession = cursor.fetchall()
 
             # Write to file
-            with open(file_path, 'w') as outfile:
+            with open(file_path.replace('.','-'+ref_date+'.'), 'w') as outfile:
                 outfile.write('{\n  "marches": [')
                 i = 0
                 for row in json_marche:
-                    if i>0:
-                        outfile.write(',\n')
-                    else:
-                        outfile.write('\n')
-                    json.dump(UtilJson.clean_json(row[0]), outfile)
+                    outfile.write((',' if i > 0 else '') + '\n')
+                    json.dump(utilsJson.format_json(row[0]), outfile)
                     i += 1
                 
                 for row in json_concession:
-                    if i>0:
-                        outfile.write(',\n')
-                    else:
-                        outfile.write('\n')
-                    json.dump(UtilJson.clean_json(row[0]), outfile)
+                    outfile.write((',' if i > 0 else '') + '\n')
+                    json.dump(utilsJson.format_json(row[0]), outfile)
                     i += 1
                 outfile.write('\n    ]\n}')
                 
@@ -501,6 +533,21 @@ class DbDecp:
         finally:
             # Close the database connection
             cursor.close()
+
+    def extract_json_to_file(self,file_path:str):
+        start_year, start_month = 2024, 1
+        today = date.today()  
+        end_year, end_month = today.year, today.month
+
+        year, month = start_year, start_month
+        while (year, month) <= (end_year, end_month):
+            ref_date = f"{year}-{month:02d}"
+            self.extract_json_to_file_for_month(file_path,ref_date)
+            if month == 12:
+                year += 1
+                month = 1
+            else:
+                month += 1
 
     def close(self):
         self.connection.close()
