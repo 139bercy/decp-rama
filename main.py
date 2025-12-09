@@ -3,12 +3,12 @@ from general_process.ProcessFactory import ProcessFactory
 from general_process.GlobalProcess import GlobalProcess
 from reporting.Report import Report
 import logging
+from datetime import date
 from utils.StepMngmt import StepMngmt
 from utils.Step import Step
 import augmente.data_management
 import augmente.nettoyage
 import augmente.utils
-import argparse
 import os
 import traceback
 
@@ -31,17 +31,17 @@ def main(report,data_format:str = "2022"):
         else:
             p = ProcessFactory(None,data_format,report)
             p.run_processes()
+    
     gp = GlobalProcess(data_format,report)
+    
     if not step.bypass("ALL",Step.FIX_ALL):
         gp.dataframes = p.dataframes
+    
     gp.merge_all() # on a l'équivalent de return DataProcessor().decorator("MonParamètre")(self.process_data)()
     gp.fix_all()
-    #gp.drop_by_date_2024()
-    #gp.drop_duplicate()
+    
     gp.report.fix_statistics('merged')
     suffixes = gp.export(args.local)
-    gp.save_report()
-    gp.generate_global()
     if not args.local:
         # gp.upload_s3()
         gp.upload_on_datagouv(suffixes)
@@ -54,13 +54,27 @@ def main_augmente(session_id:str,data_format:str = '2022'):
     logger.info("Fichiers mis à jour dans le dossier data")
 
     logger.info(f"Application règles métier format {data_format}")
-    augmente.nettoyage.main(session_id,data_format)
+    start_year, start_month = 2024, 1
+    today = date.today()  
+    end_year, end_month = today.year, today.month
 
-    # Partie désactivé logger.info("Enrichissement des données")
-    # enrichissement2.main()
-    # logger.info("csv enrichi dans le dossier data")
-    if not args.test and not args.local:
-        augmente.utils.export_all_csv(data_format,args.local)
+    # Sauvegarde des marchés et concessions uniques regroupées par année et mois de date de 
+    year, month = start_year, start_month
+    while (year, month) <= (end_year, end_month):
+        ref_date = f"{year}-{month:02d}"
+        augmente.nettoyage.main(session_id,ref_date,data_format)
+
+        # Partie désactivé logger.info("Enrichissement des données")
+        # enrichissement2.main()
+        # logger.info("csv enrichi dans le dossier data")
+        if not args.test and not args.local:
+            augmente.utils.export_all_csv(ref_date,data_format,args.local)
+        
+        if month == 12:
+            year += 1
+            month = 1
+        else:
+            month += 1
 
 if __name__ == "__main__":
     """Lorsqu'on appelle la fonction main (courante), on définit le niveau de logging et le format d'affichage."""

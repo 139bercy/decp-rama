@@ -21,10 +21,9 @@ from stdnum.fr import siren
 from stdnum.util import clean
 
 from reporting.Report import Report
-
+from augmente.utils import RESULT_PATH_DATAECO
 
 PATTERN_DATE = r'^20[1-2]{1}[0-9]{1}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}$'
-light_errors = []
 
 
 logger = logging.getLogger("main.nettoyage2")
@@ -34,6 +33,15 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 with open(os.path.join("confs", "var_glob.json")) as f:
     conf_glob = json.load(f)
+
+path_to_conf = "confs"
+if not (os.path.exists(path_to_conf)):  # Si le chemin confs n'existe pas (dans le cas de la CI et de Saagie)
+    os.mkdir(path_to_conf)
+with open(os.path.join("confs", "config_data.json")) as f:
+    conf_data = json.load(f)
+
+# Initialisation du système de reporting
+report=Report('augmente',0)
 
 def compute_execution_time(func):
     def wrapper(*args, **kwargs):
@@ -45,21 +53,7 @@ def compute_execution_time(func):
         return result
     return wrapper
 
-
-path_to_conf = "confs"
-if not (os.path.exists(path_to_conf)):  # Si le chemin confs n'existe pas (dans le cas de la CI et de Saagie)
-    os.mkdir(path_to_conf)
-with open(os.path.join("confs", "config_data.json")) as f:
-    conf_data = json.load(f)
-
-path_to_data = conf_data["path_to_data"]
-decp_file_name = conf_data["decp_file_name"]
-#path_to_data = conf_data["path_to_data"]  # Réécris
-
-# Initialisation du système de reporting
-report=Report('augmente',0)
-
-def main(session_id:str,data_format:str = '2022'):
+def main(session_id:str,annee_mois:str, data_format:str = '2022'):
     report.session = session_id
     step = StepMngmt()
     if not step.bypass(StepMngmt.SOURCE_ALL,Step.AUGMENTE_CLEAN):
@@ -69,8 +63,7 @@ def main(session_id:str,data_format:str = '2022'):
 
         logger.info("Format utilisé " + data_format)
 
-        #json_source = 'decp_'+data_format +'.json'
-        json_source = f"results/decp-daily.json"
+        json_source = f"results/global/decp-global-{annee_mois}.json"
 
         logger.info(f"Opening {json_source}")
         with open(json_source, 'rb') as f:
@@ -82,7 +75,7 @@ def main(session_id:str,data_format:str = '2022'):
             logger.info("Mode test activé")
 
         logger.info("Nettoyage des données")
-        manage_data_quality(df,data_format)
+        manage_data_quality(df,annee_mois,data_format)
 
         #Étant donné qu'on ne fait pas l'enrichissement pour l'instant le programme s'arrête
 
@@ -112,7 +105,7 @@ def modifier_source(valeur):
 
 
 @compute_execution_time
-def manage_data_quality(df: pd.DataFrame,data_format:str):
+def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
     """
     Cette fonction sépare en deux le dataframe d'entrée. Les données ne respectant pas les formats indiqués par les
     règles de gestion de la DAJ sont mise de côtés. Les règles de gestions sont dans un mail du 15 février 2023.
@@ -171,6 +164,24 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
         convert_col_boolean(df,'attributionAvance')
         convert_col_boolean(df,'sousTraitanceDeclaree')
 
+    def format_data_to_dataeco(df:pd.DataFrame,is_marche:bool):
+        # Renommage des sources
+        if 'source' in df.columns:
+            df['source'] = df['source'].apply(modifier_source)
+        if 'objet' not in df.columns:
+            df['objet'] = pd.NA    
+        else:
+            df['objet'] = df['objet'].str.replace('\n', '\\n', regex=False)
+            df['objet'] = df['objet'].str.replace('\r', '\\r', regex=False)
+            df['objet'] = df['objet'].str.replace('\x85', '\\r\\n', regex=False)
+        convert_all_list_to_str(df,True,is_marche)
+        convert_boolean(df)
+
+
+
+
+
+
     # séparation des marchés et des concessions, car traitement différent
     df_marche = None
     df_concession = None
@@ -223,8 +234,8 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
         if not df_concession.empty:
             restore_nc(df_concession,'dureeMois')
 
-            df_concession = stabilize_columns(df_concession,"concession_"+data_format)
-            df_concession_badlines = stabilize_columns(df_concession_badlines,"concession_"+data_format,True)
+            stabilize_columns(df_concession,"concession_"+data_format) #df_concession = 
+            stabilize_columns(df_concession_badlines,"concession_"+data_format,True) #df_concession_badlines = 
 
             df_concession = concession_mark_fields(df_concession)
 
@@ -237,8 +248,8 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             restore_nc(df_marche,'dureeMoisActeSousTraitance')
             restore_nc(df_marche,'variationPrixActeSousTraitance')
 
-            df_marche = stabilize_columns(df_marche,"marche_"+data_format)
-            df_marche_badlines = stabilize_columns(df_marche_badlines,"marche_"+data_format,True)
+            stabilize_columns(df_marche,"marche_"+data_format) #df_marche = 
+            stabilize_columns(df_marche_badlines,"marche_"+data_format,True) #df_marche_badlines = 
             
             df_marche = marche_mark_fields(df_marche)
 
@@ -268,87 +279,49 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
     report.fix_statistics('all sources')
     report.save()
 
-    if not df_concession.empty:
-        if 'source' in df_concession.columns:
-            # Modification de la colonne 'source'
-            df_concession['source'] = df_concession['source'].apply(modifier_source)
-        # save data to csv files
-        if 'objet' not in df_concession.columns:
-            df_concession['objet'] = pd.NA    
-        else:
-            df_concession['objet'] = df_concession['objet'].str.replace('\n', '\\n', regex=False)
-            df_concession['objet'] = df_concession['objet'].str.replace('\r', '\\r', regex=False)
-            df_concession['objet'] = df_concession['objet'].str.replace('\x85', '\\r\\n', regex=False)
-        convert_all_list_to_str(df_concession,True,False)
-        convert_boolean(df_concession)
-        cols = conf_glob[f"df_concession_{data_format}"]
-        cols.remove("Erreurs")
-        df_concession.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-{data_format}.csv'), index=False, header=True, columns=cols)
-    
     if not df_marche.empty:
-        if 'source' in df_marche.columns:
-            # Modification de la colonne 'source'
-            df_marche['source'] = df_marche['source'].apply(modifier_source)
-        if 'objet' not in df_marche.columns:
-            df_marche['objet'] = pd.NA
-        else:
-            df_marche['objet'] = df_marche['objet'].str.replace('\n', '\\n', regex=False)
-            df_marche['objet'] = df_marche['objet'].str.replace('\r', '\\r', regex=False)
-            df_marche['objet'] = df_marche['objet'].str.replace('\x85', '\\r\\n', regex=False)
-        convert_all_list_to_str(df_marche,True,True)
-        convert_boolean(df_marche)
+        # Mise à jour en base des données retenues 
+        update_database_augmente(df_marche,True)
+
+        format_data_to_dataeco(df_marche, True)
         cols = conf_glob[f"df_marche_{data_format}"]
         cols.remove("Erreurs")
-        df_marche.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-{data_format}.csv'), index=False, header=True, columns=cols)
+        # save data to csv files
+        df_marche.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'marches-valides/marche-{data_format}-{ref_date}.csv'), index=False, header=True, columns=cols)
+
+    if not df_concession.empty:
+        # Mise à jour en base des données retenues 
+        update_database_augmente(df_concession,False)
+
+        format_data_to_dataeco(df_concession, False)
+        cols = conf_glob[f"df_concession_{data_format}"]
+        cols.remove("Erreurs")
+        # save data to csv files
+        df_concession.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-valides/concession-{data_format}-{ref_date}.csv'), index=False, header=True, columns=cols)
     
     if not df_marche_badlines.empty:
-        if 'source' in df_marche_badlines.columns:
-            # Modification de la colonne 'source'
-            df_marche_badlines['source'] = df_marche_badlines['source'].apply(modifier_source)
-        if 'objet' not in df_marche_badlines.columns:
-            df_marche_badlines['objet'] = pd.NA
-        else:
-            df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\n', '\\n', regex=False)
-            df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\r', '\\r', regex=False)
-            df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\x85', '\\r\\n', regex=False)
-        convert_all_list_to_str(df_marche_badlines,True,True)
-        convert_boolean(df_marche_badlines)
-        df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-exclu-{data_format}.csv'), index=False,  header=True)
+        format_data_to_dataeco(df_marche_badlines, True)
+        # save data to csv files
+        df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'marches-invalides/marche-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True)
     
     if not df_concession_badlines.empty:
-        if 'source' in df_concession_badlines.columns:
-            # Modification de la colonne 'source'
-            df_concession_badlines['source'] = df_concession_badlines['source'].apply(modifier_source)
-        if 'objet' not in df_concession_badlines.columns:
-            df_concession_badlines['objet'] = pd.NA    
-        else:
-            df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\n', '\\n', regex=False)
-            df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\r', '\\r', regex=False)
-            df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\x85', '\\r\\n', regex=False)
-        convert_all_list_to_str(df_concession_badlines,True,False)
-        convert_boolean(df_concession_badlines)
-        df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-exclu-{data_format}.csv'), index=False,  header=True)
+        format_data_to_dataeco(df_concession_badlines, False)
+        # save data to csv files
+        df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-invalides/concession-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True)
 
-    # Mise à jour en base des données retenues
+
+def update_database_augmente(df:pd.DataFrame,is_marche:bool):
     dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
-                        for m in df_marche.to_dict(orient='records')]}
-    #update_database(dico)
-
-    # Concaténation des dataframes pour l'enrichissement (re-séparation après)
-    df = pd.concat([df_concession, df_marche])
-
-    return df
-
-def update_database(dico):
-    logging.info("Update data_augmente in database")
+                        for m in df.to_dict(orient='records')]}
+    
+    logging.info("Update json data after augmente in database")
     db = DbDecp()
     if 'marches' in dico:
         i=0
         pairs_marches=[]
         for marche in dico['marches']:
             if not marche['db_id']==0:
-                if marche["_type"]=='Marché':
-                    #db.update_marche_augmente(marche['db_id'],marche)
+                if is_marche:
                     pairs_marches.append([int(marche['db_id']),marche])
                     i+=1
                     if i % 10000 == 0:
@@ -402,7 +375,7 @@ def reorder_columns(dfb:pd.DataFrame):
 
 def order_columns_marches(df: pd.DataFrame):
     """
-    La fonction ordonne les colonnes d'une marché
+    La fonction ordonne les colonnes d'un marché
     du dataframe dans l'ordre indiqué de la liste.
     """
     liste_col_ordonnes = [
@@ -527,12 +500,14 @@ def stabilize_columns(df:pd.DataFrame,set:str,add_error_columnns:bool=False):
     On ajoute des colonnes vides si celles-ci doivent exister et on supprimer les colonnes en trop
     """
     columns_reference = conf_glob["df_"+set]
-
+    columns_reference.insert(0, "_type")
     if add_error_columnns is True:
         columns_reference.insert(0, "Erreurs")
         if 'Erreurs' not in df.columns:
             df['Erreurs'] = pd.NA
-
+    else:
+        columns_reference.insert(0, "db_id")
+        
     # Add column in df
     for column in columns_reference:
         if column not in df.columns:
@@ -540,10 +515,10 @@ def stabilize_columns(df:pd.DataFrame,set:str,add_error_columnns:bool=False):
 
     # Delete columns in df which are not in columns_reference
     for column in df.columns:
-        if column not in columns_reference and not (add_error_columnns is True and column == 'Erreurs') and not column == 'db_id':
+        if column not in columns_reference:
             df.drop(columns=[column], inplace=True)
             
-    return df[columns_reference]
+    #return df[columns_reference]
 
 @compute_execution_time
 def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:

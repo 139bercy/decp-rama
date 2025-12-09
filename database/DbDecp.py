@@ -250,7 +250,7 @@ class DbDecp:
 
            # Suppression du doublon
             cursor.execute("""
-                UPDATE decp.marche 
+                UPDATE decp.marche,
                 SET data_out = %s
                 WHERE marche_id = %s
             """, (json.dumps(json_data),marche_id,))
@@ -351,7 +351,7 @@ class DbDecp:
            # Suppression du doublon
             cursor.execute("""
                 UPDATE decp.marche 
-                SET data_augmente = %s
+                SET data_augmente = %s,
                     est_retenu = TRUE
                 WHERE marche_id = %s
                 AND NOT est_retenu IS TRUE
@@ -464,7 +464,7 @@ class DbDecp:
 
            # Suppression du doublon
             cursor.execute("""
-                UPDATE decp.concession 
+                UPDATE decp.concession,
                 SET data_out = %s
                 WHERE concession_id = %s
             """, (json.dumps(json_data),concession_id,))
@@ -481,6 +481,71 @@ class DbDecp:
             # Fermeture systématique du curseur après utilisation
             cursor.close()
 
+    def bulk_update_concession_augmente(self, pairs, chunk_size=10000):
+        """
+        pairs: list of (concessionid (int), data_augmente (dict))
+        chunk_size: number of rows to insert per execute_values call
+        """
+        try:
+            with self.connection:
+                with self.connection.cursor() as cur:
+                    # create temp table that will be dropped at commit
+                    cur.execute("""
+                        CREATE TEMP TABLE tmp_updates(
+                            concession_id bigint PRIMARY KEY,
+                            data_augmente jsonb
+                        ) ON COMMIT DROP;
+                    """)
+
+                    insert_sql = "INSERT INTO tmp_updates (concession_id, data_augmente) VALUES %s"
+                    # insert in chunks
+                    for i in range(0, len(pairs), chunk_size):
+                        chunk = pairs[i:i + chunk_size]
+                        values = [(mid, Json(j)) for mid, j in chunk]
+                        execute_values(cur, insert_sql, values, page_size=1000)
+
+                    # single UPDATE joining the temp table, only where not already retained
+                    cur.execute("""
+                        UPDATE decp.concession
+                        SET data_augmente = t.data_augmente,
+                            est_retenu = TRUE
+                        FROM tmp_updates t
+                        WHERE concession.concession_id = t.concession_id
+                        AND marche.est_retenu IS NOT TRUE
+                        RETURNING concession.concession_id;
+                    """)
+                    updated = [r[0] for r in cur.fetchall()]
+                    return updated
+        finally:
+            cur.close()
+
+    def update_concession_augmente(self, concession_id, json_data):
+        try:
+            cursor = self.connection.cursor()
+
+            # Démarrer une transaction
+            cursor.execute("BEGIN;")
+
+           # Suppression du doublon
+            cursor.execute("""
+                UPDATE decp.concession 
+                SET data_augmente = %s,
+                    est_retenu = TRUE
+                WHERE concession_id = %s
+                AND NOT est_retenu IS TRUE
+            """, (json.dumps(json_data),concession_id,))
+
+            # Valider la transaction
+            self.connection.commit()
+
+        except Exception as e:
+            print(f"Erreur lors de l'ajout de la concession en base: {e} ")
+            # Annuler la transaction en cas d'erreur
+            self.connection.rollback()
+
+        finally:
+            # Fermeture systématique du curseur après utilisation
+            cursor.close()
     
     # Methodes utiles
 
@@ -489,6 +554,11 @@ class DbDecp:
         Génère le fichier decp-global.json à partir des enregistrements 
         des tables marché et concession ayant un data_out non null (données valides et nettoyées dans decp-rama)
         """
+        sub_query = ""
+        if ref_date is not None:
+            file_path = file_path.replace('.','-'+ref_date+'.')
+            sub_query = f"AND substring(max_date,1,7)='{ref_date}'"
+        logging.info (f"Launching generation for {file_path}")
         try:
             utilsJson = UtilsJson()
 
@@ -496,7 +566,7 @@ class DbDecp:
             cursor = self.connection.cursor()
 
             # Query to select the JSON data from the 'marche' table
-            query = f"SELECT data_out FROM marche WHERE data_out is not null and substring(max_date,1,7)='{ref_date}'"
+            query = f"SELECT data_out FROM decp.marche WHERE data_out is not null {sub_query}"
 
             # Execute the query
             cursor.execute(query)
@@ -505,7 +575,7 @@ class DbDecp:
             json_marche = cursor.fetchall()
 
             # Query to select the JSON data from the 'marche' table
-            query = f"SELECT data_out FROM concession WHERE data_out is not null and substring(max_date,1,7)='{ref_date}'"
+            query = f"SELECT data_out FROM decp.concession WHERE data_out is not null {sub_query}"
 
             # Execute the query
             cursor.execute(query)
@@ -514,7 +584,7 @@ class DbDecp:
             json_concession = cursor.fetchall()
 
             # Write to file
-            with open(file_path.replace('.','-'+ref_date+'.'), 'w') as outfile:
+            with open(file_path, 'w') as outfile:
                 outfile.write('{\n  "marches": [')
                 i = 0
                 for row in json_marche:
@@ -533,12 +603,14 @@ class DbDecp:
         finally:
             # Close the database connection
             cursor.close()
-
+        logging.info (f"{file_path} created")
+        
     def extract_json_to_file(self,file_path:str):
         start_year, start_month = 2024, 1
         today = date.today()  
         end_year, end_month = today.year, today.month
 
+        # Sauvegarde des marchés et concessions uniques regroupées par année et mois de date de 
         year, month = start_year, start_month
         while (year, month) <= (end_year, end_month):
             ref_date = f"{year}-{month:02d}"
@@ -548,6 +620,8 @@ class DbDecp:
                 month = 1
             else:
                 month += 1
+
+        self.extract_json_to_file_for_month(file_path,None)
 
     def close(self):
         self.connection.close()
