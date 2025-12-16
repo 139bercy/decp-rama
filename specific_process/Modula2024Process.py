@@ -1,16 +1,10 @@
-from general_process.SourceProcess import SourceProcess
-
-
-import json
 import logging
-import numpy as np
 import os
-from pypdl import Pypdl
-
+from general_process.SourceProcess import ProcessParams, SourceProcess
 
 class Modula2024Process(SourceProcess):
-    def __init__(self,data_format,report):
-        super().__init__("modula_2024",data_format,report)
+    def __init__(self,params:ProcessParams):
+        super().__init__("modula_2024",params=params)
 
     def _url_init(self):
         super()._url_init()

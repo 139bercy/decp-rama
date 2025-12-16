@@ -21,6 +21,7 @@ from reporting.Report import Report
 from utils.NodeFormat import NodeFormat
 from utils.StepMngmt import StepMngmt
 from utils.Step import Step
+from utils.UtilsJson import UtilsJson
 
 with open(os.path.join("confs", "var_glob.json")) as f:
     conf_glob = json.load(f)
@@ -35,7 +36,8 @@ class GlobalProcess:
     fusion des sources dans un seul DataFrame (merge_all), suppression des doublons (drop_duplicate)
     et l'exportation des données en json pour publication (export)."""
 
-    columns_with_list = ['titulaires','donneesExecution','modifications','concessionnaires','tarifs']
+    GLOBAL_RESULT_PATH = "results/decp-global.json"
+
     date_pattern = r'\d{4}-\d{2}-\d{2}'
     date_pattern_inv = r'\d{2}.\d{2}.\d{4}'
 
@@ -66,6 +68,13 @@ class GlobalProcess:
             del self.dataframes
         else:
             logging.info("Aucune données à traiter")
+        
+        #print(self.df['tmp__max_date'].apply(lambda x: type(x)).value_counts())
+        #mask = self.df['tmp__max_date'].apply(lambda x: isinstance(x, (tuple, list)))
+        #print(self.df.loc[mask, ['tmp__max_date']].head(10))
+        #mask2 = df['tmp__max_date'].apply(lambda x: isinstance(x, str))
+        #print(self.df.loc[mask2, ['tmp__max_date']].head(10))
+        
         logging.info(f"Nombre de marchés dans le DataFrame fusionné après merge : {len(self.df)}")
 
     @StepMngmt().decorator(Step.FIX_ALL,StepMngmt.FORMAT_DATAFRAME)
@@ -197,6 +206,13 @@ class GlobalProcess:
     def dedoublonnage(self,df: pd.DataFrame, add_report=True) -> pd.DataFrame:
         nb_duplicated_marches = 0
         nb_duplicated_concessions = 0
+        
+        #TODO type
+        #df['dureeMois'] = pd.to_numeric(df['dureeMois'].astype(str).str.replace(',', '.', regex=False),
+        #                        errors='coerce').astype('Int64')
+        #print(df['tmp__max_date'].apply(lambda x: type(x)).value_counts())
+        #mask = df['tmp__max_date'].apply(lambda x: isinstance(x, (tuple, list)))
+        #print(df.loc[mask, ['tmp__max_date']].head(10))
 
         df.sort_values(
             by=['tmp__max_date'],
@@ -220,10 +236,10 @@ class GlobalProcess:
         df.reset_index(drop=True, inplace=True)
 
         logging.info(f"Nombre de concession en doublon {nb_duplicated_concessions}")
-
-
         logging.info(f"Nombre de marchés / concession après dédoublonnage: {len(df)}")
+            
         return df
+
 
     def extract_publication_dates(self, modifications_node) -> list:
         # Pour test sur chaine de caractere modification_list = ast.literal_eval(modification_str)  # Évalue la chaîne comme une structure de données
@@ -315,8 +331,7 @@ class GlobalProcess:
         if os.path.exists(file_path):
             dico_file = self.file_load(file_path)
             if dico_file=={}:
-                df_str = df_new.astype(str)
-                df_new = self.dedoublonnage(df_str)
+                df_new = self.dedoublonnage(df_new)
                 dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
                     for m in df_new.to_dict(orient='records')]}
                 self.file_dump(file_path,dico)
@@ -350,8 +365,7 @@ class GlobalProcess:
                 self.file_dump(file_path,dico_final)                
         else:
             # Le fichier n'existait pas on ajoute le nouveau dictionnaire dedans
-            df_str = df_new.astype(str)
-            df_new = self.dedoublonnage(df_str)
+            df_new = self.dedoublonnage(df_new)
             dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
                 for m in df_new.to_dict(orient='records')]}
             self.file_dump(file_path,dico)
@@ -389,24 +403,32 @@ class GlobalProcess:
         }
         years = []
 
-        for suffix_month in suffixes:
-            logging.info(f"Uploading file decp-{suffix_month}_data_gouv.json")
-            if(not os.path.exists(f'results/decp-{suffix_month}_data_gouv.json')):
-                self._make_copy_for_data_gouv(suffix_month)
-            resource_id_month = self._get_ressource_id(headers,api,dataset_id,suffix_month)
-            resource_id_month = self._upload_file(headers,api,dataset_id,resource_id_month,suffix_month)
-            suffix_year = suffix_month[0:4]
-            if not suffix_year in years:
-                years += [suffix_year]
+        if not suffixes[0] == "global":
 
-        for suffix_year in years:
-            file_path = f'results/decp-{suffix_year}_data_gouv.json'
+            for suffix_month in suffixes:
+                logging.info(f"Uploading file decp-{suffix_month}_data_gouv.json")
+                if(not os.path.exists(f'results/decp-{suffix_month}_data_gouv.json')):
+                    self._make_copy_for_data_gouv(suffix_month)
+                resource_id_month = self._get_ressource_id(headers,api,dataset_id,suffix_month)
+                resource_id_month = self._upload_file(headers,api,dataset_id,resource_id_month,suffix_month)
+                suffix_year = suffix_month[0:4]
+                if not suffix_year in years:
+                    years += [suffix_year]
+
+            for suffix_year in years:
+                file_path = f'results/decp-{suffix_year}_data_gouv.json'
+                logging.info(f"Uploading file {file_path}")
+                if(not os.path.exists(file_path)):
+                    self._make_copy_for_data_gouv(suffix_year)
+                resource_id_year = self._get_ressource_id(headers,api,dataset_id,suffix_year)
+                resource_id_year = self._upload_file(headers,api,dataset_id,resource_id_year,suffix_year)
+        else:
+            suffix = "global"
+            file_path = f'results/global/decp-{suffix}.json'
             logging.info(f"Uploading file {file_path}")
-            if(not os.path.exists(file_path)):
-                self._make_copy_for_data_gouv(suffix_year)
-            resource_id_year = self._get_ressource_id(headers,api,dataset_id,suffix_year)
-            resource_id_year = self._upload_file(headers,api,dataset_id,resource_id_year,suffix_year)
-        
+            resource_id = self._get_ressource_id(headers,api,dataset_id,suffix)
+            resource_id = self._upload_file(headers,api,dataset_id,resource_id,suffix)
+             
         current_month = int(self.get_current_date().strftime('%m'))
         current_year = int(self.get_current_date().strftime('%Y'))
         if not current_month == month_previous_update:
@@ -441,8 +463,9 @@ class GlobalProcess:
         self.update_data(dico)
 
         # Sauvegarde des données journalières
-        path_result_daily = "results/decp-daily.json"
-        self.file_dump(path_result_daily,dico)
+        # daily replaced by global
+        #path_result_daily = "results/decp-daily.json"
+        #self.file_dump(path_result_daily,dico)
 
         current_year_month  = f"{datetime.now().year}-{datetime.now().month:02d}"
         suffixes = []
@@ -461,20 +484,25 @@ class GlobalProcess:
                 if not suffix_year in years:
                     years += [suffix_year]
 
-        for year in years:
-            df_new = pd.DataFrame()
-            total_marches = 0
-            total_concessions = 0
-            for year_month, group in self.df.groupby('tmp__annee_mois'):
-                if year == year_month[0:4]:
-                    df_new = pd.concat([df_new,group],ignore_index=True)
+        if self.generate_global:
+            for year in years:
+                df_new = pd.DataFrame()
+                total_marches = 0
+                total_concessions = 0
+                for year_month, group in self.df.groupby('tmp__annee_mois'):
+                    if year == year_month[0:4]:
+                        df_new = pd.concat([df_new,group],ignore_index=True)
+                        
+                        total_marches += group[group['_type'].str.contains("Marché")].shape[0]
+                        total_concessions += group[~group['_type'].str.contains("Marché")].shape[0]
                     
-                    total_marches += group[group['_type'].str.contains("Marché")].shape[0]
-                    total_concessions += group[~group['_type'].str.contains("Marché")].shape[0]
-                    
-            output_file_year = f"results/decp-{year}.json"
-            logging.info(f"Ajout de {total_marches} marchés et {total_concessions} concessions au fichier {output_file_year} pour l'annee {year}")
-            self._merge_in_file(output_file_year,df_new)
+                output_file_year = f"results/decp-{year}.json"
+                logging.info(f"Ajout de {total_marches} marchés et {total_concessions} concessions au fichier {output_file_year} pour l'annee {year}")
+                self._merge_in_file(output_file_year,df_new)
+
+        self.save_report()
+
+        self.generate_global()
 
         logging.info("Exportation JSON OK")
         return suffixes
@@ -503,10 +531,12 @@ class GlobalProcess:
         db.close()
     
     def generate_global(self):
+        logging.info("Launching file generation for augmente data treatment")
         db = DbDecp()
-        db.extract_json_to_file("results/decp-global.json")
+        db.extract_json_to_file("results/global/decp-global.json")
         db.close()
-
+        logging.info("File generation ok for augmente data treatment")
+        
     def file_load(self,path:str) ->dict:
         """
         La fonction file_load essaie de lire un fichier JSON et de le convertir en dictionnaire.
@@ -622,12 +652,17 @@ class GlobalProcess:
             keys_to_delete = [clé for clé in marche.keys() if clé.startswith(prefix)]
             for key in keys_to_delete:
                 del marche[key]
-         
+        
+        utilsJson = UtilsJson()
+
         marches = []
         concessions = []
         for marche_in in dico_in['marches']:
-            marche = marche_in.copy()
+            marche = utilsJson.format_json(marche_in.copy(),False)
+            if 'db_id' in marche:
+                del marche["db_id"]
 
+            """
             delete_attributes_by_prefix(marche,'report__')
             delete_attributes_by_prefix(marche,'tmp__')
 
@@ -669,7 +704,8 @@ class GlobalProcess:
             self.force_bool_or_nc('marcheInnovant',marche)
             self.force_bool_or_nc('attributionAvance',marche)
             self.force_bool_or_nc('sousTraitanceDeclaree',marche)
-
+            """
+        
             if '_type' in marche and marche['_type'] != 'Marché':
                 if 'montant' in marche:
                     del marche["montant"]
@@ -909,10 +945,14 @@ class GlobalProcess:
         else:
             url = f"{api}/datasets/{dataset_id}/resources/{resource_id}/upload/"
         
+        if suffix=="global":
+            file_path = f"results/global/decp-global.json"
+        else:
+            file_path = f"results/decp-{suffix}_data_gouv.json"
         try:
-            # On charge le fichier annuel existant
+            # On charge le fichier  existant
             file = {
-                "file": (f"decp-{suffix}.json", open(f"results/decp-{suffix}_data_gouv.json", "rb"))
+                "file": (f"decp-{suffix}.json", open(file_path, "rb"))
             }
         except Exception:
             file = {

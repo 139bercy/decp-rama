@@ -27,10 +27,10 @@ def main(report,data_format:str = "2022"):
     if not step.bypass("ALL",Step.FIX_ALL):
         if args.process:
             p = ProcessFactory(args.process,data_format,report)
-            p.run_process()
+            p.run_process(args)
         else:
             p = ProcessFactory(None,data_format,report)
-            p.run_processes()
+            p.run_processes(args)
     
     gp = GlobalProcess(data_format,report)
     
@@ -108,8 +108,9 @@ if __name__ == "__main__":
     logging.info("(-l) Option exécution locale " + ("activée" if args.local else "désactivée"))
     logging.info("(-t) Option exécution en mode test " + ("activée" if args.test else "désactivée"))
     logging.info("(-r) Option reprise à la dernière étape exécutée " + ("desactivée" if args.reset else "activée"))
-    logging.info("(-b) Option reconstruction globale " + ("activée" if args.rebuild else "désactivée"))
+    logging.info("(-b) Option reconstruction globale " + ("activée pour " if args.rebuild else "désactivée") + (args.rebuild if args.rebuild else ""))
 
+    # On ne reprend pas l'exécution à la dernière étape du précédent lancement de l'application, on supprime le cache d'exécution
     if args.reset:
         step.reset()
 
@@ -124,8 +125,11 @@ if __name__ == "__main__":
         db.close()
         report = Report('decp-rama-augmente',False)
         try:
+            # DECP RAMA
             if not args.augmente:
                 main(report,data_format)
+
+            # DECP AUGMENTE
             if not args.rama:
                 main_augmente(session_id,data_format)
 

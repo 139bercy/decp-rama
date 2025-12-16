@@ -162,6 +162,8 @@ class StepMngmt:
             json.dump(self.current_status, json_file)
         self._empty_directory(self.BASE_PATH)
 
+    def get_status(self, source:str):
+        return self.current_status[source] if source in self.current_status else None
 
     def _get_snapshot_path(self,source:str,step:Step,format:str) -> str:
         return self.BASE_PATH + source + '_'+ step.name + '_' + format + '.pkl'

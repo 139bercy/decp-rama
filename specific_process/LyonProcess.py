@@ -1,10 +1,9 @@
-from general_process.SourceProcess import SourceProcess
 import json
-
+from general_process.SourceProcess import ProcessParams, SourceProcess
 
 class LyonProcess(SourceProcess):
-    def __init__(self,data_format,report):
-        super().__init__("lyon",data_format,report)
+    def __init__(self,params:ProcessParams):
+        super().__init__("lyon",params=params)
 
     def _url_init(self):
         self.metadata[self.key]["url"] = [self.metadata[self.key]["url_source"]]

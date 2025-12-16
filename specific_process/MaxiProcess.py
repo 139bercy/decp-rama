@@ -1,13 +1,8 @@
-from general_process.SourceProcess import SourceProcess
-import logging
-import os
-import shutil
-import wget
-
+from general_process.SourceProcess import ProcessParams, SourceProcess
 
 class MaxiProcess(SourceProcess):
-    def __init__(self,data_format,report):
-        super().__init__("maxi",data_format,report)
+    def __init__(self,params:ProcessParams):
+        super().__init__("maxi",params=params)
 
     def _url_init(self):
         super()._url_init()

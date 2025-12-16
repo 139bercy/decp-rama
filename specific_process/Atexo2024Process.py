@@ -1,4 +1,4 @@
-from general_process.SourceProcess import SourceProcess
+from general_process.SourceProcess import ProcessParams, SourceProcess
 import logging
 import os
 import shutil
@@ -6,8 +6,8 @@ import wget
 
 
 class Atexo2024Process(SourceProcess):
-    def __init__(self,data_format,report):
-        super().__init__("atexo_2024",data_format,report)
+    def __init__(self,params:ProcessParams):
+        super().__init__("atexo_2024",params=params)
 
     def _url_init(self):
         super()._url_init()

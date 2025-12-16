@@ -464,7 +464,7 @@ class DbDecp:
 
            # Suppression du doublon
             cursor.execute("""
-                UPDATE decp.concession,
+                UPDATE decp.concession
                 SET data_out = %s
                 WHERE concession_id = %s
             """, (json.dumps(json_data),concession_id,))
@@ -558,6 +558,7 @@ class DbDecp:
         if ref_date is not None:
             file_path = file_path.replace('.','-'+ref_date+'.')
             sub_query = f"AND substring(max_date,1,7)='{ref_date}'"
+        keep_db_id = ref_date is not None
         logging.info (f"Launching generation for {file_path}")
         try:
             utilsJson = UtilsJson()
@@ -585,18 +586,22 @@ class DbDecp:
 
             # Write to file
             with open(file_path, 'w') as outfile:
-                outfile.write('{\n  "marches": [')
+                outfile.write('{\n  "marches": {\n    "marche": [')
                 i = 0
                 for row in json_marche:
                     outfile.write((',' if i > 0 else '') + '\n')
-                    json.dump(utilsJson.format_json(row[0]), outfile)
+                    json.dump(utilsJson.format_json(row[0], keep_db_id), outfile)
                     i += 1
-                
+
+                if ref_date is None:
+                    outfile.write('\n    ],\n "contrat-concession": [\n')
+                    i=0
+                    
                 for row in json_concession:
                     outfile.write((',' if i > 0 else '') + '\n')
-                    json.dump(utilsJson.format_json(row[0]), outfile)
+                    json.dump(utilsJson.format_json(row[0], keep_db_id), outfile)
                     i += 1
-                outfile.write('\n    ]\n}')
+                outfile.write('\n    ]\n  }\n}')
                 
         except Exception as e:
             print(f"Error: {e}")

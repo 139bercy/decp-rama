@@ -1,39 +1,36 @@
 from __future__ import annotations
-from xml.etree import ElementTree
+from dataclasses import dataclass
 from database.DbDecp import DbDecp
 import wget
-#import ssl
-import urllib.request, certifi
 import os
 import json
-import xml
-import xmlschema
 import jsonschema
-from jsonschema import validate,Draft7Validator,Draft202012Validator
-from lxml import etree
-from datetime import datetime
-from pypdl import Pypdl
 import pandas as pd
 import numpy as np
 import xmltodict
-import dict2xml
 import re
 import logging
 import shutil
+import traceback
+from jsonschema import validate,Draft7Validator,Draft202012Validator
+from datetime import datetime
+from pypdl import Pypdl
 from urllib.parse import urlparse
-import csv
+from reporting.Report import Report
+from utils.NodeFormat import NodeFormat
+
 pd.options.mode.chained_assignment = None
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 # pd.set_option('display.width', None)
 # pd.set_option('display.max_colwidth', None)
-from reporting.Report import Report
-from utils.NodeFormat import NodeFormat
-from utils.StepMngmt import StepMngmt
-from utils.Step import Step
-from utils.UtilsDate import UtilsDate
-import re
-import traceback
+
+@dataclass
+class ProcessParams:
+    key: str
+    data_format: str
+    report: Report
+    rebuild: str
 
 class SourceProcess:
 
@@ -42,7 +39,7 @@ class SourceProcess:
     variables de classe (__init__), nettoyage des dossiers de la source (_clean_metadata_folder),
     récupération des URLs (_url_init), get, convert et fix."""
     
-    def __init__(self, key, data_format, report:Report):
+    def __init__(self, key:str, params:ProcessParams):
         """L'étape __init__ crée les variables associées à la classe SourceProcess : key, source,
         format, df, title, url, cle_api et metadata.
         
@@ -51,9 +48,9 @@ class SourceProcess:
             data_format: il s'agit de l'année 2022 ou 2019
         """
         logging.info("--- ÉTAPE INIT")
-        self.report = report
         self.key = key
-        self.data_format = data_format
+        self.report = params.report
+        self.data_format = params.data_format
         with open("metadata/metadata.json", 'r+') as f:
             self.metadata = json.load(f)
         self.source = self.metadata[self.key]["code"]
@@ -75,22 +72,20 @@ class SourceProcess:
         self.start_date = datetime.now().replace(day=1)
         self.end_date = datetime.now()
         # Regenerate all data for a given year ifnot None
-        self.rebuild_year = 2025 # None
-        if self.rebuild_year:
+        self.rebuild_year = None # None
+        if params.rebuild:
+            self.rebuild_year = params.rebuild
             self.start_date = pd.to_datetime(f"{self.rebuild_year}-01-01")
             self.end_date = pd.to_datetime(f"{self.rebuild_year}-12-31")
 
         # Lavage des dossiers de la source
         self._clean_metadata_folder()
 
-        # Récupération des urls
-        #self._url_init() 
-
         # Liste des dictionnaires pour l'étape de nettoyage
         self.dico_2022_marche = []
         self.dico_2022_concession = []
 
-        # Chargement du schemas json
+        # Chargement du schemas json de reference
         scheme_path = 'schemes/schema_decp_v2.0.4.json'
         with open(scheme_path, "r",encoding='utf-8') as json_file:
             self.json_scheme = json.load(json_file)
@@ -465,6 +460,7 @@ class SourceProcess:
         # Get year-month suffix for this data set for merging data in export
         year_month = file_date.strftime('%Y-%m')
         file_date_str = file_date.strftime('%Y-%m-%d %H:%M:%S')
+        file_date_str_short = file_date.strftime('%Y-%m-%d')
 
         nb_total_marches,nb_total_concessions = self.get_nb_enregistrements(dico);
 
@@ -502,7 +498,7 @@ class SourceProcess:
                         dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,year_month,n,error_message,error_path))
                     else: 
                         # Get max date and year_month prefix for category
-                        max_date = self._get_max_date(dico['marche'][n])
+                        max_date = self._get_max_date(dico['marche'][n],file_date_str_short)
                         dico['marche'][n]['db_id'] = self._db_add_marche(db,id_source,id_file,file_date_str,n,dico['marche'][n],max_date)
                         dico['marche'][n]['tmp__max_date'] = max_date
                         self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source if local_source is None else local_source,file_name,year_month,n,error_message,error_path))
@@ -532,7 +528,7 @@ class SourceProcess:
                         dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,year_month,m,error_message,error_path))
                     else: 
                         # Get max date and year_month category
-                        max_date = self._get_max_date(dico['contrat-concession'][m])
+                        max_date = self._get_max_date(dico['contrat-concession'][m],file_date_str_short)
                         dico['contrat-concession'][m]['db_id'] = self._db_add_concession(db,id_source,id_file,file_date_str,m,dico['contrat-concession'][m],max_date)
                         dico['contrat-concession'][m]['tmp__max_date'] = max_date
                         self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source if local_source is None else local_source,file_name,year_month,m,error_message,error_path))
@@ -589,7 +585,7 @@ class SourceProcess:
 
             return db.add_concession(id_source,id_file,file_date,n,id,autorite_concedante_id,concessionnaires,date_debut_execution,valeur_globale,objet,max_date,concession)
 
-    def _get_max_date(self,marche):
+    def _get_max_date(self,marche,default_date_str):
         max_date_record = None
         if 'datePublicationDonnees' in marche:
             max_date_record = marche['datePublicationDonnees']
@@ -607,13 +603,15 @@ class SourceProcess:
                         max_date_record = m['datePublicationDonnees']
         try:
             tmp_date = pd.to_datetime(max_date_record)
+            """
             if tmp_date<self.min_date or tmp_date>self.max_date:
                 #max_date_record=self.min_date
-                return None, None
+                return default_date
             if tmp_date < self.start_date:
                 tmp_date = self.start_date
+            """
         except Exception as err:
-            max_date_record = None # default_date.strftime('%Y-%m-%d')
+            max_date_record = default_date_str
         return max_date_record
 
     def _add_column_type(self, df: pd.DataFrame, default_type_name:str = None) -> None :

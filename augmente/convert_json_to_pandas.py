@@ -67,7 +67,7 @@ def manage_modifications(data: dict,data_format:str) -> pd.DataFrame:
 
     L_indice = indice_marche_avec_modification(data)
     dict_modification = recuperation_colonne_a_modifier(data, L_indice)
-    df = json_normalize(data['marches'])
+    df = json_normalize(data['marches']["marche"])
 
     # Fix ECO add empty columns
     complete_data_column(df)
@@ -248,11 +248,11 @@ def indice_marche_avec_modification(data: dict) -> list:
         - list
     """
     liste_indices = []
-    for i in range(len(data["marches"])):
+    for i in range(len(data["marches"]["marche"])):
         # Ajout d'un identifiant technique -> Permet d'avoir une colonne id unique par marché
-        data["marches"][i]["id_technique"] = i
-        if "modifications" in data["marches"][i]:
-            if data["marches"][i]["modifications"]:
+        data["marches"]["marche"][i]["id_technique"] = i
+        if "modifications" in data["marches"]["marche"][i]:
+            if data["marches"]["marche"][i]["modifications"]:
                 liste_indices += [i]
     return liste_indices
 
@@ -268,8 +268,8 @@ def recuperation_colonne_a_modifier(data: dict, liste_indices: list) -> dict:
     liste_colonne = []
     colonne_to_modify = {}
     for indice in liste_indices:
-        # colonne_modifiees = list(data["marches"][indice]["modifications"][0].keys())
-        modifications = data["marches"][indice]["modifications"]
+        # colonne_modifiees = list(data["marches"]["marche"][indice]["modifications"][0].keys())
+        modifications = data["marches"]["marche"][indice]["modifications"]
         if modifications and isinstance(modifications, list) and isinstance(modifications[0], dict):
             for col in modifications[0].keys():
                 if "Modification" not in col:

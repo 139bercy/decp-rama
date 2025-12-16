@@ -1,27 +1,24 @@
-from general_process.SourceProcess import SourceProcess
 import os
 import json
 import wget
-import ssl
-import certifi
-import urllib
 import pandas as pd
 import ast
 import logging
+from general_process.SourceProcess import ProcessParams, SourceProcess
 
 class DecpAwsProcess(SourceProcess):
-    def __init__(self,data_format,report):
+    def __init__(self,params:ProcessParams):
+        self.key = "decp_aws"
+        self.report = params.report
+        self.data_format = params.data_format
         with open("metadata/metadata.json", 'r+') as f:
             self.metadata = json.load(f)
-        self.key = "decp_aws"
-        self.data_format = data_format
         self.source = self.metadata[self.key]["code"]
         self.format = self.metadata[self.key]["format"]
         self.url_source = self.metadata[self.key]["url_source"]
         self.file_name = ["decp_aws.json"]
-        self.df = pd.DataFrame()
         self.local_path = os.path.join("sources", self.source, self.file_name[0])
-        self.report = report
+        self.df = pd.DataFrame()
 
     def _url_init(self):
         pass

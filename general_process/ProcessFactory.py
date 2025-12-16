@@ -1,3 +1,4 @@
+from general_process.SourceProcess import ProcessParams
 from specific_process import * 
 # Source non traitée pour l'instant
 import logging
@@ -47,7 +48,7 @@ class ProcessFactory:
                     self.process = proc
                     break
 
-    def run_processes(self):
+    def run_processes(self,args):
         """Création d'une boucle (1 source=1 itération) qui appelle chacun des processus de chaque source."""
         for process in self.processes:
             loaded = ''
@@ -55,45 +56,45 @@ class ProcessFactory:
                 logging.info( "---------------------------------------------------------------")
                 logging.info(f"               Traitement de {process.__name__} ")
                 logging.info( "---------------------------------------------------------------")
-                p = process(self.data_format,self.report)
+                params = ProcessParams(key=None,data_format=self.data_format, report=self.report, rebuild=args.rebuild)
+                p = process(params)
+                logging.info(self.step.get_status(p.source))
                 if not self.step.bypass(p.source,Step.GET):
                     p.get()
                     self.step.snapshot(p.source,Step.GET)
-                loaded = 'get'
                 if not self.step.bypass(p.source,Step.CLEAN):
                     p.clean()
                     self.step.snapshot_dicts(p.source,Step.CLEAN,p.dico_2022_marche,p.dico_2022_concession)
                 else:
                     p.dico_2022_marche,p.dico_2022_concession = self.step.resume_dicts(p.source,Step.CLEAN,StepMngmt.FORMAT_DICTS)
-                loaded = 'clean'
                 if not self.step.bypass(p.source,Step.CONVERT):
                     p.convert()
                     self.step.snapshot_dataframe(p.source,Step.CONVERT,p.df)
                 else:
                     p.df = self.step.resume(p.source,Step.CONVERT,StepMngmt.FORMAT_DATAFRAME)
-                loaded = 'convert'
                 if not self.step.bypass(p.source,Step.FIX):
                     p.fix()
                     self.step.snapshot_dataframe(p.source,Step.FIX,p.df)
                 else:
                     p.df = self.step.resume(p.source,Step.FIX,StepMngmt.FORMAT_DATAFRAME)
-                loaded = 'fix'
                 p.fix_statistics()
                 logging.info (f"Ajout des données de la source {process.__name__}")
-                self.dataframes.append(p.df)
+                self.dataframes.append(p.df) #p.df['tmp__max_date'].apply(lambda x: type(x)).value_counts() #
                 p.df = None
                 logging.info( "---------------------------------------------------------------")
                 logging.info(f"             Fin du traitement {process.__name__}")
                 logging.info( "---------------------------------------------------------------")
             except Exception as err:
+                loaded = self.step.get_status(p.source)
                 if loaded != '':
-                    logging.error(f" {loaded}  - {err}")
+                    logging.error(f"Erreur à l'étape {loaded}  - {err}")
                 else:
                     logging.error(f"Source introuvable - {err}")
 
-    def run_process(self):
+    def run_process(self,args):
         """Lance un seul processus"""
         logging.info(f"------------------------------{self.process.__name__}------------------------------")
+        params = ProcessParams(key=None,data_format=self.data_format, report=self.report, rebuild=args.rebuild)
         p = self.process()
         if not self.step.bypass(p.source,Step.GET):
             p.get()

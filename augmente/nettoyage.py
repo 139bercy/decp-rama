@@ -286,26 +286,37 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
         format_data_to_dataeco(df_marche, True)
         cols = conf_glob[f"df_marche_{data_format}"]
         cols.remove("Erreurs")
+        cols.remove("db_id")
+        cols.remove("_type")
+        cols.remove("_type")
         # save data to csv files
         df_marche.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'marches-valides/marche-{data_format}-{ref_date}.csv'), index=False, header=True, columns=cols)
 
     if not df_concession.empty:
         # Mise à jour en base des données retenues 
         update_database_augmente(df_concession,False)
+        
+        df_concession.drop(columns=['_type','db_id'], inplace=True)
 
         format_data_to_dataeco(df_concession, False)
         cols = conf_glob[f"df_concession_{data_format}"]
         cols.remove("Erreurs")
+        cols.remove("db_id")
+        cols.remove("_type")
+        cols.remove("_type")
         # save data to csv files
         df_concession.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-valides/concession-{data_format}-{ref_date}.csv'), index=False, header=True, columns=cols)
     
     if not df_marche_badlines.empty:
         format_data_to_dataeco(df_marche_badlines, True)
+        df_marche_badlines.drop(columns=['db_id','_type'],inplace=True)
         # save data to csv files
         df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'marches-invalides/marche-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True)
     
     if not df_concession_badlines.empty:
         format_data_to_dataeco(df_concession_badlines, False)
+        df_concession_badlines.drop(columns=['db_id','_type'],inplace=True)
+
         # save data to csv files
         df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-invalides/concession-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True)
 
@@ -531,7 +542,7 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         if column in df_marche_.columns:
             df_marche_.drop(columns=suppression_colonnes, inplace=True)
 
-    # On initialise la table des marches exclus a l'identique de celle des marches
+    # On initialise la structurr de lz table des marches exclus a l'identique de celle des marches
     df_marche_badlines_ = pd.DataFrame(columns=df_marche_.columns)
     
     @compute_execution_time
@@ -854,11 +865,12 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         format_regex = PATTERN_DATE
         invalid_dates = df[~df[col].str.match(format_regex, na=False)] #if col!="dateNotification" else df[~(df[col].str.match(format_regex, na=False) or df["datePublicationDonnees"].str.match(format_regex, na=False)]
         if not invalid_dates.empty:
-            if col== "dateNotification":
-                invalid_dates["dateNotification"] = invalid_dates["datePublicationDonnees"]
-                mask_bad_col = ~df[col].str.match(format_regex, na=False) & ~df["datePublicationDonnees"].str.match(format_regex, na=False)
-            else:
-                mask_bad_col = ~df[col].str.match(format_regex, na=False)
+            #if col== "dateNotification":
+            #    invalid_dates["dateNotification"] = invalid_dates["datePublicationDonnees"]
+            #    mask_bad_col = ~df[col].str.match(format_regex, na=False) & ~df["datePublicationDonnees"].str.match(format_regex, na=False)
+            #else:
+            #    mask_bad_col = ~df[col].str.match(format_regex, na=False)
+            mask_bad_col = ~df[col].str.match(format_regex, na=False)
 
             if data_format=='2019':
                 current_year = str(datetime.now().year)

@@ -1,4 +1,3 @@
-from general_process.SourceProcess import SourceProcess
 import logging
 import os
 import os
@@ -6,10 +5,11 @@ import json
 import pandas as pd
 import xmltodict
 import re
+from general_process.SourceProcess import ProcessParams, SourceProcess
 
 class BreProcess(SourceProcess):
-    def __init__(self,data_format,report):
-        super().__init__("bre",data_format,report)
+    def __init__(self,params:ProcessParams):
+        super().__init__("bre",params=params)
 
     def _url_init(self):
         self.metadata[self.key]["url"] = [self.metadata[self.key]["url_source"]]

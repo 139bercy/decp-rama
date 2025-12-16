@@ -1,10 +1,10 @@
-from general_process.SourceProcess import SourceProcess
+from general_process.SourceProcess import ProcessParams, SourceProcess
 import json
 
 
 class AifeProcess(SourceProcess):
-    def __init__(self,data_format,report):
-        super().__init__("aife",data_format,report)
+    def __init__(self,params:ProcessParams):
+        super().__init__("aife",params=params)
 
     def _url_init(self):
         super()._url_init()
