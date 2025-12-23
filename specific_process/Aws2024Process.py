@@ -1,4 +1,5 @@
 from general_process.SourceProcess import ProcessParams, SourceProcess
+import pandas as pd
 
 class Aws2024Process(SourceProcess):
     def __init__(self,params:ProcessParams):
@@ -6,6 +7,25 @@ class Aws2024Process(SourceProcess):
 
     def _url_init(self):
         super()._url_init()
+
+    def filter_urls(self, url, title, url_date):
+        filtered_url = []
+        filtered_title = []
+        filtered_date = []
+        for u, t, d in zip(url, title, url_date):
+            token = t[0:4]
+            date_from_file_name = pd.to_datetime((token if token.isdigit() and len(token) == 4 else None) + '-12-31 23:59:59').tz_localize(None)
+            date = pd.to_datetime(d).tz_localize(None)
+            if date_from_file_name < date:
+                date = date_from_file_name
+            if self.start_date<date and date<=self.end_date: 
+                filtered_url.append(u)
+                filtered_title.append(t)
+                filtered_date.append(date)
+            url = filtered_url
+            title = filtered_title
+            url_date = filtered_date
+        return super().filter_urls(filtered_url,filtered_title, filtered_date)
 
     def fix(self):
         super().fix()

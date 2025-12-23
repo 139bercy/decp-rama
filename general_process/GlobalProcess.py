@@ -442,7 +442,7 @@ class GlobalProcess:
                 json.dump(config, file, indent=4)
 
     @StepMngmt().decorator(Step.EXPORT,None)
-    def export(self,local:bool):
+    def generate_export(self,local:bool):
         # if df is empty then return
         if len(self.df) == 0:
             logging.warning("Le DataFrame global est vide, impossible d'exporter")
@@ -453,69 +453,71 @@ class GlobalProcess:
 
         # Creation du sous répertoire "results"
         os.makedirs("results", exist_ok=True)
-
-        ## Exportation des données dans des fichiers mensuels 
-        self._nan_correction_dico(self.df)
-
-        dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
-                            for m in self.df.to_dict(orient='records')]}
         
-        self.update_data(dico)
-
         # Sauvegarde des données journalières
         # daily replaced by global
         #path_result_daily = "results/decp-daily.json"
         #self.file_dump(path_result_daily,dico)
 
+        ## Exportation des données dans des fichiers mensuels 
         current_year_month  = f"{datetime.now().year}-{datetime.now().month:02d}"
-        suffixes = []
         years = []
         for year_month, group in self.df.groupby('tmp__annee_mois'):
             if year_month <= current_year_month:
-                suffixes += [year_month]
+                output_file = f"results/decp-{year_month}.json"
+
                 nb_marches = group[group['_type'].str.contains("Marché")].shape[0]
                 nb_concessions = group[~group['_type'].str.contains("Marché")].shape[0]
-                
-                output_file = f"results/decp-{year_month}.json"
                 logging.info(f"Ajout de {nb_marches} marchés et {nb_concessions} concessions au fichier {output_file}")
+                
                 self._merge_in_file(output_file,group)
                 
                 suffix_year = year_month[0:4]
                 if not suffix_year in years:
                     years += [suffix_year]
 
-        if self.generate_global:
-            for year in years:
-                df_new = pd.DataFrame()
-                total_marches = 0
-                total_concessions = 0
-                for year_month, group in self.df.groupby('tmp__annee_mois'):
-                    if year == year_month[0:4]:
-                        df_new = pd.concat([df_new,group],ignore_index=True)
-                        
-                        total_marches += group[group['_type'].str.contains("Marché")].shape[0]
-                        total_concessions += group[~group['_type'].str.contains("Marché")].shape[0]
+        for year in years:
+            output_file_year = f"results/decp-{year}.json"
+            df_new = pd.DataFrame()
+            total_marches = 0
+            total_concessions = 0
+            for year_month, group in self.df.groupby('tmp__annee_mois'):
+                if year == year_month[0:4]:
+                    df_new = pd.concat([df_new,group],ignore_index=True)
                     
-                output_file_year = f"results/decp-{year}.json"
-                logging.info(f"Ajout de {total_marches} marchés et {total_concessions} concessions au fichier {output_file_year} pour l'annee {year}")
-                self._merge_in_file(output_file_year,df_new)
-
-        self.save_report()
-
-        self.generate_global()
+                    total_marches += group[group['_type'].str.contains("Marché")].shape[0]
+                    total_concessions += group[~group['_type'].str.contains("Marché")].shape[0]
+                
+            logging.info(f"Ajout de {total_marches} marchés et {total_concessions} concessions au fichier {output_file_year} pour l'annee {year}")
+            self._merge_in_file(output_file_year,df_new)
 
         logging.info("Exportation JSON OK")
+
+
+    def get_suffixes_exported_files(self):
+        suffixes = []
+        current_year_month = f"{datetime.now().year}-{datetime.now().month:02d}"
+        for year_month, group in self.df.groupby('tmp__annee_mois'):
+            if year_month <= current_year_month:
+                suffixes += [year_month]
         return suffixes
-    
-    def update_data(self, dico):
+
+
+    @StepMngmt().decorator(Step.GLOBAL,None)
+    def update_global_data(self):
         logging.info("Update data_out in database")
+        
+        self._nan_correction_dico(self.df)
+
+        dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
+                            for m in self.df.to_dict(orient='records')]}
+        
         db = DbDecp()
         if 'marches' in dico:
             i=0
             pairs_marches=[]
             for marche in dico['marches']:
                 if not marche['db_id']==0:
-                    #db.update_marche(marche['db_id'],marche)
                     if marche["_type"]=='Marché':
                         pairs_marches.append([int(marche['db_id']),marche])
                         i+=1
@@ -529,9 +531,12 @@ class GlobalProcess:
                 db.bulk_update_marche(pairs_marches)
         logging.info("Data updated in database")
         db.close()
-    
+   
     def generate_global(self):
         logging.info("Launching file generation for augmente data treatment")
+        # Creation du sous répertoire "results"
+        os.makedirs("results", exist_ok=True)
+        os.makedirs("results/global", exist_ok=True)
         db = DbDecp()
         db.extract_json_to_file("results/global/decp-global.json")
         db.close()

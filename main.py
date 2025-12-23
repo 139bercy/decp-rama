@@ -41,9 +41,15 @@ def main(report,data_format:str = "2022"):
     gp.fix_all()
     
     gp.report.fix_statistics('merged')
-    suffixes = gp.export(args.local)
+    gp.save_report()
+
+    gp.update_global_data()
+    gp.generate_export(args.local)
+    gp.generate_global()
+
     if not args.local:
         # gp.upload_s3()
+        suffixes = gp.get_suffixes_exported_files()
         gp.upload_on_datagouv(suffixes)
 
 

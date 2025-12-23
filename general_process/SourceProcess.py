@@ -73,10 +73,12 @@ class SourceProcess:
         self.end_date = datetime.now()
         # Regenerate all data for a given year ifnot None
         self.rebuild_year = None # None
+        self.save_metadata = True
         if params.rebuild:
             self.rebuild_year = params.rebuild
-            self.start_date = pd.to_datetime(f"{self.rebuild_year}-01-01")
-            self.end_date = pd.to_datetime(f"{self.rebuild_year}-12-31")
+            self.save_metadata = int(self.rebuild_year) == self.start_date.year
+            self.start_date = pd.to_datetime(f"{self.rebuild_year}-01-01 00:00:00")
+            self.end_date = pd.to_datetime(f"{self.rebuild_year}-12-31 23:59:59")
 
         # Lavage des dossiers de la source
         self._clean_metadata_folder()
@@ -201,31 +203,19 @@ class SourceProcess:
 
                 # Filter file by date in title, url
                 
-            # Set filter
-            if self.rebuild_year:
-                filtered_url = []
-                filtered_title = []
-                filtered_date =[]
-                for u, t, d in zip(url, title, url_date):
-                    date = pd.to_datetime(d).tz_localize(None)
-                    if self.start_date<date and date<self.end_date: 
-                        filtered_url.append(u)
-                        filtered_title.append(t)
-                        filtered_date.append(d)
-                url = filtered_url
-                title = filtered_title
-                url_date = filtered_date
+            url, title, url_date = self.filter_urls(url, title, url_date)            
 
-            #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
-            if os.path.exists(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json"):
-                with open(f"metadata/{self.source}/metadata_{self.key}_{i}.json", 'r') as source_file:
-                    contenu = source_file.read()
-                with open(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json", 'w') as destination_file:
-                    destination_file.write(contenu)
-            #Cas où les fichiers old_metadata n'existent pas: on fait une copie
-            else:
-                shutil.copy(f"metadata/{self.source}/metadata_{self.key}_{i}.json",f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json")
-                logging.info(os.listdir(f"old_metadata/{self.source}"))
+            if self.rebuild_year is None or self.save_metadata:
+                #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
+                if os.path.exists(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json"):
+                    with open(f"metadata/{self.source}/metadata_{self.key}_{i}.json", 'r') as source_file:
+                        contenu = source_file.read()
+                    with open(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json", 'w') as destination_file:
+                        destination_file.write(contenu)
+                #Cas où les fichiers old_metadata n'existent pas: on fait une copie
+                else:
+                    shutil.copy(f"metadata/{self.source}/metadata_{self.key}_{i}.json",f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json")
+                    logging.info(os.listdir(f"old_metadata/{self.source}"))
 
         return url,title,url_date
 
@@ -254,6 +244,23 @@ class SourceProcess:
                     url_date = url_date + [d["last_modified"]]  
         return url, title, url_date 
     
+
+    def filter_urls(self, url, title, url_date):
+        # Set filter
+        if self.rebuild_year:
+            filtered_url = []
+            filtered_title = []
+            filtered_date =[]
+            for u, t, d in zip(url, title, url_date):
+                date = pd.to_datetime(d).tz_localize(None)
+                if self.start_date<date and date<=self.end_date: 
+                    filtered_url.append(u)
+                    filtered_title.append(t)
+                    filtered_date.append(d)
+            url = filtered_url
+            title = filtered_title
+            url_date = filtered_date
+        return url, title, url_date
 
     def get(self) -> None:
         """

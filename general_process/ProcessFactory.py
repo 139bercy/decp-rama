@@ -30,7 +30,7 @@ class ProcessFactory:
         #self.processes = [SampleXmlProcess]
         #self.processes = [Aife2024Process]
         #self.processes = [Xmarches2024Process]
-        #self.processes =[Aws2024Process]
+        #self.processes = [Aws2024Process]
         #self.processes = [Pes2024Process]
         #self.processes = [Modula2024Process]
         # if data_format=='2022':
@@ -56,7 +56,7 @@ class ProcessFactory:
                 logging.info( "---------------------------------------------------------------")
                 logging.info(f"               Traitement de {process.__name__} ")
                 logging.info( "---------------------------------------------------------------")
-                params = ProcessParams(key=None,data_format=self.data_format, report=self.report, rebuild=args.rebuild)
+                params = ProcessParams(key=None,data_format=self.data_format, report=self.report, rebuild=args.rebuild.strip() if args.rebuild else None)
                 p = process(params)
                 logging.info(self.step.get_status(p.source))
                 if not self.step.bypass(p.source,Step.GET):

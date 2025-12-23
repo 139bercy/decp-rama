@@ -11,7 +11,8 @@ class Step (Enum):
     MERGE_ALL = 6
     FIX_ALL = 7
     DUPLICATE = 8
-    EXPORT = 9
+    GLOBAL = 9
+    EXPORT = 10
     UPLOAD_DATA_GOUV = 10
     AUGMENTE_LOAD = 11
     AUGMENTE_CLEAN = 12
