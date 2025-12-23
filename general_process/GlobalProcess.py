@@ -894,6 +894,7 @@ class GlobalProcess:
             resource_id_global = self._upload_file(headers,api,dataset_id,resource_id_global,suffix_year)
 
             resource_id_month = self._upload_file(headers,api,dataset_id,None,suffix_month)
+            self._update_description(headers,api,dataset_id,resource_id_month,suffix_month)
             
             with open(config_file, "r") as file:
                 data = json.load(file)
@@ -918,6 +919,30 @@ class GlobalProcess:
                 config["resource_year"] = self.get_current_date().year
             with open(config_file, "w") as file:
                 json.dump(config, file, indent=4) 
+
+
+    def _update_description(self, headers, api, dataset_id, ressource_id, suffix):
+        mois_annee = self._get_mois_annee(suffix)
+        description = f"Fichier cumulatif des données essentielles de la commande publique pour {mois_annee}"
+        #description = "Fichier des données essentielles de la commande publique au format 2022 pour toutes les années après dédoublonnage"
+        data = {
+            "format": "json",
+            "title": f"decp-{suffix}.json",
+            "description": f"{description} ",
+            "type": "main",
+            "mime": "application/json",
+            "url": f"https://www.data.gouv.fr/api/1/datasets/r/{ressource_id}"
+        }
+        url_update = f"{api}/datasets/{dataset_id}/resources/{ressource_id}/"
+        response = requests.put(url_update, headers=headers, json=data)
+
+        logging.INFO(f"Statut de la requête : {response.status_code}")
+        logging.info("Réponse : ", response.json())
+
+    def _get_mois_annee(self,suffix):
+        year,month = suffix.split("-")
+        date_obj = datetime.datetime(int(year),int(month),1)
+        return date_obj.strftime("%B %Y")
 
     def _get_ressource_id(self,headers,api,dataset_id,suffix:str) -> str:
         resource_id = None
