@@ -532,13 +532,13 @@ class GlobalProcess:
         logging.info("Data updated in database")
         db.close()
    
-    def generate_global(self):
+    def generate_global(self, generate_month=True):
         logging.info("Launching file generation for augmente data treatment")
         # Creation du sous répertoire "results"
         os.makedirs("results", exist_ok=True)
         os.makedirs("results/global", exist_ok=True)
         db = DbDecp()
-        db.extract_json_to_file("results/global/decp-global.json")
+        db.extract_json_to_file("results/global/decp-global-retenus.json",generate_month)
         db.close()
         logging.info("File generation ok for augmente data treatment")
         
@@ -908,6 +908,9 @@ class GlobalProcess:
 
             with open(config_file, "w") as file:
                 json.dump(data, file, indent=4)
+                
+            self.reorder_resources(headers,api,dataset_id)
+
         #Cas quand le mois n'a pas changé depuis la dernière exécution (ou lors de la première execution)
         else:
             result_resource_id = self._upload_file(headers,api,dataset_id,config["resource_id_month"],suffix_month)
@@ -920,7 +923,7 @@ class GlobalProcess:
             with open(config_file, "w") as file:
                 json.dump(config, file, indent=4) 
 
-
+    # Update resource description on data.gouv
     def _update_description(self, headers, api, dataset_id, ressource_id, suffix):
         mois_annee = self._get_mois_annee(suffix)
         description = f"Fichier cumulatif des données essentielles de la commande publique pour {mois_annee}"
@@ -938,6 +941,53 @@ class GlobalProcess:
 
         logging.INFO(f"Statut de la requête : {response.status_code}")
         logging.info("Réponse : ", response.json())
+
+
+    # Set all dataSet resources in order on data.gouv
+    def reorder_resources(self,headers,api,dataset_id):
+        resources = self._get_all_resources(headers,api,dataset_id)
+        resources = self._sort_resources(resources)
+        self._set_resources_order(headers,api,dataset_id,resources)
+
+    def _get_all_resources(self, headers, api, dataset_id) -> list:
+        url = f"{api}/datasets/{dataset_id}/"
+        response = requests.get(url, headers=headers)
+        print(f"Statut de la requête : {response.status_code}")
+        if response.status_code == 200:
+            # Récupérer la réponse en JSON
+            response_data = response.json()
+            return response_data["resources"]
+        
+        return None
+    
+    # Sort an array of dataset resources by tihle xith priority to global_decp.jsob
+    def _sort_resources(self, resources) -> list:
+        # Priorités
+        priority_titles = {"decp-global.json", "decp_global.json"}
+
+        # Keep all items whose title matches priority (preserve their original order)
+        priority_items = [item for item in resources
+            if str(item.get("title", "")).strip().lower() in priority_titles]
+
+        # Remaining items
+        others = [item for item in resources
+            if str(item.get("title", "")).strip().lower() not in priority_titles]
+
+        # Sort remaining items by title (case-insensitive)
+        others.sort(key=lambda x: str(x.get("title", "")).lower())
+
+        # Combined result: priority items first, then sorted others
+        resources = priority_items + others
+
+        return resources
+
+
+    # Order resources of a dataset based on resources sequence in
+    def _set_resources_order(self,headers,api,dataset_id,resources):
+        url = f"{api}/datasets/{dataset_id}/resources/"
+        response = requests.put(url,headers=headers,json=resources)
+        print(f"Statut de la requête : {response.status_code}")
+
 
     def _get_mois_annee(self,suffix):
         year,month = suffix.split("-")

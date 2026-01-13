@@ -1396,7 +1396,7 @@ def check_siret(df: pd.DataFrame, dfb: pd.DataFrame, col: str) -> pd.DataFrame:
     Si INEXPLOITABLE, le contrat est mis de côté.
     """
 
-    mask_bad_siret = ~df[col].astype(str).str.match("^[0-9]{14}$")
+    mask_bad_siret = ~df[col].apply(check_insee_field) #~df[col].astype(str).str.match("^[0-9]{14}$")
     df = df_add_error(df,mask_bad_siret,f"Numéro SIRET erroné pour le champ {col}")
 
     return df
@@ -1407,8 +1407,20 @@ def check_siret_ext(df: pd.DataFrame, dfb: pd.DataFrame, col: str, type:str) -> 
     supprimer les « 0 » en début de Siret. L’identifiant autorité concédante est INEXPLOITABLE 
     s’il ne respecte pas le format. Si INEXPLOITABLE, le contrat est mis de côté.
     """
-    col_id = col +'_id_1'
-    col_type = col +'_typeIdentifiant_1'
+    df=check_siret_ext_index(df,dfb,col,type,'1')
+    df=check_siret_ext_index(df,dfb,col,type,'2')
+    df=check_siret_ext_index(df,dfb,col,type,'3')
+
+    return df
+
+def check_siret_ext_index(df: pd.DataFrame, dfb: pd.DataFrame, col: str, type:str, index:str) -> pd.DataFrame:
+    """
+    Le SIRET comprend 14 caractères (9 pour le SIREN + 5 pour le NIC) – format texte pour ne pas
+    supprimer les « 0 » en début de Siret. L’identifiant autorité concédante est INEXPLOITABLE 
+    s’il ne respecte pas le format. Si INEXPLOITABLE, le contrat est mis de côté.
+    """
+    col_id = col +'_id_'+index
+    col_type = col +'_typeIdentifiant_'+index
     expression = None
 
     if type=='SIRET':
@@ -1430,11 +1442,11 @@ def check_siret_ext(df: pd.DataFrame, dfb: pd.DataFrame, col: str, type:str) -> 
         
         mask_bad_col = (df[col_type]==type) & (~df[col_id].astype(str).str.match(expression))
         
-        if type=='SIRET' and (col_id=='titulaire_id_1' or col_id=='concessionnaire_id_1'):
+        if type=='SIRET': # and (col_id=='titulaire_id_1' or col_id=='concessionnaire_id_1'):
             mask_bad_col = (df[col_type]==type) & (~df[col_id].apply(check_insee_field))
-            df = df_add_error(df,mask_bad_col,f"Numéro {type} erroné pour le champ {col}")
+            df = df_add_error(df,mask_bad_col,f"Numéro {type} erroné pour le champ {col} N°{index}")
 
-        df = df_add_error(df,mask_bad_col,f"Numéro {type} erroné pour le champ {col}")
+        df = df_add_error(df,mask_bad_col,f"Numéro {type} erroné pour le champ {col} N°{index}")
 
     return df
 
