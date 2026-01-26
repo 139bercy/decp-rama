@@ -75,7 +75,7 @@ def main_augmente(session_id:str,data_format:str = '2022'):
         # logger.info("csv enrichi dans le dossier data")
         if not args.test and not args.local:
             augmente.utils.export_all_csv(ref_date,data_format,args.local)
-        
+
         if month == 12:
             year += 1
             month = 1

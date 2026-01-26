@@ -354,7 +354,6 @@ class DbDecp:
                 SET data_augmente = %s,
                     est_retenu = TRUE
                 WHERE marche_id = %s
-                AND NOT est_retenu IS TRUE
             """, (json.dumps(json_data),marche_id,))
 
             # Valider la transaction
@@ -511,7 +510,6 @@ class DbDecp:
                             est_retenu = TRUE
                         FROM tmp_updates t
                         WHERE concession.concession_id = t.concession_id
-                        AND marche.est_retenu IS NOT TRUE
                         RETURNING concession.concession_id;
                     """)
                     updated = [r[0] for r in cur.fetchall()]

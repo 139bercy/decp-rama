@@ -280,6 +280,7 @@
                     "montant": "float64",
                     "formePrix": "string",
                     "titulaires": "object",
+                    "concessionnaires": "object",
                     "modifications": "object",
                     "nature": "string",
                     "autoriteConcedante.id": "string",

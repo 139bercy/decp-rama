@@ -45,9 +45,11 @@ class NodeFormat:
     def normalize_list_node_inside(marche, parent_node_inside, child_node_inside, parent_node, child_node):
         if parent_node in marche:
             for i in range(len((marche[parent_node]))):
-                if child_node in marche[parent_node][i] \
+                if marche[parent_node][i] is not None \
+                    and child_node in marche[parent_node][i] \
                     and parent_node_inside in marche[parent_node][i][child_node] \
                     and isinstance(marche[parent_node][i][child_node][parent_node_inside],list) \
+                    and not marche[parent_node][i][child_node][parent_node_inside] == [None] \
                     and child_node_inside in marche[parent_node][i][child_node][parent_node_inside][0]:
                         marche[parent_node][i][child_node][parent_node_inside] = \
                             [{child_node_inside: element} for element in marche[parent_node][i][child_node][parent_node_inside][0][child_node_inside]]
