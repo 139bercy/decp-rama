@@ -17,6 +17,7 @@ from datetime import datetime
 from pypdl import Pypdl
 from urllib.parse import urlparse
 from reporting.Report import Report
+from utils import UtilsFile
 from utils.NodeFormat import NodeFormat
 
 pd.options.mode.chained_assignment = None
@@ -85,7 +86,7 @@ class SourceProcess:
         #self.start_date = pd.to_datetime(f"2025-12-17 00:00:00")
         #self.end_date = pd.to_datetime(f"{self.rebuild_year}-12-31 23:59:59")
         # End test demo.data.gouv
-        
+
         # Lavage des dossiers de la source
         self._clean_metadata_folder()
 
@@ -286,11 +287,13 @@ class SourceProcess:
             dl = Pypdl(allow_reuse=True)
             for i in range(len(self.url)):
                 try:
-                    #if os.path.exists(f"sources/{self.source}/{self.title[i]}"):
-                    #    os.remove(f"sources/{self.source}/{self.title[i]}")
-                    #    logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
+                    if os.path.exists(f"sources/{self.source}/{self.title[i]}"):
+                        if UtilsFile.last_modification(f"sources/{self.source}/{self.title[i]}") < self.url_date[i]:
+                            os.remove(f"sources/{self.source}/{self.title[i]}")
+                            logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
+                    else:
                     ##wget.download(self.url[i], f"sources/{self.source}/{self.title[i]}")
-                    if not os.path.exists(f"sources/{self.source}/{self.title[i]}"):
+                    #if not os.path.exists(f"sources/{self.source}/{self.title[i]}"):
                         dl.start(url=self.url[i],file_path=f"sources/{self.source}/{self.title[i]}",retries=10,display=False)
                         logging.info(f"Fichier : {self.title[i]} telechargé ")
                 except:

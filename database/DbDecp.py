@@ -157,7 +157,7 @@ class DbDecp:
 
     # Gestion des marchés
 
-    def add_marche(self, source_id, file_id, file_date, index, id, acheteur, titulaires, date_notification, montant, objet, max_date, json_data):
+    def add_marche(self, source_id, file_id, file_date, index, id, acheteur, titulaire, titulaires, date_notification, montant, objet, max_date, json_data):
         """
         Ajoute un marché si celui-ci n'existe pas déjà
         ou remplace un marché si celui-ci est retrouvé dans la table marché avec une date de
@@ -172,59 +172,60 @@ class DbDecp:
             cursor.execute("BEGIN;")
 
             cursor.execute("""
-                SELECT m.marche_id, m.max_date
+                SELECT m.marche_id, m.max_date, LENGTH(c.concessionnaires)
                 FROM decp.marche m
-                WHERE (m.id = %s AND m.acheteur = %s AND m.titulaires = %s AND m.date_notification = %s AND m.montant = %s)
-            """, (id, acheteur, titulaires, date_notification, montant,))
+                WHERE (m.id = %s AND m.acheteur = %s AND m.titulaire = %s AND m.date_notification = %s AND m.montant = %s)
+            """, (id, acheteur, titulaire, date_notification, montant,))
             result = cursor.fetchone()
 
             if result:
-                found_marche_id = result[0]
+                #found_marche_id = result[0]
                 found_max_date = result[1]
+                found_titulaires_len = result[2]
                 # reprise globale >= si la date es la même on considère que le premier ibséré (cad le dernier en date de fichier) edt le bln, le reste est en doublon
                 # au jour le jour >
-                if found_max_date is not None and file_date<found_max_date:
+                if found_max_date is not None and (file_date<found_max_date or found_titulaires_len<len(titulaires)):
                     # Insérer le nouvel enregistrement directement dans les doublons
                     cursor.execute("""
-                        INSERT INTO decp.marche_doublon (marche_doublon_id, source_id, file_id, indx, id, acheteur, titulaires, date_notification, montant, objet, max_date, date_creation, data_in)
-                        VALUES (nextval('decp.s_marche_doublon'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO decp.marche_doublon (marche_doublon_id, source_id, file_id, indx, id, acheteur, titulaire, titulaires, date_notification, montant, objet, max_date, date_creation, data_in)
+                        VALUES (nextval('decp.s_marche_doublon'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING marche_id;
-                    """, (source_id, file_id, index, id, acheteur, titulaires, date_notification, montant, objet, max_date, file_date, json.dumps(json_data)))
+                    """, (source_id, file_id, index, id, acheteur, titulaire, titulaires, date_notification, montant, objet, max_date, file_date, json.dumps(json_data)))
                     marche_id = 0
 
                 else:
                     # Déplacer l'enregistrement existant en doublon pour le remplacer
                     cursor.execute("""
-                        INSERT INTO decp.marche_doublon (marche_doublon_id, marche_id, source_id, file_id, indx, id, acheteur, titulaires, date_notification, montant, objet, max_date, date_creation, data_in, data_out, data_augmente, est_retenu)
-                        SELECT nextval('decp.s_marche_doublon'), m.marche_id, m.source_id, m.file_id, m.indx, m.id, m.acheteur, m.titulaires, m.date_notification, m.montant, m.objet, m.max_date, m.date_creation, m.data_in, m.data_out, m.data_augmente, m.est_retenu
+                        INSERT INTO decp.marche_doublon (marche_doublon_id, marche_id, source_id, file_id, indx, id, acheteur, titulaire, titulaires, date_notification, montant, objet, max_date, date_creation, data_in, data_out, data_augmente, est_retenu)
+                        SELECT nextval('decp.s_marche_doublon'), m.marche_id, m.source_id, m.file_id, m.indx, m.id, m.acheteur, m.titulaire, m.titulaires, m.date_notification, m.montant, m.objet, m.max_date, m.date_creation, m.data_in, m.data_out, m.data_augmente, m.est_retenu
                         FROM decp.marche m
-                        WHERE (m.id = %s AND m.acheteur = %s AND m.titulaires = %s AND m.date_notification = %s AND m.montant = %s)
-                    """, (id, acheteur, titulaires, date_notification, montant,))
+                        WHERE (m.id = %s AND m.acheteur = %s AND m.titulaire = %s AND m.date_notification = %s AND m.montant = %s)
+                    """, (id, acheteur, titulaire, date_notification, montant,))
 
                     # Suppression du doublon
                     cursor.execute("""
                         DELETE FROM decp.marche m
-                        WHERE m.id = %s AND m.acheteur = %s AND m.titulaires = %s AND m.date_notification = %s AND m.montant = %s
-                    """, (id, acheteur, titulaires, date_notification, montant,))
+                        WHERE m.id = %s AND m.acheteur = %s AND m.titulaire = %s AND m.date_notification = %s AND m.montant = %s
+                    """, (id, acheteur, titulaire, date_notification, montant,))
 
                     # Insérer le nouvel enregistrement
                     cursor.execute("""
-                        INSERT INTO decp.marche (marche_id, source_id, file_id, indx, id, acheteur, titulaires, date_notification, montant, objet, max_date, date_creation, data_in)
-                        VALUES (nextval('decp.s_marche'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (id, acheteur, titulaires, date_notification, montant) 
+                        INSERT INTO decp.marche (marche_id, source_id, file_id, indx, id, acheteur, titulaire, titulaires, date_notification, montant, objet, max_date, date_creation, data_in)
+                        VALUES (nextval('decp.s_marche'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (id, acheteur, titulaire, titulaires, date_notification, montant) 
                         DO NOTHING
                         RETURNING marche_id;
-                    """, (source_id, file_id, index, id, acheteur, titulaires, date_notification, montant, objet, max_date, file_date, json.dumps(json_data)))
+                    """, (source_id, file_id, index, id, acheteur, titulaire, titulaires, date_notification, montant, objet, max_date, file_date, json.dumps(json_data)))
                     marche_id = cursor.fetchone()[0]
             else:
                 # Insérer le nouvel enregistrement
                 cursor.execute("""
                     INSERT INTO decp.marche (marche_id, source_id, file_id, indx, id, acheteur, titulaires, date_notification, montant, objet, max_date, date_creation, data_in)
-                    VALUES (nextval('decp.s_marche'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (id, acheteur, titulaires, date_notification, montant) 
+                    VALUES (nextval('decp.s_marche'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (id, acheteur, titulaire, titulaires, date_notification, montant) 
                     DO NOTHING
                     RETURNING marche_id;
-                """, (source_id, file_id, index, id, acheteur, titulaires, date_notification, montant, objet, max_date, file_date, json.dumps(json_data)))
+                """, (source_id, file_id, index, id, acheteur, titulaire, titulaires, date_notification, montant, objet, max_date, file_date, json.dumps(json_data)))
                 marche_id = cursor.fetchone()[0]
 
             # Valider la transaction
@@ -370,7 +371,7 @@ class DbDecp:
 
     # Gestion des concession
 
-    def add_concession(self, source_id, file_id, file_date, index, id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, json_data):
+    def add_concession(self, source_id, file_id, file_date, index, id, autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, json_data):
         """
         Ajoute une concession si celui-ci n'existe pas déjà
         ou remplace une concession si celle-ci est retrouvée dans la table concession avec une date de 
@@ -386,44 +387,45 @@ class DbDecp:
 
             # Retrouver un enregistrement potentiellement en doublon
             cursor.execute("""
-                SELECT c.concession_id, c.max_date
+                SELECT c.concession_id, c.max_date, LENGTH(c.concessionnaires)
                 FROM decp.concession c
-                WHERE (c.id = %s AND c.autorite_concedante = %s AND c.concessionnaires = %s AND c.date_debut_execution = %s AND c.valeur_globale = %s)
-            """, (id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale,))
+                WHERE (c.id = %s AND c.autorite_concedante = %s AND c.concessionnaire = %s AND c.date_debut_execution = %s AND c.valeur_globale = %s)
+            """, (id, autorite_concedante, concessionnaire, date_debut_execution, valeur_globale,))
             result = cursor.fetchone()
 
             if result:
-                found_concession_id = result[0]
+                #found_concession_id = result[0]
                 found_max_date = result[1]
-                if found_max_date is not None and file_date<found_max_date:
+                found_len_concessionnaires = result[2]
+                if found_max_date is not None and (file_date<found_max_date or found_len_concessionnaires<len(concessionnaire)):
                     # Insérer le nouvel enregistrement directement dans les doublons
                     cursor.execute("""
-                        INSERT INTO decp.concession_doublon (concession_doublon_id, source_id, file_id, indx, id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, date_creation, data_in)
-                        VALUES (nextval('decp.s_concession_doublon'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO decp.concession_doublon (concession_doublon_id, source_id, file_id, indx, id, autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, date_creation, data_in)
+                        VALUES (nextval('decp.s_concession_doublon'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING concession_id;
-                    """, (source_id, file_id, index, id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, file_date, json.dumps(json_data)))
+                    """, (source_id, file_id, index, id, autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, file_date, json.dumps(json_data)))
                     concession_id = 0
 
                 else:
                     # Déplacer l'enregistrement en doublon existant
                     cursor.execute("""
-                        INSERT INTO decp.concession_doublon (concession_doublon_id, concession_id, source_id, file_id, indx, id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, date_creation, data_in, data_out, est_retenu)
-                        SELECT nextval('decp.s_concession_doublon'), c.concession_id, c.source_id, c.file_id, c.indx, c.id, c.autorite_concedante, c.concessionnaires, c.date_debut_execution, c.valeur_globale, c.objet, c.max_date, c.date_creation, c.data_in, c.data_out, c.est_retenu
+                        INSERT INTO decp.concession_doublon (concession_doublon_id, concession_id, source_id, file_id, indx, id, autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, date_creation, data_in, data_out, est_retenu)
+                        SELECT nextval('decp.s_concession_doublon'), c.concession_id, c.source_id, c.file_id, c.indx, c.id, c.autorite_concedante, c.concessionnaire, c.concessionnaires, c.date_debut_execution, c.valeur_globale, c.objet, c.max_date, c.date_creation, c.data_in, c.data_out, c.est_retenu
                         FROM decp.concession c
-                        WHERE (c.id = %s AND c.autorite_concedante = %s AND c.concessionnaires = %s AND c.date_debut_execution = %s AND c.valeur_globale = %s)
-                    """, (id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale,))
+                        WHERE (c.id = %s AND c.autorite_concedante = %s AND c.concessionnaire = %s AND c.date_debut_execution = %s AND c.valeur_globale = %s)
+                    """, (id, autorite_concedante, concessionnaire, date_debut_execution, valeur_globale,))
             
                     # Suppression du doublon
                     cursor.execute("""
                         DELETE FROM decp.concession m
-                        WHERE m.id = %s AND m.autorite_concedante = %s AND m.concessionnaires = %s AND m.date_debut_execution = %s AND m.valeur_globale = %s
-                    """, (id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale,))
+                        WHERE m.id = %s AND m.autorite_concedante = %s AND m.concessionnaire = %s AND m.date_debut_execution = %s AND m.valeur_globale = %s
+                    """, (id, autorite_concedante, concessionnaire, date_debut_execution, valeur_globale,))
                     
                     # Insérer le nouvel enregistrement
                     cursor.execute("""
-                        INSERT INTO decp.concession (concession_id, source_id, file_id, indx, id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, date_creation, data_in)
-                        VALUES (nextval('decp.s_concession'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (id,  autorite_concedante, concessionnaires, date_debut_execution, valeur_globale) 
+                        INSERT INTO decp.concession (concession_id, source_id, file_id, indx, id, autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, date_creation, data_in)
+                        VALUES (nextval('decp.s_concession'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (id,  autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale) 
                         DO NOTHING
                         RETURNING concession_id;
                     """, (source_id, file_id, index, id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, file_date, json.dumps(json_data)))
@@ -432,12 +434,12 @@ class DbDecp:
             else:
                 # Insérer le nouvel enregistrement
                 cursor.execute("""
-                    INSERT INTO decp.concession (concession_id, source_id, file_id, indx, id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, date_creation, data_in)
-                    VALUES (nextval('decp.s_concession'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (id,  autorite_concedante, concessionnaires, date_debut_execution, valeur_globale) 
+                    INSERT INTO decp.concession (concession_id, source_id, file_id, indx, id, autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, date_creation, data_in)
+                    VALUES (nextval('decp.s_concession'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (id,  autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale) 
                     DO NOTHING
                     RETURNING concession_id;
-                """, (source_id, file_id, index, id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, file_date, json.dumps(json_data)))
+                """, (source_id, file_id, index, id, autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, file_date, json.dumps(json_data)))
                 concession_id = cursor.fetchone()[0]
 
             # Valider la transaction

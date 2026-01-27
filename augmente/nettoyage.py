@@ -706,113 +706,6 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         logging.info("% de doublons marché : "+ str((df.shape[0] - dff.shape[0]) / df.shape[0] * 100))
         return dff
 
-    @compute_execution_time
-    def expand_marche(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Expand all dict value into columns
-        """
-
-        def extract_values(row: list,data_format:str):
-            """
-            create 9 new columns with the values of the titulaires column
-
-            template for new col name : titulaires_ + col name + _ + value
-                - value is number from 1 to 3
-                - col name are : typeIdentifiant, id, denominationSociale
-
-            row contains a list of dict, each dict is a titulaires
-                - can be empty
-                - can contain 1, 2 or 3 titulaires or more keeping only 3 first
-                - if 1 value can be a dict and not a list of dict
-
-            :param row: the dataframe row to extract values from
-            :return: a new dataframe with the values of the titulaires column, new value are nan if not present
-            """
-            new_columns = {}
-            new_cols_names = ['denominationSociale', 'id', 'typeIdentifiant']
-            if data_format=='2022':
-                new_cols_names = ['id', 'typeIdentifiant']
-                
-            # create new columns all with nan value
-            for value in range(1, 4):
-                for col_name in new_cols_names:
-                    new_col_name = f'titulaire_{col_name}_{value}'
-                    new_columns[new_col_name] = np.nan
-
-            if isinstance(row, list):
-                row = row[:3]  # Keep only the first three concession
-            else:
-                # if row is not a list, then it is empty and for obscure reason script thinks it's a float so returning nan
-                return pd.Series(new_columns)
-
-            # fill new columns with values from concessionnaires column if exist
-            for value, concession in enumerate(row, start=1):
-                # replace value in new_columns by corresponding value in concession
-                for col_name in new_cols_names:
-                    col_to_fill = f'titulaire_{col_name}_{value}'
-                    # col_name is key in concession dict, col_to_fill is key in new_columns dict. get key value in col_name and put it in col_to_fill
-                    if concession:
-                        new_columns[col_to_fill] = concession.get('titulaire').get(col_name, np.nan)
-
-            return pd.Series(new_columns)
-
-        df = df["titulaires"].apply(extract_values,data_format=data_format).join(df)
-
-        if "titulaires" in df.columns:
-            df.drop(columns=["titulaires"], inplace=True)
-
-        logging.info("expand_marche")
-        # filtre pour mettre la date de publication la plus récente en premier
-        df = df.sort_values(by=["datePublicationDonnees"], ascending=False)
-
-        df["acheteur.id"] = df["acheteur.id"].astype(str)
-        df["id"] = df["id"].astype(str)
-        df["titulaire_id_1"] = df["titulaire_id_1"].astype(str)
-        df["montant"] = df["montant"].astype(str)
-        if data_format=='2022':
-            df["dureeMois"] = df["dureeMois"].astype(str)
-            
-            df["marcheInnovant"] = df["marcheInnovant"].astype(str)
-            df["attributionAvance"] = df["attributionAvance"].astype(str)
-            df["sousTraitanceDeclaree"] = df["sousTraitanceDeclaree"].astype(str)
-            # Fix FutureWarning df["offresRecues"] = df["offresRecues"].fillna(0).astype(int).astype(str)
-            if 'offresRecues' in df.columns:
-                with pd.option_context("future.no_silent_downcasting", True):
-                    df["offresRecues"] = df["offresRecues"].fillna(0).infer_objects(copy=False) #.astype(int).astype(str)
-                df["offresRecues"] = df["offresRecues"].astype(int).astype(str)
-            if 'tauxAvance' in df.columns:
-                df["tauxAvance"] = df["tauxAvance"].astype(str)
-            if 'origineUE' in df.columns:
-                df["origineUE"] = df["origineUE"].astype(str)
-            if 'origineFrance' in df.columns:
-                df["origineFrance"] = df["origineFrance"].astype(str)
-            if ('origineUE' in df.columns) and ('origineFrance' in df.columns) :
-                df.astype({"dureeMois": 'str', "origineUE": 'str', "origineFrance": 'str'}) 
-            if 'idActeSousTraitance' in df.columns:
-                df["idActeSousTraitance"] = pd.to_numeric(df["idActeSousTraitance"], downcast='signed')
-            #if 'lieuExecution.code' in df.columns:
-            #    df["lieuExecution.code"] = pd.to_numeric(df["lieuExecution.code"], downcast='signed')
-            if 'dureeMoisActeSousTraitance' in df.columns:
-                df["dureeMoisActeSousTraitance"] = pd.to_numeric(df["dureeMoisActeSousTraitance"], downcast='signed')
-            if 'montantActeSousTraitance' in df.columns:
-                df["montantActeSousTraitance"] = df["montantActeSousTraitance"].astype(str)
-            if 'idModification' in df.columns:
-                df["idModification"] = df["idModification"].astype(str)
-            if 'montantModification' in df.columns:
-                df["montantModification"] = df["montantModification"].astype(str)
-            if 'dureeMoisModification' in df.columns:
-                df["dureeMoisModification"] = pd.to_numeric(df["dureeMoisModification"], downcast='signed')
-            if 'dureeMoisModificationActeSousTraitance' in df.columns:
-                df["dureeMoisModificationActeSousTraitance"] = pd.to_numeric(df["dureeMoisModificationActeSousTraitance"], downcast='signed')
-            if 'idModificationActeSousTraitance' in df.columns:
-                df["idModificationActeSousTraitance"] = pd.to_numeric(df["idModificationActeSousTraitance"], downcast='signed')
-            if 'idSousTraitant' in df.columns:
-                df["idSousTraitant"] = df["idSousTraitant"].astype(str)
-            if 'montantModificationActeSousTraitance' in df.columns:
-                df["montantModificationActeSousTraitance"] = df["montantModificationActeSousTraitance"].astype(str)      
-
-        return df
-
     def marche_check_empty(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
         col_name = ["id", "acheteur.id", "montant", "titulaire_id_1", "titulaire_typeIdentifiant_1", "dureeMois"]  # titulaire contient un dict avec des valeurs dont id
         for col in col_name:
@@ -1043,10 +936,10 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
 
         return df
 
-    #feature_doublons_marche = ["id", "acheteur.id", "titulaire_id_1", "montant", "dateNotification"] 
-    #df_marche_ = dedoublonnage_marche(df_marche_,feature_doublons_marche)
-    
-    df_marche_ = expand_marche(df_marche_)
+    feature_doublons_marche = ["id", "acheteur.id", "titulaire_id_1", "montant", "dateNotification"] 
+
+    df_marche_ = dedoublonnage_marche(df_marche_,feature_doublons_marche)
+
     augmente.utils.save_csv(df_marche_, "df_marche_dedoublonnage.csv")
 
     df_marche_ = marche_replace_titulaire_type(df_marche_)
@@ -1181,7 +1074,39 @@ def regles_concession(df_concession_: pd.DataFrame,data_format:str) -> pd.DataFr
                         new_columns[col_to_fill] = concession.get(col_name, np.nan)
 
             return pd.Series(new_columns)
-        
+
+        def extract_values_donnees_execution(row: list):
+            """
+            select the element the most recent in the donneesExecution column
+            """
+            if row is None:
+                return row
+            dico_le_plus_recent = {}
+            for element in (row):
+                #Dictionnaire avec plusieurs clés et valeurse
+                if isinstance(element,dict):
+                    date1 = dico_le_plus_recent.get("datePublicationDonneesExecution", None)
+                    date2 = element.get("datePublicationDonneesExecution", None)
+
+                    #Comparaison de date pour sélectionner le dictionnaire le plus récent
+                    if date1 is None or (date1 < date2):
+                        dico_le_plus_recent = element
+
+            datePublication = dico_le_plus_recent.get("datePublicationDonneesExecution", None)
+            depensesInvestissement = dico_le_plus_recent.get("depensesInvestissement", None)
+
+            # Gestion du champ "tarifs" pour obtenir le dernier tarif et son intitulé
+            derniers_tarifs = dico_le_plus_recent.get("tarifs", [])
+            if derniers_tarifs: 
+                dernier_tarif_info = derniers_tarifs[-1].get("tarif", {})
+                intituleTarif = dernier_tarif_info.get("intituleTarif", None)
+                tarif = dernier_tarif_info.get("tarif", None)
+            else:
+                intituleTarif = None
+                tarif = None
+                
+            return datePublication, depensesInvestissement, intituleTarif, tarif
+
         #if data_format=='2022':
         #    df = df["donneesExecution"].apply(extract_values_donnees_execution).join(df)
         #    df.drop(columns=["donneesExecution"], inplace=True)
@@ -1216,75 +1141,6 @@ def regles_concession(df_concession_: pd.DataFrame,data_format:str) -> pd.DataFr
         logging.info("df_concession_ après dédoublonnage : " + str(df.shape))
         logging.info("% doublon concession : "+ str((df.shape[0] - dff.shape[0]) / df.shape[0] * 100))
         return dff
-
-    @compute_execution_time
-    def expand_concession(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Expand column concessionnaires into concessionnaire_typeIdentifiant_1, ...2 and ...3
-        """
-
-        def extract_values(row: list,data_format:str):
-            """
-            create 9 new columns with the values of the concessionnaires column
-
-            template for new col name : concessionnaire_ + col name + _ + value
-                - value is number from 1 to 3
-                - col name are : denominationSociale, id, typeIdentifiant
-
-            row contains a list of dict, each dict is a concessionnaire
-                - can be empty
-                - can contain 1, 2 or 3 concessionnaires or more keeping only 3 first
-                - if 1 value can be a dict and not a list of dict
-
-            :param row: the dataframe row to extract values from
-            :return: a new dataframe with the values of the concessionnaires column, new value are nan if not present
-            """
-            new_columns = {}
-            new_cols_names = ['denominationSociale', 'id', 'typeIdentifiant']
-            if data_format=='2022':
-                new_cols_names = ['id', 'typeIdentifiant']
-
-            # create new columns all with nan value
-            for value in range(1, 4):
-                for col_name in new_cols_names:
-                    new_col_name = f'concessionnaire_{col_name}_{value}'
-                    new_columns[new_col_name] = pd.NA
-
-            if isinstance(row, list):
-                # how is the list of concessionnaires
-                # if contain a dict where key is exactly : concessionnaire, then the list we want is the value of this dict key
-                if 'concessionnaire' in row[0].keys():
-                    row = [item['concessionnaire'] for item in row]
-                row = row[:3]  # Keep only the first three concession
-            else:
-                # if row is not a list, then it is empty and for obscure reason script thinks it's a float so returning nan
-                return pd.Series(new_columns)
-
-            # le traitement ici à lieux car comme on dit : "Garbage in, garbage out" mais on est gentil on corrige leurs formats -_-
-            # check if row is a list of list of dict, if so, keep only the first list
-            if isinstance(row[0], list):
-                row = row[0]
-
-            # fill new columns with values from concessionnaires column if exist
-            for value, concession in enumerate(row, start=1):
-                # replace value in new_columns by corresponding value in concession
-                for col_name in new_cols_names:
-                    col_to_fill = f'concessionnaire_{col_name}_{value}'
-                    # col_name is key in concession dict, col_to_fill is key in new_columns dict. get key value in col_name and put it in col_to_fill
-                    if concession:
-                        new_columns[col_to_fill] = concession.get(col_name, np.nan)
-
-            return pd.Series(new_columns)
-
-        logging.info("expand_concession")
-        
-        if data_format=='2022' and "concessionnaires.concessionnaire" in df.columns:
-            df["concessionnaires"] = df["concessionnaires.concessionnaire"]
-
-        df = df["concessionnaires"].apply(extract_values,data_format=data_format).join(df)
-        df.drop(columns=["concessionnaires"], inplace=True)
-
-        return df
 
     df_concession_badlines_ = pd.DataFrame(columns=df_concession_.columns)
 
@@ -1368,10 +1224,9 @@ def regles_concession(df_concession_: pd.DataFrame,data_format:str) -> pd.DataFr
 
         return df
 
-    #feature_doublons_concession = ["id", "autoriteConcedante.id", "dateDebutExecution", "concessionnaire_id_1","valeurGlobale"]
-    #df_concession_ = dedoublonnage_concession(df_concession_,feature_doublons_concession)
+    feature_doublons_concession = ["id", "autoriteConcedante.id", "dateDebutExecution", "concessionnaire_id_1","valeurGlobale"]
 
-    df_concession_ = expand_concession(df_concession_)
+    df_concession_ = dedoublonnage_concession(df_concession_,feature_doublons_concession)
     augmente.utils.save_csv(df_concession_, "df_concession_dedoublonnage.csv")
 
     df_concession_ = concession_replace_concessionnaire_type(df_concession_)

@@ -119,7 +119,8 @@ CREATE TABLE decp.concession_doublon (
 	indx int4 NOT NULL,
 	id varchar(255) NULL,
 	autorite_concedante varchar(255) NOT NULL,
-	concessionnaires varchar(255) NOT NULL,
+	concessionnaire varchar(20) NOT NULL,
+	concessionnaires varchar(1024) NOT NULL,
 	date_debut_execution date NOT NULL,
 	valeur_globale numeric NOT NULL,
 	max_date varchar(20) NULL,
@@ -185,7 +186,8 @@ CREATE TABLE decp.concession (
 	indx int4 NOT NULL,
 	id varchar(255) NULL,
 	autorite_concedante varchar(255) NOT NULL,
-	concessionnaires varchar(255) NOT NULL,
+	concessionnaire varchar(20) NOT NULL,
+	concessionnaires varchar(1024) NOT NULL,
 	date_debut_execution date NOT NULL,
 	valeur_globale numeric NOT NULL,
 	max_date varchar(20) NULL,
@@ -196,7 +198,7 @@ CREATE TABLE decp.concession (
 	est_retenu bool NULL,
 	date_creation timestamp,
 	CONSTRAINT concession_pkey PRIMARY KEY (concession_id),
-	CONSTRAINT concession_unique__key UNIQUE (id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale),
+	CONSTRAINT concession_unique__key UNIQUE (id, autorite_concedante, concessionnaire, date_debut_execution, valeur_globale),
 	CONSTRAINT concession_file_id_fkey FOREIGN KEY (file_id) REFERENCES decp.file(file_id) ON DELETE CASCADE,
 	CONSTRAINT concession_source_id_fkey FOREIGN KEY (source_id) REFERENCES decp."source"(source_id) ON DELETE CASCADE
 );
@@ -214,6 +216,7 @@ CREATE TABLE decp.marche (
 	indx int4 NULL,
 	id varchar(255) NOT NULL,
 	acheteur varchar(255) NOT NULL,
+	titulaire varchar(20) NOT NULL,
 	titulaires varchar(2048) NOT NULL,
 	date_notification date NOT NULL,
 	montant numeric NOT NULL,
@@ -225,7 +228,7 @@ CREATE TABLE decp.marche (
 	est_retenu bool NULL,
 	date_creation timestamp,
 	CONSTRAINT marche_pkey PRIMARY KEY (marche_id),
-	CONSTRAINT marche_unique UNIQUE (id, acheteur, titulaires, date_notification, montant),
+	CONSTRAINT marche_unique UNIQUE (id, acheteur, titulaire, date_notification, montant),
 	CONSTRAINT marche_file_id_fkey FOREIGN KEY (file_id) REFERENCES decp.file(file_id) ON DELETE CASCADE,
 	CONSTRAINT marche_source_id_fkey FOREIGN KEY (source_id) REFERENCES decp."source"(source_id) ON DELETE CASCADE
 );
@@ -245,6 +248,7 @@ CREATE TABLE decp.marche_doublon (
 	indx int4 NULL,
 	id varchar(255) NOT NULL,
 	acheteur varchar(255) NOT NULL,
+	titulaire varchar(20) NOT NULL,
 	titulaires varchar(2048) NOT NULL,
 	date_notification date NOT NULL,
 	montant numeric NOT NULL,
