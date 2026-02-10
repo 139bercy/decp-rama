@@ -924,6 +924,10 @@ class GlobalProcess:
             with open(config_file, "w") as file:
                 json.dump(config, file, indent=4) 
 
+            self._update_description(headers,api,dataset_id,config["resource_id_month"],suffix_month)
+
+
+
     # Update resource description on data.gouv
     def _update_description(self, headers, api, dataset_id, ressource_id, suffix):
         mois_annee = self._get_mois_annee(suffix)
