@@ -99,10 +99,31 @@ def modifier_source(valeur):
         return 'MODULA DEMAT'
     elif valeur == 'data.gouv.fr_atexo':
         return 'ATEXO'
+    elif valeur == 'data.gouv.fr_aife':
+        return 'AIFE'
+    elif valeur == 'megalis':
+        return 'Megalis Bretagne'
     elif valeur == 'ville_strasbourg':
         return 'Eurométropole de Strasbourg'
     elif valeur == 'euro_strasbourg':
         return 'Eurométropole de Strasbourg'
+    # Sources 2024
+    elif valeur == 'aife_2024':
+        return 'AIFE'
+    elif valeur == 'aws_2024':
+        return 'AWS'
+    elif valeur == 'modula_2024':
+        return 'MODULA DEMAT'
+    elif valeur == 'pes_2024':
+        return 'DGFIP – PES MARCHE'
+    elif valeur == 'atexo_2024':
+        return 'ATEXO'
+    elif valeur == 'emar_2024':
+        return 'DEMATIS'
+    elif valeur == 'megalis_2024':
+        return 'Megalis Bretagne'
+    elif valeur == 'xmarches_2024':
+        return 'SPL-XDEMAT'
     return valeur  # Renvoie la valeur d'origine si aucune correspondance n'est trouvée
 
 
