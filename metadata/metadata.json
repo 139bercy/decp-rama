@@ -208,8 +208,43 @@
     "validate" : true,
     "convert_nc": false
   },
+  "euro_strasbourg":
+  {
+    "code": "euro_strasbourg",
+    "description": "Données essentielles de la commande publique - Eurométropole de Strasbourg",
+    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-de-la-commande-publique-eurometropole-de-strasbourg",
+    "format": "json",
+    "cle_api": ["68834dc0f3f93ee2ff6050e2"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false,
+    "encoding": "utf-8-sig"
+  },
+  "ville_strasbourg":
+  {
+    "code": "ville_strasbourg",
+    "description": "Données essentielles de la commande publique - Ville de Strasbourg",
+    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-de-la-commande-publique-ville-de-strasbourg",
+    "format": "json",
+    "cle_api": ["68834a9b7285ebd8466fb23e"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false,
+    "encoding": "utf-8-sig"
+  },
 
   
+  "demo_api":
+  {
+    "code": "demo_api",
+    "description": "Données essentielles des marchés publics - Démo",
+    "url_source": " https://demo.data.gouv.fr/datasets/api-decp/informations",
+    "format": "json",
+    "cle_api": ["5df410e86f44413a91d34be3"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
   
 
   "sample_json":
