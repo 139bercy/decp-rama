@@ -1,6 +1,6 @@
 -- DROP SCHEMA decp;
 
-CREATE SCHEMA decp AUTHORIZATION decp_install, decp_appli;
+CREATE SCHEMA decp AUTHORIZATION decp_install;
 
 -- decp.s_concession definition
 
@@ -119,7 +119,7 @@ CREATE TABLE decp.concession_doublon (
 	indx int4 NOT NULL,
 	id varchar(255) NULL,
 	autorite_concedante varchar(255) NOT NULL,
-	concessionnaire varchar(20) NOT NULL,
+	concessionnaire varchar(64) NOT NULL,
 	concessionnaires varchar(1024) NOT NULL,
 	date_debut_execution date NOT NULL,
 	valeur_globale numeric NOT NULL,
@@ -186,7 +186,7 @@ CREATE TABLE decp.concession (
 	indx int4 NOT NULL,
 	id varchar(255) NULL,
 	autorite_concedante varchar(255) NOT NULL,
-	concessionnaire varchar(20) NOT NULL,
+	concessionnaire varchar(64) NOT NULL,
 	concessionnaires varchar(1024) NOT NULL,
 	date_debut_execution date NOT NULL,
 	valeur_globale numeric NOT NULL,
@@ -216,7 +216,7 @@ CREATE TABLE decp.marche (
 	indx int4 NULL,
 	id varchar(255) NOT NULL,
 	acheteur varchar(255) NOT NULL,
-	titulaire varchar(20) NOT NULL,
+	titulaire varchar(64) NOT NULL,
 	titulaires varchar(2048) NOT NULL,
 	date_notification date NOT NULL,
 	montant numeric NOT NULL,
@@ -248,7 +248,7 @@ CREATE TABLE decp.marche_doublon (
 	indx int4 NULL,
 	id varchar(255) NOT NULL,
 	acheteur varchar(255) NOT NULL,
-	titulaire varchar(20) NOT NULL,
+	titulaire varchar(64) NOT NULL,
 	titulaires varchar(2048) NOT NULL,
 	date_notification date NOT NULL,
 	montant numeric NOT NULL,
