@@ -17,7 +17,7 @@ from datetime import datetime
 from pypdl import Pypdl
 from urllib.parse import urlparse
 from reporting.Report import Report
-from utils import UtilsFile
+from utils.UtilsFile import UtilsFile
 from utils.NodeFormat import NodeFormat
 
 pd.options.mode.chained_assignment = None
@@ -287,13 +287,17 @@ class SourceProcess:
             dl = Pypdl(allow_reuse=True)
             for i in range(len(self.url)):
                 try:
+                    load = False
                     if os.path.exists(f"sources/{self.source}/{self.title[i]}"):
                         if UtilsFile.last_modification(f"sources/{self.source}/{self.title[i]}") < self.url_date[i]:
                             os.remove(f"sources/{self.source}/{self.title[i]}")
                             logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
+                            load = True
                     else:
+                        load = True
                     ##wget.download(self.url[i], f"sources/{self.source}/{self.title[i]}")
                     #if not os.path.exists(f"sources/{self.source}/{self.title[i]}"):
+                    if load:
                         dl.start(url=self.url[i],file_path=f"sources/{self.source}/{self.title[i]}",retries=10,display=False)
                         logging.info(f"Fichier : {self.title[i]} telechargé ")
                 except:
@@ -443,9 +447,8 @@ class SourceProcess:
             try:
                 self._validation_format(dico['marches'], self.title[i],pd.to_datetime(self.url_date[i]))    #On obtient 2 fichiers qui sont mis jour à chaque tour de boucle
             except Exception as err:
-                tb = traceback.format_exc()
                 logging.error(f"Exception lors de la validation du format des données: {err}")
-
+                
         logging.info("Fin du nettoyage des nouveaux fichier")
 
    
@@ -584,24 +587,26 @@ class SourceProcess:
             id = marche['id']
             acheteur_id = marche['acheteur']['id']
             sorted_ids = sorted(item['titulaire']['id'] for item in marche['titulaires'])
+            titulaire = sorted_ids[0]
             titulaires = ','.join(sorted_ids)
             date_notification = marche['dateNotification']
             montant = int(marche['montant'])
             objet = marche['objet']
             
-            return db.add_marche(id_source,id_file,file_date,n,id,acheteur_id,titulaires,date_notification,montant,objet,max_date,marche)
+            return db.add_marche(id_source,id_file,file_date,n,id,acheteur_id,titulaire,titulaires,date_notification,montant,objet,max_date,marche)
                 
     def _db_add_concession(self, db:DbDecp,id_source:int,id_file:int,file_date,n:int,concession,max_date) -> int:
         if concession is not None:
             id = concession['id']
             autorite_concedante_id = concession['autoriteConcedante']['id']
             sorted_ids = sorted(item['concessionnaire']['id'] for item in concession['concessionnaires'])
+            concessionnaire = sorted_ids[0]
             concessionnaires = ','.join(sorted_ids)
             date_debut_execution = concession['dateDebutExecution']
             valeur_globale = concession['valeurGlobale']
             objet = concession['objet']
 
-            return db.add_concession(id_source,id_file,file_date,n,id,autorite_concedante_id,concessionnaires,date_debut_execution,valeur_globale,objet,max_date,concession)
+            return db.add_concession(id_source,id_file,file_date,n,id,autorite_concedante_id,concessionnaire,concessionnaires,date_debut_execution,valeur_globale,objet,max_date,concession)
 
     def _get_max_date(self,marche,default_date_str):
         max_date_record = None
