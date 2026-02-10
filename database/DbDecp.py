@@ -172,7 +172,7 @@ class DbDecp:
             cursor.execute("BEGIN;")
 
             cursor.execute("""
-                SELECT m.marche_id, m.max_date, LENGTH(c.concessionnaires)
+                SELECT m.marche_id, m.max_date, LENGTH(m.titulaires)
                 FROM decp.marche m
                 WHERE (m.id = %s AND m.acheteur = %s AND m.titulaire = %s AND m.date_notification = %s AND m.montant = %s)
             """, (id, acheteur, titulaire, date_notification, montant,))
@@ -212,7 +212,7 @@ class DbDecp:
                     cursor.execute("""
                         INSERT INTO decp.marche (marche_id, source_id, file_id, indx, id, acheteur, titulaire, titulaires, date_notification, montant, objet, max_date, date_creation, data_in)
                         VALUES (nextval('decp.s_marche'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (id, acheteur, titulaire, titulaires, date_notification, montant) 
+                        ON CONFLICT (id, acheteur, titulaire, date_notification, montant) 
                         DO NOTHING
                         RETURNING marche_id;
                     """, (source_id, file_id, index, id, acheteur, titulaire, titulaires, date_notification, montant, objet, max_date, file_date, json.dumps(json_data)))
@@ -220,9 +220,9 @@ class DbDecp:
             else:
                 # Insérer le nouvel enregistrement
                 cursor.execute("""
-                    INSERT INTO decp.marche (marche_id, source_id, file_id, indx, id, acheteur, titulaires, date_notification, montant, objet, max_date, date_creation, data_in)
+                    INSERT INTO decp.marche (marche_id, source_id, file_id, indx, id, acheteur, titulaire, titulaires, date_notification, montant, objet, max_date, date_creation, data_in)
                     VALUES (nextval('decp.s_marche'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (id, acheteur, titulaire, titulaires, date_notification, montant) 
+                    ON CONFLICT (id, acheteur, titulaire, date_notification, montant) 
                     DO NOTHING
                     RETURNING marche_id;
                 """, (source_id, file_id, index, id, acheteur, titulaire, titulaires, date_notification, montant, objet, max_date, file_date, json.dumps(json_data)))
@@ -425,10 +425,10 @@ class DbDecp:
                     cursor.execute("""
                         INSERT INTO decp.concession (concession_id, source_id, file_id, indx, id, autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, date_creation, data_in)
                         VALUES (nextval('decp.s_concession'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (id,  autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale) 
+                        ON CONFLICT (id,  autorite_concedante, concessionnaire, date_debut_execution, valeur_globale) 
                         DO NOTHING
                         RETURNING concession_id;
-                    """, (source_id, file_id, index, id, autorite_concedante, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, file_date, json.dumps(json_data)))
+                    """, (source_id, file_id, index, id, autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, file_date, json.dumps(json_data)))
                     concession_id = cursor.fetchone()[0]
 
             else:
@@ -436,7 +436,7 @@ class DbDecp:
                 cursor.execute("""
                     INSERT INTO decp.concession (concession_id, source_id, file_id, indx, id, autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, date_creation, data_in)
                     VALUES (nextval('decp.s_concession'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (id,  autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale) 
+                    ON CONFLICT (id,  autorite_concedante, concessionnaire, date_debut_execution, valeur_globale) 
                     DO NOTHING
                     RETURNING concession_id;
                 """, (source_id, file_id, index, id, autorite_concedante, concessionnaire, concessionnaires, date_debut_execution, valeur_globale, objet, max_date, file_date, json.dumps(json_data)))

@@ -129,10 +129,10 @@ def export_all_csv(ref_date,data_format:str = '2022', local:bool=True):
     date = maintenant.strftime("%Y-%m-%d")
     
     if not args.local:
-        files_to_upload = [(f"{RESULT_PATH_DATAECO}marches-valides/marche-2022-{ref_date}.csv","decp/2022/marches-valides"),
-                           (f"{RESULT_PATH_DATAECO}concessions-valides/concession-2022-{ref_date}.csv","decp/2022/concessions-valides"),
-                           (f"{RESULT_PATH_DATAECO}marches-invalides/marche-exclu-2022-{ref_date}.csv","decp/2022/marches-invalides"),
-                           (f"{RESULT_PATH_DATAECO}concessions-invalides/concession-exclu-2022-{ref_date}.csv","decp/2022/concessions-invalides")]
+        files_to_upload = [(f"marches-valides/marche-2022-{ref_date}.csv","decp/2022/"),
+                           (f"concessions-valides/concession-2022-{ref_date}.csv","decp/2022/"),
+                           (f"marches-invalides/marche-exclu-2022-{ref_date}.csv","decp/2022/"),
+                           (f"concessions-invalides/concession-exclu-2022-{ref_date}.csv","decp/2022/")]
         for f in files_to_upload :
             up.upload_dataeco(f[0],f[1])
     
