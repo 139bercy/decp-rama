@@ -6,13 +6,13 @@ import utils
 import subprocess
 import logging
 
-
+RESULT_PATH_DATAECO='results/decp/'
 
 import ftplib
 def upload_dataeco(file_to_upload : str, remote_path : str) -> None : 
     #logging.info(f"Upload {file_to_upload} to data.eco")
 
-    path_file_to_upload = "data/" + file_to_upload
+    path_file_to_upload = RESULT_PATH_DATAECO + file_to_upload
     # PATH_FILE_CONFIG = "confs/config_data.json"
     local_credentials="creds.json"
     if os.path.exists(local_credentials) :  # Dans le cas où on fait tourner ça en local
@@ -56,8 +56,8 @@ def upload_dataeco(file_to_upload : str, remote_path : str) -> None :
         # Changing Working Directory
         myFTP.cwd(remote_path)
         myFTP.encoding="utf-8"
-    except:
-        logging.error(f"Erreur lors de la connexion au serveur FTP pour uploader le fichier {path_file_to_upload}")
+    except Exception as err:
+        logging.error(f"Erreur lors de la connexion au serveur FTP pour uploader le fichier {path_file_to_upload}: {err}")
         myFTP = None
     if os.path.isfile(path_file_to_upload) and myFTP:
         logging.info(f"Upload {file_to_upload} to data.eco")
@@ -65,9 +65,9 @@ def upload_dataeco(file_to_upload : str, remote_path : str) -> None :
             fh = open(path_file_to_upload, 'rb')
             myFTP.storbinary(f'STOR {file_to_upload}', fh)
             fh.close()
-            logging.info(f"Vous avez upload {path_file_to_upload} depuis votre version local vers {remote_path}")
-        except:
-            logging.error("Erreur dans l'upload du fichier {path_file_to_upload}")
+            logging.info(f"Le fichier {path_file_to_upload} local a été uploadé vers {remote_path}")
+        except Exception as err:
+            logging.error("Erreur dans l'upload du fichier {path_file_to_upload}: {err}")
     else:
         logging.info (f"Le fichier {path_file_to_upload} n'existe pas")
 
