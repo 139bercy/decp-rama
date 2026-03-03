@@ -21,9 +21,8 @@ from stdnum.fr import siren
 from stdnum.util import clean
 
 from reporting.Report import Report
-from augmente.utils import RESULT_PATH_DATAECO
 
-PATTERN_DATE = r'^20[1-2]{1}[0-9]{1}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}$'
+PATTERN_DATE = r'^20[1-3]{1}[0-9]{1}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}$'
 
 
 logger = logging.getLogger("main.nettoyage2")
@@ -86,7 +85,7 @@ def restore_nc(df,field):
 # Fonction pour remplacer les valeurs
 def modifier_source(valeur):
     if valeur == 'data.gouv.fr_pes':
-        return 'DGFIP – PES MARCHE'
+        return 'DGFIP – PES MARCHÉ'
     elif valeur == 'marches-publics_aws':
         return 'AWS'
     elif valeur == 'e-marchespublics':
@@ -94,7 +93,7 @@ def modifier_source(valeur):
     elif valeur == 'xmarches':
         return 'SPL-XDEMAT'
     elif valeur == 'ppsmj':
-        return 'Region Ile-de-France'
+        return 'RÉGION ILE-DE-FRANCE'
     elif valeur == 'data.gouv.fr_modula':
         return 'MODULA DEMAT'
     elif valeur == 'data.gouv.fr_atexo':
@@ -102,11 +101,11 @@ def modifier_source(valeur):
     elif valeur == 'data.gouv.fr_aife':
         return 'AIFE'
     elif valeur == 'megalis':
-        return 'Megalis Bretagne'
+        return 'MEGALIS BRETAGNE'
     elif valeur == 'ville_strasbourg':
-        return 'Eurométropole de Strasbourg'
+        return 'EUROMÉTROPOLE DE STRASBOURG'
     elif valeur == 'euro_strasbourg':
-        return 'Eurométropole de Strasbourg'
+        return 'EUROMÉTROPOLE DE STRASBOURG'
     # Sources 2024
     elif valeur == 'aife_2024':
         return 'AIFE'
@@ -115,15 +114,17 @@ def modifier_source(valeur):
     elif valeur == 'modula_2024':
         return 'MODULA DEMAT'
     elif valeur == 'pes_2024':
-        return 'DGFIP – PES MARCHE'
+        return 'DGFIP – PES MARCHÉ'
     elif valeur == 'atexo_2024':
         return 'ATEXO'
     elif valeur == 'emar_2024':
         return 'DEMATIS'
     elif valeur == 'megalis_2024':
-        return 'Megalis Bretagne'
+        return 'MEGALIS BRETAGNE'
     elif valeur == 'xmarches_2024':
         return 'SPL-XDEMAT'
+    elif valeur == 'medialex_2024':
+        return 'MEDIALEX'
     return valeur  # Renvoie la valeur d'origine si aucune correspondance n'est trouvée
 
 
@@ -314,6 +315,12 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
         # Mise à jour en base des données retenues 
         update_database_concessions_augmente(df_concession,True)
 
+    if not (os.path.exists(conf_data["path_to_data_dataeco"])):
+        os.mkdir(conf_data["path_to_data_dataeco"])
+        os.mkdir(os.path.join(conf_data["path_to_data_dataeco"], f'marches-valides'))
+        os.mkdir(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-valides'))
+        os.mkdir(os.path.join(conf_data["path_to_data_dataeco"], f'marches-invalides'))
+        os.mkdir(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-invalides'))
     if not df_marche.empty:
         format_data_to_dataeco(df_marche, True)
         cols = conf_glob[f"df_marche_{data_format}"]
