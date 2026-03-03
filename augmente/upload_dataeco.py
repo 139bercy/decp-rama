@@ -6,7 +6,7 @@ import utils
 import subprocess
 import logging
 
-RESULT_PATH_DATAECO='results/decp/'
+RESULT_PATH_DATAECO='results/data_eco/'
 
 import ftplib
 def upload_dataeco(file_to_upload : str, remote_path : str) -> None : 
