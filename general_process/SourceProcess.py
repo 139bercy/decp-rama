@@ -40,6 +40,8 @@ class SourceProcess:
     variables de classe (__init__), nettoyage des dossiers de la source (_clean_metadata_folder),
     récupération des URLs (_url_init), get, convert et fix."""
     
+    API_DATA_GOUV = "https://www.data.gouv.fr/api/1"
+
     def __init__(self, key:str, params:ProcessParams):
         """L'étape __init__ crée les variables associées à la classe SourceProcess : key, source,
         format, df, title, url, cle_api et metadata.
@@ -83,7 +85,7 @@ class SourceProcess:
 
         # Test demo.data.gouv   
         #self.rebuild_year = "2026"
-        #self.start_date = pd.to_datetime(f"2025-12-17 00:00:00")
+        #self.start_date = pd.to_datetime(f"2026-02-20 01:00:00")
         #self.end_date = pd.to_datetime(f"{self.rebuild_year}-12-31 23:59:59")
         # End test demo.data.gouv
 
@@ -156,7 +158,7 @@ class SourceProcess:
             #Téléchargement du fichier de metadata de self.source et création de la 1ere variable json pour la comparaison 
             try:
                 # Replaced after certifi can't validate ssl certificat
-                wget.download(f"https://www.data.gouv.fr/api/1/datasets/{self.cle_api[i]}/",
+                wget.download(f"{self.API_DATA_GOUV}/datasets/{self.cle_api[i]}/",
                             f"metadata/{self.source}/metadata_{self.key}_{i}.json")
                 #url = f"https://www.data.gouv.fr/api/1/datasets/{self.cle_api[i]}/"
                 #context = ssl.create_default_context(cafile=certifi.where())
@@ -188,30 +190,13 @@ class SourceProcess:
             if old_ressources==[]:
                 url = url + [d["url"] for d in ressources if
                             (d["url"].endswith("xml") or d["url"].endswith("json"))]
-                title = title + [prefix+d["title"] for d in ressources if
+                title = title + [prefix+(d["id"] if not prefix == '' else '')+d["title"] for d in ressources if
                             (d["url"].endswith("xml") or d["url"].endswith("json"))]
                 url_date = url_date + [d["last_modified"] for d in ressources if
                             (d["url"].endswith("xml") or d["url"].endswith("json"))]
             else: 
-                url, title, url_date = self.check_date_file(url,title, url_date, ressources, old_ressources,prefix)
+                url, title, url_date = self.check_date_file(url,title, url_date, ressources, old_ressources, prefix)
             
-            if url is not None and len(url) > 0:
-                # Trier les tableaux par ordre de date de creation du fichier
-                combined = list(zip(url_date, url, title))
-                combined.sort(key=lambda t: pd.to_datetime(t[0]).tz_localize(None))  # tri croissant par date
-
-                # dézipper pour retrouver les listes triées
-                url_date_sorted, url_sorted, title_sorted = zip(*combined)
-
-                # Recupérer sous forme de liste
-                url = list(url_sorted)
-                title = list(title_sorted)
-                url_date = list(url_date_sorted)
-
-                # Filter file by date in title, url
-                
-            url, title, url_date = self.filter_urls(url, title, url_date)            
-
             if self.rebuild_year is None or self.save_metadata:
                 #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
                 if os.path.exists(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json"):
@@ -223,6 +208,22 @@ class SourceProcess:
                 else:
                     shutil.copy(f"metadata/{self.source}/metadata_{self.key}_{i}.json",f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json")
                     logging.info(os.listdir(f"old_metadata/{self.source}"))
+
+        # Filter file by date in title, url
+        url, title, url_date = self.filter_urls(url, title, url_date)            
+
+        if url is not None and len(url) > 0:
+            # Trier les tableaux par ordre de date de creation du fichier
+            combined = list(zip(url_date, url, title))
+            combined.sort(key=lambda t: pd.to_datetime(t[0]).tz_localize(None))  # tri croissant par date
+
+            # dézipper pour retrouver les listes triées
+            url_date_sorted, url_sorted, title_sorted = zip(*combined)
+
+            # Recupérer sous forme de liste
+            url = list(url_sorted)
+            title = list(title_sorted)
+            url_date = list(url_date_sorted)
 
         return url,title,url_date
 
@@ -289,7 +290,7 @@ class SourceProcess:
                 try:
                     load = False
                     if os.path.exists(f"sources/{self.source}/{self.title[i]}"):
-                        if UtilsFile.last_modification(f"sources/{self.source}/{self.title[i]}") < self.url_date[i]:
+                        if UtilsFile.last_modification(f"sources/{self.source}/{self.title[i]}") < pd.to_datetime(self.url_date[i]).tz_localize(None):
                             os.remove(f"sources/{self.source}/{self.title[i]}")
                             logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
                             load = True
@@ -300,7 +301,7 @@ class SourceProcess:
                     if load:
                         dl.start(url=self.url[i],file_path=f"sources/{self.source}/{self.title[i]}",retries=10,display=False)
                         logging.info(f"Fichier : {self.title[i]} telechargé ")
-                except:
+                except Exception as err:
                     logging.error(f"Problème de téléchargement du fichier {self.url[i]}")
         logging.info(f"Téléchargement : {len(self.url)} fichier(s) OK")
 
@@ -696,7 +697,7 @@ class SourceProcess:
 
     def _validate_json(self, json_data:dict,json_scheme:dict) -> tuple[bool,str,str]:
         """
-        Fonction vérifiant si le fichier jsn "json_data" respecte
+        Fonction vérifiant si le fichier json "json_data" respecte
         le schéma spécifié dans le  schéma en paramètre "json_scheme". 
 
         Args: 
