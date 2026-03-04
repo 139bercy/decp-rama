@@ -25,4 +25,5 @@ class UtilsFile:
         #    "modified_local": dt_local.isoformat(sep=' '),
         #    "modified_utc": dt_utc.isoformat()
         #}
-        return dt_local.isoformat(sep=' ')
+        #return dt_local.isoformat(sep=' ')
+        return dt_local
