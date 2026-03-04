@@ -30,8 +30,8 @@ def merge_data(reference_file, month_data_file):
     save_json(reference_data, reference_file)
 
 if __name__ == "__main__":
-    reference_file_path = 'results/decp-2022.json'
-    month_data_file = 'results/decp-2024-09.json'
+    reference_file_path = 'results/data_gouv/decp-2022.json'
+    month_data_file = 'results/data_gouv/decp-2024-09.json'
 
     merge_data(reference_file_path, month_data_file)
 
