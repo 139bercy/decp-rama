@@ -36,8 +36,6 @@ class GlobalProcess:
     fusion des sources dans un seul DataFrame (merge_all), suppression des doublons (drop_duplicate)
     et l'exportation des données en json pour publication (export)."""
 
-    GLOBAL_RESULT_PATH = "results/decp-global.json"
-
     date_pattern = r'\d{4}-\d{2}-\d{2}'
     date_pattern_inv = r'\d{2}.\d{2}.\d{4}'
 
@@ -46,6 +44,8 @@ class GlobalProcess:
     feature_doublons_concession = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale"]
     feature_doublons_marche_order = ["id", "acheteur", "titulaires", "dateNotification", "montant",'tmp__max_date'] 
     feature_doublons_concession_order = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale",'tmp__max_date']
+
+    RESULTS_DATA_GOUV = 'results/data_gouv'
 
     def __init__(self,data_format="2022", report:Report=None):
         """L'étape __init__ crée les variables associées à la classe GlobalProcess : le DataFrame et
@@ -372,8 +372,8 @@ class GlobalProcess:
             self.file_dump(file_path,dico)
     
     def _make_copy_for_data_gouv(self,suffix):
-        file_path = f"results/decp-{suffix}.json"
-        file_path_copy = f"results/decp-{suffix}_data_gouv.json"
+        file_path = f"{self.RESULTS_DATA_GOUV}/decp-{suffix}.json"
+        file_path_copy = f"{self.RESULTS_DATA_GOUV}/decp-{suffix}_data_gouv.json"
         if os.path.exists(file_path):
             dico = self.file_load(file_path)
             if 'marches' in dico:
@@ -387,7 +387,67 @@ class GlobalProcess:
             with open(file_path_copy, 'w', encoding="utf-8") as f:
                 json.dump(dico, f, indent=2, ensure_ascii=False)
 
+
+    @StepMngmt().decorator(Step.EXPORT,None)
+    def generate_export(self,local:bool):
+        # if df is empty then return
+        if len(self.df) == 0:
+            logging.warning("Le DataFrame global est vide, impossible d'exporter")
+            return
+        """Étape exportation des résultats au format json et xml dans le dossier /results"""
+        logging.info("--- ÉTAPE EXPORTATION")
+        logging.info("Début de l'étape Exportation en JSON")
+
+        # Creation du sous répertoire "results"
+        os.makedirs("results", exist_ok=True)
+        os.makedirs(self.RESULTS_DATA_GOUV, exist_ok=True)
+        
+        # Sauvegarde des données journalières
+        # daily replaced by global
+        #path_result_daily = "results/decp-daily.json"
+        #self.file_dump(path_result_daily,dico)
+
+        ## Exportation des données dans des fichiers mensuels 
+        current_year_month  = f"{datetime.now().year}-{datetime.now().month:02d}"
+        years = []
+        for year_month, group in self.df.groupby('tmp__annee_mois'):
+            if year_month <= current_year_month:
+                output_file = f"{self.RESULTS_DATA_GOUV}/decp-{year_month}.json"
+
+                nb_marches = group[group['_type'].str.contains("Marché")].shape[0]
+                nb_concessions = group[~group['_type'].str.contains("Marché")].shape[0]
+                logging.info(f"Ajout de {nb_marches} marchés et {nb_concessions} concessions au fichier {output_file}")
+                
+                self._merge_in_file(output_file,group)
+                
+                suffix_year = year_month[0:4]
+                if not suffix_year in years:
+                    years += [suffix_year]
+
+        for year in years:
+            output_file_year = f"{self.RESULTS_DATA_GOUV}/decp-{year}.json"
+            df_new = pd.DataFrame()
+            total_marches = 0
+            total_concessions = 0
+            for year_month, group in self.df.groupby('tmp__annee_mois'):
+                if year == year_month[0:4]:
+                    df_new = pd.concat([df_new,group],ignore_index=True)
+                    
+                    total_marches += group[group['_type'].str.contains("Marché")].shape[0]
+                    total_concessions += group[~group['_type'].str.contains("Marché")].shape[0]
+                
+            logging.info(f"Ajout de {total_marches} marchés et {total_concessions} concessions au fichier {output_file_year} pour l'annee {year}")
+            self._merge_in_file(output_file_year,df_new)
+
+        logging.info("Exportation JSON OK")
+
+    #@StepMngmt().decorator(Step.UPLOAD_DATA_GOUV,None)
     def upload_on_datagouv(self, suffixes):
+        """
+        Cette fonction exporte les données journalières, 
+        annuelles (decp-<Annee>.json) et mensuelles (decp-<Annee>-<mois>.json) sur data.gouv.fr
+        Les données exportées sont une copie des données de travail purgées afin de répondre au schéma de validation
+        """
         logging.info(f"Uploading file ...")
         config_file = "config.json"
         # read info from config.son
@@ -405,13 +465,17 @@ class GlobalProcess:
         years = []
 
         if not suffixes[0] == "global":
+            add_description = False
 
             for suffix_month in suffixes:
                 logging.info(f"Uploading file decp-{suffix_month}_data_gouv.json")
-                if(not os.path.exists(f'results/decp-{suffix_month}_data_gouv.json')):
+                if(not os.path.exists(f'{self.RESULTS_DATA_GOUV}/decp-{suffix_month}_data_gouv.json')):
                     self._make_copy_for_data_gouv(suffix_month)
                 resource_id_month = self._get_ressource_id(headers,api,dataset_id,suffix_month)
+                add_description = resource_id_month is None
                 resource_id_month = self._upload_file(headers,api,dataset_id,resource_id_month,suffix_month)
+                if add_description:
+                    self._update_description_resource(headers,api,dataset_id,resource_id_month,suffix_month)
                 suffix_year = suffix_month[0:4]
                 if not suffix_year in years:
                     years += [suffix_year]
@@ -422,7 +486,13 @@ class GlobalProcess:
                 if(not os.path.exists(file_path)):
                     self._make_copy_for_data_gouv(suffix_year)
                 resource_id_year = self._get_ressource_id(headers,api,dataset_id,suffix_year)
+                add_description = resource_id_year is None
                 resource_id_year = self._upload_file(headers,api,dataset_id,resource_id_year,suffix_year)
+                if add_description:
+                    self._update_description_resource(headers,api,dataset_id,resource_id_year,suffix_year) 
+            
+            if add_description:
+                self.reorder_resources(headers,api,dataset_id)
         else:
             suffix = "global"
             file_path = f'results/global/decp-{suffix}.json'
@@ -441,58 +511,6 @@ class GlobalProcess:
             
             with open(config_file, "w") as file:
                 json.dump(config, file, indent=4)
-
-    @StepMngmt().decorator(Step.EXPORT,None)
-    def generate_export(self,local:bool):
-        # if df is empty then return
-        if len(self.df) == 0:
-            logging.warning("Le DataFrame global est vide, impossible d'exporter")
-            return
-        """Étape exportation des résultats au format json et xml dans le dossier /results"""
-        logging.info("--- ÉTAPE EXPORTATION")
-        logging.info("Début de l'étape Exportation en JSON")
-
-        # Creation du sous répertoire "results"
-        os.makedirs("results", exist_ok=True)
-        
-        # Sauvegarde des données journalières
-        # daily replaced by global
-        #path_result_daily = "results/decp-daily.json"
-        #self.file_dump(path_result_daily,dico)
-
-        ## Exportation des données dans des fichiers mensuels 
-        current_year_month  = f"{datetime.now().year}-{datetime.now().month:02d}"
-        years = []
-        for year_month, group in self.df.groupby('tmp__annee_mois'):
-            if year_month <= current_year_month:
-                output_file = f"results/decp-{year_month}.json"
-
-                nb_marches = group[group['_type'].str.contains("Marché")].shape[0]
-                nb_concessions = group[~group['_type'].str.contains("Marché")].shape[0]
-                logging.info(f"Ajout de {nb_marches} marchés et {nb_concessions} concessions au fichier {output_file}")
-                
-                self._merge_in_file(output_file,group)
-                
-                suffix_year = year_month[0:4]
-                if not suffix_year in years:
-                    years += [suffix_year]
-
-        for year in years:
-            output_file_year = f"results/decp-{year}.json"
-            df_new = pd.DataFrame()
-            total_marches = 0
-            total_concessions = 0
-            for year_month, group in self.df.groupby('tmp__annee_mois'):
-                if year == year_month[0:4]:
-                    df_new = pd.concat([df_new,group],ignore_index=True)
-                    
-                    total_marches += group[group['_type'].str.contains("Marché")].shape[0]
-                    total_concessions += group[~group['_type'].str.contains("Marché")].shape[0]
-                
-            logging.info(f"Ajout de {total_marches} marchés et {total_concessions} concessions au fichier {output_file_year} pour l'annee {year}")
-            self._merge_in_file(output_file_year,df_new)
-
-        logging.info("Exportation JSON OK")
 
 
     def get_suffixes_exported_files(self):
@@ -858,11 +876,11 @@ class GlobalProcess:
             region_name=REGION_NAME,
             endpoint_url="https://"+str(ENDPOINT_S3)
         )
-        client.upload_file(os.path.join("results", f"decp_{self.data_format}.json"), BUCKET_NAME, f"data/decp_{self.data_format}.json")
+        client.upload_file(os.path.join(self.RESULTS_DATA_GOUV, f"decp_{self.data_format}.json"), BUCKET_NAME, f"data/decp_{self.data_format}.json")
 
 
     @StepMngmt().decorator(Step.UPLOAD_DATA_GOUV,None)
-    def upload_datagouv(self):
+    def upload_datagouv_DEPRECATED(self):
         """
         Cette fonction exporte les données journalières, 
         annuelles (decp-<Annee>.json) et mensuelles (decp-<Annee>-<mois>.json) sur data.gouv.fr
@@ -895,7 +913,7 @@ class GlobalProcess:
             resource_id_global = self._upload_file(headers,api,dataset_id,resource_id_global,suffix_year)
 
             resource_id_month = self._upload_file(headers,api,dataset_id,None,suffix_month)
-            self._update_description(headers,api,dataset_id,resource_id_month,suffix_month)
+            self._update_description_resource(headers,api,dataset_id,resource_id_month,suffix_month)
             
             with open(config_file, "r") as file:
                 data = json.load(file)
@@ -924,13 +942,16 @@ class GlobalProcess:
             with open(config_file, "w") as file:
                 json.dump(config, file, indent=4) 
 
-            self._update_description(headers,api,dataset_id,config["resource_id_month"],suffix_month)
+            self._update_description_resource(headers,api,dataset_id,config["resource_id_month"],suffix_month)
 
 
 
     # Update resource description on data.gouv
-    def _update_description(self, headers, api, dataset_id, ressource_id, suffix):
-        mois_annee = self._get_mois_annee(suffix)
+    def _update_description_resource(self, headers, api, dataset_id, ressource_id, suffix):
+        if "-" in suffix:
+            mois_annee = self._get_mois_annee(suffix)
+        else:
+            mois_annee = suffix
         description = f"Fichier cumulatif des données essentielles de la commande publique pour {mois_annee}"
         #description = "Fichier des données essentielles de la commande publique au format 2022 pour toutes les années après dédoublonnage"
         data = {
@@ -944,7 +965,7 @@ class GlobalProcess:
         url_update = f"{api}/datasets/{dataset_id}/resources/{ressource_id}/"
         response = requests.put(url_update, headers=headers, json=data)
 
-        logging.INFO(f"Statut de la requête : {response.status_code}")
+        logging.info(f"Statut de la requête : {response.status_code}")
         logging.info("Réponse : ", response.json())
 
 
@@ -969,20 +990,25 @@ class GlobalProcess:
     def _sort_resources(self, resources) -> list:
         # Priorités
         priority_titles = {"decp-global.json", "decp_global.json"}
+        end_titles = {"decp.xml", "decp.ocds.json"}
 
         # Keep all items whose title matches priority (preserve their original order)
         priority_items = [item for item in resources
             if str(item.get("title", "")).strip().lower() in priority_titles]
 
-        # Remaining items
+        # Keep all items whose title matches end (for placement at end)
+        end_items = [item for item in resources
+            if str(item.get("title", "")).strip().lower() in end_titles]
+
+        # Remaining items (excluding priority and end items)
         others = [item for item in resources
-            if str(item.get("title", "")).strip().lower() not in priority_titles]
+            if str(item.get("title", "")).strip().lower() not in priority_titles and str(item.get("title", "")).strip().lower() not in end_titles]
 
         # Sort remaining items by title (case-insensitive)
-        others.sort(key=lambda x: str(x.get("title", "")).lower())
+        others.sort(key=lambda x: str(x.get("title", "")).lower(), reverse=True)
 
-        # Combined result: priority items first, then sorted others
-        resources = priority_items + others
+        # Combined result: priority items first, then sorted others, then end items
+        resources = priority_items + others + end_items
 
         return resources
 
@@ -996,7 +1022,7 @@ class GlobalProcess:
 
     def _get_mois_annee(self,suffix):
         year,month = suffix.split("-")
-        date_obj = datetime.datetime(int(year),int(month),1)
+        date_obj = datetime(int(year),int(month),1)
         return date_obj.strftime("%B %Y")
 
     def _get_ressource_id(self,headers,api,dataset_id,suffix:str) -> str:
@@ -1033,7 +1059,7 @@ class GlobalProcess:
         if suffix=="global":
             file_path = f"results/global/decp-global.json"
         else:
-            file_path = f"results/decp-{suffix}_data_gouv.json"
+            file_path = f"{self.RESULTS_DATA_GOUV}/decp-{suffix}_data_gouv.json"
         try:
             # On charge le fichier  existant
             file = {
@@ -1047,6 +1073,8 @@ class GlobalProcess:
         response = requests.post(url, headers=headers, files=file)
         if response.status_code==200:
             logging.info(f"Upload du fichier decp-{suffix} réussi")
+            data = response.json()
+            resource_id = data['id']
         elif response.status_code==201:
                 logging.info(f"Création du fichier decp-{suffix}.json réussie")
                 data = response.json()
