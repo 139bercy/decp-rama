@@ -26,8 +26,6 @@ REGION_NAME = os.environ.get("REGION_NAME")
 USER_DATAECO = os.environ.get("DECP_USER_DATAECO")
 PWD_DATAECO = os.environ.get("DECP_PWD_DATAECO")
 HOST_DATAECO = os.environ.get("DECP_HOST_DATAECO")
-
-RESULT_PATH_DATAECO='results/decp/'
                             
 s3 = boto3.resource(service_name='s3',
                     aws_access_key_id=ACCESS_KEY,
