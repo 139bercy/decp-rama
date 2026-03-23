@@ -66,10 +66,10 @@ def main(session_id:str,annee_mois:str, data_format:str = '2022'):
         
         # load data from local
         args = augmente.utils.parse_args()
-        if args.test:
-            #m = math.ceil(len(df.index)/3)
-            df = df.sample(n=len(df.index), random_state=1)   #on récupère tous les marchés et concessions
-            logger.info("Mode test activé")
+        #if args.test:
+        #    #m = math.ceil(len(df.index)/3)
+        #    df = df.sample(n=len(df.index), random_state=1)   #on récupère tous les marchés et concessions
+        #    logger.info("Mode test activé")
 
         # Nettoyage des données
         manage_data_quality(df,annee_mois,data_format)
@@ -343,19 +343,33 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
     
     if not df_marche_badlines.empty:
         format_data_to_dataeco(df_marche_badlines, True)
+        cols = ["Erreurs"] + conf_glob[f"df_marche_{data_format}"]
+        if "db_id" in cols:
+            cols.remove("db_id")
+        if "_type" in cols:
+            cols.remove("_type")
+        if "_type" in cols:
+            cols.remove("_type")
         if 'db_id' in df_marche_badlines.columns:
             df_marche_badlines.drop(columns=['db_id'],inplace=True)
         if '_type' in df_marche_badlines.columns:
             df_marche_badlines.drop(columns=['_type'],inplace=True)
         # save data to csv files
-        df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'marches-invalides/marche-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True)
+        df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'marches-invalides/marche-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True, columns=cols)
     
     if not df_concession_badlines.empty:
         format_data_to_dataeco(df_concession_badlines, False)
+        cols = ["Erreurs"] + conf_glob[f"df_concession_{data_format}"]
+        if "db_id" in cols:
+            cols.remove("db_id")
+        if "_type" in cols:
+            cols.remove("_type")
+        if "_type" in cols:
+            cols.remove("_type")
         df_concession_badlines.drop(columns=['db_id','_type'],inplace=True)
 
         # save data to csv files
-        df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-invalides/concession-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True)
+        df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-invalides/concession-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True, columns=cols)
 
 
 def update_database_marches_augmente(df:pd.DataFrame,est_retenu:bool):
@@ -1932,7 +1946,7 @@ def marche_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
     df = mark_bad_format_field(df,"datePublicationDonneesModificationActeSousTraitance",PATTERN_DATE)
     
     df = mark_bad_value_field(df,"attributionAvance","tauxAvance",r'^(?:0|0.0)$')
-
+    
     return df
 
 @compute_execution_time
