@@ -60,7 +60,7 @@ class ProcessFactory:
                 logging.info( "---------------------------------------------------------------")
                 logging.info(f"               Traitement de {process.__name__} ")
                 logging.info( "---------------------------------------------------------------")
-                params = ProcessParams(key=None,data_format=self.data_format, report=self.report, rebuild=args.rebuild.strip() if args.rebuild else None)
+                params = ProcessParams(key=None,data_format=self.data_format, report=self.report, rebuild=args.rebuild.strip() if args.rebuild else None, test = args.test)
                 p = process(params)
                 logging.info(self.step.get_status(p.source))
                 if not self.step.bypass(p.source,Step.GET):
