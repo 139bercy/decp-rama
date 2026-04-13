@@ -40,8 +40,8 @@ class GlobalProcess:
     date_pattern_inv = r'\d{2}.\d{2}.\d{4}'
 
     #Critères de dédoublonnage
-    feature_doublons_marche = ["id", "acheteur", "titulaires", "dateNotification", "montant"] 
-    feature_doublons_concession = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale"]
+    feature_doublons_marche = ["id", "acheteur", "tmp__titulaire", "dateNotification", "montant"] 
+    feature_doublons_concession = [ "id", "autoriteConcedante", "tmp__concessionnaire", "dateDebutExecution", "valeurGlobale"]
     feature_doublons_marche_order = ["id", "acheteur", "titulaires", "dateNotification", "montant",'tmp__max_date'] 
     feature_doublons_concession_order = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale",'tmp__max_date']
 
@@ -164,20 +164,7 @@ class GlobalProcess:
         #mask_modif = self.df.modifications.apply(len)>0
         #self.df.loc[mask_modif, "modifications"] = self.df.loc[mask_modif, "modifications"].apply(remove_titulaire_key_in_modif)
         self._add_meta_modifications(self.df,pd.DataFrame())
-        
-    def drop_by_date_2024(self):
-        """ 
-        Supprime les lignes ne respectant pas les critères de date. Si le format suivi est de 2022, 
-        les champs 'dateNotification' et 'dateDebutExecution' doivent être supérieurs au 01/01/24.
-        Si le format suivi est de 2019, ces champs doivent être inférieurs au 01/01/24.
-        """
-        # Delete all records with dateNotification or dateDebutExecution> 2024-01-01 ECO Compatibility V4
-        if self.data_format=='2022':
-            self.df = self.df[~(((~self.df['nature'].str.contains('concession', case=False, na=False)) & (self.df['dateNotification']<'2024-01-01') |
-                            ((self.df['nature'].str.contains('concession', case=False, na=False)) & (self.df['dateDebutExecution']<'2024-01-01'))))]
-        else:
-            self.df = self.df[~(((~self.df['nature'].str.contains('concession', case=False, na=False)) & (self.df['dateNotification']>='2024-01-01') |
-                            ((self.df['nature'].str.contains('concession', case=False, na=False)) & (self.df['dateDebutExecution']>='2024-01-01'))))]
+
 
     @StepMngmt().decorator(Step.DUPLICATE,StepMngmt.FORMAT_DATAFRAME)
     def drop_duplicate(self):
@@ -203,6 +190,7 @@ class GlobalProcess:
         logging.info("Suppression OK")
         logging.info(f"Nombre de marchés dans Df après suppression des doublons sur les nouvelles données : {len(self.df)}")
 
+
     def dedoublonnage(self,df: pd.DataFrame, add_report=True) -> pd.DataFrame:
         nb_duplicated_marches = 0
         nb_duplicated_concessions = 0
@@ -216,7 +204,7 @@ class GlobalProcess:
 
         df.sort_values(
             by=['tmp__max_date'],
-            ascending=[False],  # max_date décroissant -> conserve la plus récente
+            ascending=[True],  # max_date décroissant -> conserve la plus récente
             inplace=True,
             kind='mergesort'  # tri stable
         )
@@ -227,8 +215,6 @@ class GlobalProcess:
         df.drop(index=to_drop[to_drop].index, inplace=True)
         df.reset_index(drop=True, inplace=True)
 
-        logging.info(f"Nombre de marché en doublon {nb_duplicated_marches}")
-
         mask = df['_type'].ne('Marché')
         columns_compare = [c for c in self.feature_doublons_concession if c in df.columns] #
         to_drop = df.loc[mask, columns_compare].astype(str).duplicated(keep='last')
@@ -236,8 +222,10 @@ class GlobalProcess:
         df.drop(index=to_drop[to_drop].index, inplace=True)
         df.reset_index(drop=True, inplace=True)
 
-        logging.info(f"Nombre de concession en doublon {nb_duplicated_concessions}")
-        logging.info(f"Nombre de marchés / concession après dédoublonnage: {len(df)}")
+        nb_marches = df['_type'].eq('Marché').sum() if '_type' in df.columns else len(df)
+        nb_concessions = df['_type'].ne('Marché').sum() if '_type' in df.columns else len(df)
+        logging.info(f"{nb_duplicated_marches} marchés et {nb_duplicated_concessions} concessions en doublon ont été supprimés")
+        logging.info(f"{nb_marches} marchés et {nb_concessions} concession après dédoublonnage: (total {len(df)})")
             
         return df
 
@@ -254,6 +242,7 @@ class GlobalProcess:
             elif 'modification' in modification and isinstance(modification['modification'],list):
                 return self.extract_publication_dates(modification['modification'])
         return dates_publication
+
 
     def _add_meta_modifications(self,df_marches,df_concessions,process_dates:bool=True):
         def _extract_max_id_modification(modifications):
@@ -326,9 +315,9 @@ class GlobalProcess:
         le dictionnaire contenu dans un fichier
         Args:
             file_name: Nom du fichier contenant le dictionnaire à fusionner
-            dico: dictionnaire à ajouter
+            df_new: dataframe contenant les données à ajouter
         """
-        #On vérifie que le fichier existe bien, sinon on le crée
+        # On vérifie que le fichier existe bien, sinon on le crée
         if os.path.exists(file_path):
             dico_file = self.file_load(file_path)
             if dico_file=={}:
@@ -337,22 +326,27 @@ class GlobalProcess:
                     for m in df_new.to_dict(orient='records')]}
                 self.file_dump(file_path,dico)
             else:
-                dico_global = dico_file['marches']
-                #On transforme le dictionnaires en dataframes pour dédoublonner les nouvelles données
-                df_global = pd.DataFrame.from_dict(dico_global)
-                
-                # On complete les colonnes backup  pour les marches ajoutés depuis l'export qui ne sont pas passé par fix
-                keys_to_backup = ['offresRecues','marcheInnovant','attributionAvance','sousTraitanceDeclaree','dureeMois','variationPrix', 'montant', 'valeurGlobale']
-                for key in keys_to_backup:
-                    if key in df_global.columns:
-                        df_global[f'backup__{key}'] = df_global[key]
+                # On transforme le dictionnaires en dataframe pour dédoublonner les nouvelles données
+                df_global = pd.DataFrame.from_dict(dico_file['marches'])
 
-                # On complete la colonne backup montant pour les marches ajoutés depuis l'export qui ne sont pas passé par fix
-                if "montant" in df_global.columns and 'backup__montant' in df_global.columns \
-                    and df_global.loc[df_global['_type'] == 'Marché', 'backup__montant'].isna().any():
-                    df_global.loc[(df_global['backup__montant'].isna()) & (df_global['_type'] == 'Marché'), 'backup__montant'] = df_global['montant']
+                nb_marches_df_global = df_global['_type'].eq('Marché').sum() if '_type' in df_global.columns else len(df_global)
+                nb_concessions_df_global = df_global['_type'].ne('Marché').sum() if '_type' in df_global.columns else len(df_global)
+                logging.info("%s marchés et %s concessions extraites du fichier %s", nb_marches_df_global,nb_concessions_df_global,file_path)
+                
+                # On complete les colonnes  pour les marches ajoutés depuis l'export qui ne sont pas passé par fix
+                keys_to_backup = ['offresRecues','marcheInnovant','attributionAvance','sousTraitanceDeclaree','dureeMois','variationPrix','montant','valeurGlobale']
+                for key in keys_to_backup:
+                    if key in df_global.columns and f'backup__{key}' not in df_global.columns:
+                        df_global[f'backup__{key}'] = df_global[key]
+                        
+                # On applique la règle d'arrondi sur les montant pour lds marchés
+                if "montant" in df_global.columns:
                     df_global.loc[df_global['_type'] == 'Marché', 'montant'] = df_global.loc[df_global['_type'] == 'Marché', 'montant'].apply(lambda x: int(x) if pd.notna(x) else np.nan)
                 
+                # On ue la règle d'arrondi sur les valeurGlobale pour les concessions
+                if "valeurGlobale" in df_global.columns :
+                    df_global.loc[df_global['_type'] == 'Concession', 'valeurGlobale'] = df_global.loc[df_global['_type'] == 'Concession', 'valeurGlobale'].apply(lambda x: int(x) if pd.notna(x) else np.nan)
+
                 self._nan_correction_dico(df_global)
                 
                 # on ajoute les nouvelles données au données extraite du fichier pour pouvoir ensuite faire le dédoublonnage sur tout le fichier
@@ -370,7 +364,8 @@ class GlobalProcess:
             dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
                 for m in df_new.to_dict(orient='records')]}
             self.file_dump(file_path,dico)
-    
+
+
     def _make_copy_for_data_gouv(self,suffix):
         file_path = f"{self.RESULTS_DATA_GOUV}/decp-{suffix}.json"
         file_path_copy = f"{self.RESULTS_DATA_GOUV}/decp-{suffix}_data_gouv.json"
@@ -441,6 +436,7 @@ class GlobalProcess:
 
         logging.info("Exportation JSON OK")
 
+
     #@StepMngmt().decorator(Step.UPLOAD_DATA_GOUV,None)
     def upload_on_datagouv(self, suffixes):
         """
@@ -481,7 +477,7 @@ class GlobalProcess:
                     years += [suffix_year]
 
             for suffix_year in years:
-                file_path = f'results/decp-{suffix_year}_data_gouv.json'
+                file_path = f'{self.RESULTS_DATA_GOUV}/decp-{suffix_year}_data_gouv.json'
                 logging.info(f"Uploading file {file_path}")
                 if(not os.path.exists(file_path)):
                     self._make_copy_for_data_gouv(suffix_year)
@@ -490,7 +486,7 @@ class GlobalProcess:
                 resource_id_year = self._upload_file(headers,api,dataset_id,resource_id_year,suffix_year)
                 if add_description:
                     self._update_description_resource(headers,api,dataset_id,resource_id_year,suffix_year) 
-            
+            add_description = True
             if add_description:
                 self.reorder_resources(headers,api,dataset_id)
         else:
@@ -572,15 +568,14 @@ class GlobalProcess:
             path: chemin du fichier d'où l'on récupère les données
 
         """
-        nb_marches = 0
-        nb_concessions = 0
+        nb_records = 0
         if(os.path.exists(path)):
             #On essaye de récupérer le fichier grâce au chemein contenu dans la variable path
             try:
                 with open(path, encoding="utf-8") as f:
                     dico = json.load(f)
-                nb_marches = len(dico['marches'])
-                logging.info(f"Chargement de {nb_marches} marches {nb_concessions} concessions du fichier json {path}")
+                nb_records = len(dico['marches'])
+                logging.info(f"Chargement de {nb_records} enregistrements du fichier json {path}")
             #Cas où le fichier est vide
             except ValueError:
                 dico={}
@@ -637,11 +632,31 @@ class GlobalProcess:
         if 'marches' in dico_in:
             for marche_in in dico_in['marches']:
                 marche = marche_in.copy()
-                if 'backup__montant' in marche_in:
-                    marche['montant'] = marche['backup__montant']
-                if 'backup__datePublicationDonnees' in marche_in and not pd.isna(marche['backup__datePublicationDonnees']):
-                    marche['datePublicationDonnees'] = marche['backup__datePublicationDonnees']
-                    
+
+                if '_type' not in marche:
+                    logging.error(f"Exception lors de la rewtoration des enregistrements pour écriture du fichier json - {err}")
+
+                if 'backup__offresRecues' in marche:
+                    marche['backup__offresRecues']=int(marche['backup__offresRecues']) if not pd.isna(marche['backup__offresRecues']) and marche['backup__offresRecues']!='NC' else marche['backup__offresRecues']
+                if  marche['_type'] == 'Marché':
+                    if 'valeurGlobale' in marche:
+                        del marche['valeurGlobale']
+                    if 'backup__valeurGlobale' in marche:
+                        del marche['backup__valeurGlobale']
+                    if 'montantSubventionPublique' in marche:
+                        del marche['montantSubventionPublique']
+                else:
+                    if 'montant' in marche:
+                        del marche['montant']
+                    if 'backup__montant' in marche:
+                        del marche['backup__montant']
+                    if 'tauxAvance' in marche:
+                        del marche['tauxAvance']
+                    if 'origineUE' in marche:
+                        del marche['origineUE']
+                    if 'origineFrance' in marche:
+                        del marche['origineFrance']
+
                 self._restore_attributes_by_prefix(marche,'backup__')
                 self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance','backup__')
 
@@ -650,8 +665,16 @@ class GlobalProcess:
         if 'concessions' in dico_in:
             for marche_in in dico_in['concessions']:
                 marche = marche_in.copy()
-                if 'backup__montant' in marche_in:
-                    marche['montant'] = marche['backup__montant']
+                if 'montant' in marche:
+                    del marche['montant']
+                if 'backup__montant' in marche:
+                    del marche['backup__montant']
+                if 'tauxAvance' in marche:
+                    del marche['tauxAvance']
+                if 'origineUE' in marche:
+                    del marche['origineUE']
+                if 'origineFrance' in marche:
+                    del marche['origineFrance']
                 self._restore_attributes_by_prefix(marche,'backup__')
                 self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance','backup__')
 
@@ -764,82 +787,7 @@ class GlobalProcess:
                 }
         }
 
-
-    def dico_exists_node_in_node(self,dico,parent_node, child_node):
-        if parent_node in dico:
-            parent_dico = dico[parent_node]
-            
-            # Vérifie si le contenu du noeud parent_node est un dictionnaire
-            if isinstance(parent_dico, dict):
-                # Vérifie si "marche" existe dans le dictionnaire "marches"
-                return child_node in parent_dico
-            
-            # Vérifie si le contenu du noeud parent_node est une liste
-            elif isinstance(parent_dico, list):
-                for element in parent_dico:
-                    # Vérifie si l'élément est un dictionnaire et si le noeud child_node y existe
-                    if isinstance(element, dict) and child_node in element:
-                        return True
-        return False    
-
-    # Vérifie si le noeud "marche" existe à l'intérieur du moeud "marches" dans le dictionnaire
-    def dico_exists_marche_in_marches(self,dico):
-        return self.dico_exists_node_in_node(dico,'marches','marche')
-
-    def validate_json(self,jsonPath,jsonData:dict,jsonScheme:dict) -> bool:
-        """
-        Fonction vérifiant si le fichier jsn "jsonData" respecte
-        le schéma spécifié dans le  schéma en paramètre "jsonScheme". 
-
-        Args: 
-
-            jsonData: dictionnaire qui va être vérifié par le validateur
-            jsonScheme: schéma à respecter
-
-        """
-        errors_json = []  # Liste pour stocker les erreurs
-    
-        validator = Draft7Validator(jsonScheme)
-        for error in sorted(validator.iter_errors(jsonData), key=lambda e: e.path):
-            error_path = list(error.path)
-            error_message = error.message
-            errors_json.append(f"Path: {error_path} -- Message: {error_message}")
-        
-        if errors_json:
-            with open('erreur.log.txt', 'w') as error_file:
-                error_file.write("\n")
-                error_file.write(jsonPath + "\n")
-                for error in errors_json:
-                    error_file.write(error + "\n")
-            logging.info(f"{len(errors_json)} erreurs de validation ont été sauvegardées dans erreur.log.txt.")
-            return False
-        else:
-            logging.info("Le fichier JSON est valide.")
-            return True     
-
-    def _dico_merge(self,dico_ancien: dict,dico_nouveau: dict) -> dict:
-        """"
-        La fonction dico_merge permet de fusionner deux dictionnaires passés en paramètres
-        Elle gère de plus les cas où un des deux dictionnaires ou les deux dictionnaires sont vides.
-
-        Args:
-
-            dico_ancien: dictionnaire contenant les données du gros programme decp_2022
-            dico_nouveau: dictionnaire contenant les données du fichier decp du mois précédent
-        """
-        #On affecte à la variable dico_global les dictionnaires non vides
-        if(dico_ancien=={}) and (dico_nouveau != {}):
-            dico_global = dico_nouveau['marches']
-        elif(dico_nouveau=={}) and (dico_ancien!={}):
-            dico_global = dico_ancien['marches']
-        elif(dico_nouveau=={}) and (dico_ancien=={}):
-            logging.info(f"Les fichiers decp_2022 et decp_{self.get_current_date().year}_{self.get_current_date().month-1} sont vides")
-            dico_global={}
-        else:
-            #dico_global récupère l'ensemble des marchés et concessions des deux fichiers
-            dico_global = dico_ancien['marches'] + dico_nouveau['marches']
-        return dico_global
-    
+    # TODO optimize use 
     def _nan_correction_dico(self,df:pd.DataFrame) -> dict:
         """
         La fonction nan_correction remplit les valeurs manquantes du dataframe passé en paramètre 
@@ -859,6 +807,7 @@ class GlobalProcess:
             elif df[i].dtypes == 'object':
                 df.astype(str).fillna({i:""},inplace=False)              
 
+
     def upload_s3(self):
         """
         Cette fonction exporte decpv2 sur le S3 decp.
@@ -877,73 +826,6 @@ class GlobalProcess:
             endpoint_url="https://"+str(ENDPOINT_S3)
         )
         client.upload_file(os.path.join(self.RESULTS_DATA_GOUV, f"decp_{self.data_format}.json"), BUCKET_NAME, f"data/decp_{self.data_format}.json")
-
-
-    @StepMngmt().decorator(Step.UPLOAD_DATA_GOUV,None)
-    def upload_datagouv_DEPRECATED(self):
-        """
-        Cette fonction exporte les données journalières, 
-        annuelles (decp-<Annee>.json) et mensuelles (decp-<Annee>-<mois>.json) sur data.gouv.fr
-        Les données exportées sont une copie des données de travail purgées afin de répondre au schéma de validation
-        """
-        config_file = "config.json"
-        # read info from config.son
-        with open(config_file, "r") as f:
-                config = json.load(f)
-                api = config["url_api"]
-                dataset_id = config["dataset_id"]
-                data_gouv_api_key = config["data_gouv_api_key"]
-
-        headers = {
-            "X-API-KEY": data_gouv_api_key
-        }
-
-        suffix_month = self.get_current_date().strftime('%Y-%m')
-
-        # Nous avons changé de mois, on doit donc mettre à jour le fichier decp_<Annee> sur datagouv 
-        # et créer la ressource pour le fichier mensuel et l'uploader
-        if ((self.get_current_date().month)!=config["resource_month"]) and config["resource_month"] is not None:
-            a_month_ago = self.get_current_date() - relativedelta(months=1)
-            suffix_prev_month = a_month_ago.strftime('%Y-%m')
-            resource_id_prev_month = config["resource_id_month"]
-            _ = self._upload_file(headers,api,dataset_id,resource_id_prev_month,suffix_prev_month)
-
-            resource_id_global = config["resource_id_global"]
-            suffix_year = config["resource_year"]
-            resource_id_global = self._upload_file(headers,api,dataset_id,resource_id_global,suffix_year)
-
-            resource_id_month = self._upload_file(headers,api,dataset_id,None,suffix_month)
-            self._update_description_resource(headers,api,dataset_id,resource_id_month,suffix_month)
-            
-            with open(config_file, "r") as file:
-                data = json.load(file)
-
-            data['resource_id_month'] = resource_id_month
-            data['resource_month'] = self.get_current_date().month
-            data['resource_id_global'] = resource_id_global
-            if self.get_current_date().month == 1:
-                data['resource_id_global'] = None
-                data['resource_year'] = self.get_current_date().year
-
-            with open(config_file, "w") as file:
-                json.dump(data, file, indent=4)
-                
-            self.reorder_resources(headers,api,dataset_id)
-
-        #Cas quand le mois n'a pas changé depuis la dernière exécution (ou lors de la première execution)
-        else:
-            result_resource_id = self._upload_file(headers,api,dataset_id,config["resource_id_month"],suffix_month)
-
-            if config["resource_id_month"] is None:
-                config["resource_id_month"] = result_resource_id
-            if config["resource_month"] is None:
-                config["resource_month"] = self.get_current_date().month
-                config["resource_year"] = self.get_current_date().year
-            with open(config_file, "w") as file:
-                json.dump(config, file, indent=4) 
-
-            self._update_description_resource(headers,api,dataset_id,config["resource_id_month"],suffix_month)
-
 
 
     # Update resource description on data.gouv
@@ -971,9 +853,11 @@ class GlobalProcess:
 
     # Set all dataSet resources in order on data.gouv
     def reorder_resources(self,headers,api,dataset_id):
+        logging.info("Reordering ressources : ")
         resources = self._get_all_resources(headers,api,dataset_id)
         resources = self._sort_resources(resources)
         self._set_resources_order(headers,api,dataset_id,resources)
+
 
     def _get_all_resources(self, headers, api, dataset_id) -> list:
         url = f"{api}/datasets/{dataset_id}/"
@@ -985,7 +869,8 @@ class GlobalProcess:
             return response_data["resources"]
         
         return None
-    
+
+
     # Sort an array of dataset resources by tihle xith priority to global_decp.jsob
     def _sort_resources(self, resources) -> list:
         # Priorités
@@ -1024,6 +909,7 @@ class GlobalProcess:
         year,month = suffix.split("-")
         date_obj = datetime(int(year),int(month),1)
         return date_obj.strftime("%B %Y")
+
 
     def _get_ressource_id(self,headers,api,dataset_id,suffix:str) -> str:
         resource_id = None
@@ -1084,6 +970,7 @@ class GlobalProcess:
         
         return resource_id
 
+
     def _restore_attributes_by_prefix(self,marche,prefix):
         keys_to_delete = [clé for clé in marche.keys() if clé.startswith(prefix)]
         for key in keys_to_delete:
@@ -1093,6 +980,7 @@ class GlobalProcess:
                 marche[key[len(prefix):]] = marche[key]
             del marche[key]
 
+
     def _restore_attributes_by_prefix_in_node(self,marche,node_parent:str,node_child:str,prefix:str):
         if node_parent in marche and isinstance(marche[node_parent],list):
             for element in marche[node_parent]:
@@ -1100,7 +988,6 @@ class GlobalProcess:
                     self._restore_attributes_by_prefix(element[node_child],prefix)
 
 
-    
     def force_int_or_nc(self,cle:str,marche:dict):
         if cle in marche.keys() and marche[cle] != 'NC':
             try:
@@ -1112,6 +999,7 @@ class GlobalProcess:
             except TypeError:
                 logging.warning(f"Erreur : la valeur de la clé '{cle}' est de type incompatible pour la conversion.")
 
+
     def force_bool_or_nc(self,cle:str,marche:dict):
         if cle in marche.keys() and marche[cle] != 'NC':
             if ("true"==marche[cle]) or ("oui"==marche[cle]) or ("1"==marche[cle]):
@@ -1119,13 +1007,12 @@ class GlobalProcess:
             elif ("false"==marche[cle]) or ("non"==marche[cle]) or ("0"==marche[cle]):
                 marche[cle] = False
 
+
     def get_current_date(self) -> datetime:
         # for test: return datetime.strptime("2025-03-01", "%Y-%m-%d")
         return datetime.now()
 
-    def get_month_first_day(self,date:datetime) -> datetime:
-        return date.replace(day=1)
-        
+
     def save_report(self):
         self.report.save()
 
