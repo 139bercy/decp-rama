@@ -442,6 +442,23 @@ def df_add_error(df:pd.DataFrame,selection,message:str) -> pd.DataFrame:
     )
     return df    
 
+def check_date_not_in_future(df: pd.DataFrame, col: str) -> pd.DataFrame:
+    if col not in df.columns:
+        return df
+
+    non_empty_mask = df[col].notna() & (df[col] != '')
+    if not non_empty_mask.any():
+        return df
+
+    parsed_dates = pd.to_datetime(df.loc[non_empty_mask, col], format='%Y-%m-%d', errors='coerce')
+    future_mask = pd.Series(False, index=df.index)
+    future_mask.loc[parsed_dates.index] = parsed_dates > pd.Timestamp.now()
+
+    if future_mask.any():
+        df = df_add_error(df, future_mask, f"Champ {col} dans le futur (au {pd.Timestamp.now()})")
+
+    return df
+
 def reorder_columns(dfb:pd.DataFrame):
     """
     La fonction a pour but de mettre en première position 
@@ -957,6 +974,29 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
 
         return df
 
+    def marche_date_valid_limited(df: pd.DataFrame, dfb: pd.DataFrame,data_format:str,col:str) -> pd.DataFrame:
+        """
+        Format AAAA-MM-JJ
+            Si MM<01 ou>12,
+            SI JJ<01 ou >31 (voir si possibilité de vérifier le format jour max en fonction du mois et année)
+        La date de notification est INEXPLOITABLE si elle ne respecte pas le format, ou si elle ne peut pas être retransformée au format initial (ex : JJ-MM-AAAA)
+        Correction si INEXPLOITABLE :3abb5676-c994-4e70-9713-0f5faf7c8e4c
+            Si la date de notification du marché est manquante et qu’il existe une date de publication des données essentielles du marché public
+            respectant le format AAAA-MM-JJ (ou pouvant être retransformé en ce format) alors il convient d’affecter la date de publication à la date de notification.
+        """
+
+        # vérification du format de la date de notification (AAAA-MM-JJ) et correction si besoin création d'un dataframe avec les lignes à corriger
+        format_regex = PATTERN_DATE
+        invalid_dates = df[~df[col].str.match(format_regex, na=False)] 
+        if not invalid_dates.empty:
+            mask_bad_col = ~df[col].str.match(format_regex, na=False)
+
+            df = df_add_error(df,mask_bad_col,f"Champ {col} erroné")
+
+        df = check_date_not_in_future(df, col)
+
+        return df
+
     def marche_date_valid_optional(df: pd.DataFrame, dfb: pd.DataFrame,data_format:str,col:str) -> pd.DataFrame:
         """
         Format AAAA-MM-JJ
@@ -1021,8 +1061,12 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
     del df_cpv
 
     df_marche_ = check_duree_contrat(df_marche_, df_marche_badlines_, 180)
-    df_marche_ = marche_date_valid(df_marche_, df_marche_badlines_, data_format, "dateNotification")
-    df_marche_ = marche_date_valid(df_marche_, df_marche_badlines_, data_format, "datePublicationDonnees")
+    if data_format=='2019':
+        df_marche_ = marche_date_valid(df_marche_, df_marche_badlines_, data_format, "dateNotification")
+        df_marche_ = marche_date_valid(df_marche_, df_marche_badlines_, data_format, "datePublicationDonnees")
+    else:
+        df_marche_ = marche_date_valid_limited(df_marche_, df_marche_badlines_, data_format, "dateNotification")
+        df_marche_ = marche_date_valid_limited(df_marche_, df_marche_badlines_, data_format, "datePublicationDonnees")
     if 'dateNotificationModificationSousTraitanceModificationActeSousTraitance' in df_marche_.columns:
         df_marche_ = marche_date_valid_optional(df_marche_, df_marche_badlines_, data_format, "dateNotificationModificationSousTraitanceModificationActeSousTraitance") # On ne veux plus générer d'erreur sur data.eco
     if 'dateNotificationSousTraitanceActeSousTraitance' in df_marche_.columns:
@@ -1246,6 +1290,8 @@ def regles_concession(df_concession_: pd.DataFrame,data_format:str) -> pd.DataFr
         
         mask_bad_col = ~df["dateDebutExecution"].str.match(format_regex, na=False) & ~df["datePublicationDonnees"].str.match(format_regex, na=False)
         df = df_add_error(df,mask_bad_col,f"Champ dateDebutExecution erroné")
+        df = check_date_not_in_future(df, "dateDebutExecution")
+        df = check_date_not_in_future(df, "datePublicationDonnees")
 
         return df#
 
