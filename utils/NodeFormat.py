@@ -1,6 +1,8 @@
 import logging
 
 class NodeFormat:
+
+    @staticmethod
     def is_normalized_list_node(dico, parent_node, child_node) -> bool:
         if parent_node in dico:
             parent_dico = dico[parent_node]
@@ -11,6 +13,7 @@ class NodeFormat:
                         return True
         return False
 
+    @staticmethod
     def normalize_list_node(marche, parent_node, child_node):
         # If array is into the child element move array to replace parent_node list
         if parent_node in marche.keys() and marche[parent_node] is not None \
@@ -41,7 +44,7 @@ class NodeFormat:
                     if isinstance( marche[parent_node][i],dict) and child_node not in marche[parent_node][i].keys():
                         marche[parent_node][i] = { child_node: marche[parent_node][i] }
 
-
+    @staticmethod
     def normalize_list_node_inside(marche, parent_node_inside, child_node_inside, parent_node, child_node):
         if parent_node in marche:
             for i in range(len((marche[parent_node]))):
@@ -54,7 +57,7 @@ class NodeFormat:
                         marche[parent_node][i][child_node][parent_node_inside] = \
                             [{child_node_inside: element} for element in marche[parent_node][i][child_node][parent_node_inside][0][child_node_inside]]
 
-
+    @staticmethod
     def is_normalized_list_value(dico, parent_node, child_node) -> bool:
         if parent_node in dico:
             parent_dico = dico[parent_node]
@@ -65,7 +68,7 @@ class NodeFormat:
                         return True
         return False
 
-
+    @staticmethod
     def normalize_list_value(marche, parent_node, child_node):
         """
         Corrige les noeuds de type liste qui sont au "mauvais" format>
@@ -93,6 +96,7 @@ class NodeFormat:
         #    if child_nodcec89a41-234c-4583-8900-acee2221675fe in marche[parent_node]:
         #        marche[parent_node][child_node] = [marche[parent_node][child_node]]
 
+    @staticmethod
     def convert_ints(marche, parent_node, child_node):
         if parent_node in marche.keys() and marche[parent_node] is not None and len(
             marche[parent_node]) > 0 and isinstance( marche[parent_node],list):
@@ -101,7 +105,7 @@ class NodeFormat:
                     NodeFormat.force_ints(['id','dureeMois'],marche[parent_node][i][child_node])
                     NodeFormat.force_floats(['montant'],marche[parent_node][i][child_node])
 
-
+    @staticmethod
     def force_bools_nc(keys:list,marche:dict):
         for key in keys:
             if key in marche and marche[key] is not None and  marche[key] !='NC':
@@ -110,7 +114,7 @@ class NodeFormat:
                 elif marche[key] == '1':
                     marche[key] = True
 
-
+    @staticmethod
     def force_bools(keys:list,marche:dict):
         for key in keys:
             if key in marche and marche[key] is not None:
@@ -119,7 +123,7 @@ class NodeFormat:
                 elif marche[key] == '1' or marche[key] == 'oui' or marche[key] == 'true' :
                     marche[key] = True
 
-
+    @staticmethod
     def force_floats_nc(keys:list,marche:dict):
         for key in keys:
             if key in marche and marche[key] is not None and  marche[key] !='NC':
@@ -133,6 +137,7 @@ class NodeFormat:
             elif key in marche and marche[key] !='NC':
                 marche[key] = 0
 
+    @staticmethod
     def force_floats(keys:list,marche:dict):
         for key in keys:
             if key in marche and marche[key] is not None and  marche[key] !='NC':
@@ -144,6 +149,7 @@ class NodeFormat:
                 except TypeError:
                     logging.warning(f"Erreur : la valeur de la clé '{key}' est de type incompatible pour la conversion.")
 
+    @staticmethod
     def force_ints_nc(keys:list,marche:dict):
         for key in keys:
             if key in marche and marche[key] is not None and  marche[key] !='NC':
@@ -157,6 +163,7 @@ class NodeFormat:
             elif key in marche and marche[key] !='NC':
                 marche[key] = 0
 
+    @staticmethod
     def force_ints(keys:list,marche:dict):
         for key in keys:
             if key in marche and marche[key] is not None and  marche[key] !='NC':
