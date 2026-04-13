@@ -129,7 +129,7 @@ if __name__ == "__main__":
         db = DbDecp()
         session_id = db.add_session("decp-rama-augmente")
         db.close()
-        report = Report('decp-rama-augmente',False)
+        report = Report('decp-rama-augmente',session_id,False)
         try:
             # DECP RAMA
             if not args.augmente:
@@ -139,12 +139,12 @@ if __name__ == "__main__":
             if not args.rama:
                 main_augmente(session_id,data_format)
 
+            step.reset()
+            
             db = DbDecp()
             db.end_session(session_id,"OK")
             db.close()
         
-            step.reset()
-            report.db_end_session('OK')
         except Exception as err:
             tb = traceback.format_exc()
             er = err
@@ -157,8 +157,10 @@ if __name__ == "__main__":
                 logging.error(tb)
                 report.save_report()
                 report.save_statistics()
-                report.db_end_session('KO ')
-
+                db = DbDecp()
+                db.end_session(session_id,"KO")
+                db.close()
+        
         logging.info(f"Traitement pour le format {data_format} terminé")
     
     logging.info("---------------------------------------------------------------")
