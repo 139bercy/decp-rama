@@ -107,9 +107,9 @@
   "aife_2024":
   {
     "code": "data.gouv.fr_aife",
-    "description": "Ce r\u00e9pertoire propose les XML journaliers de donn\u00e9es essentielles issues de l'API AIFE, \u00e0 compter du 1er mai 2019",
+    "description": "Ce r\u00e9pertoire propose les fichiers JSON journaliers de donn\u00e9es essentielles issues de l'API AIFE, \u00e0 compter du 1er mai 2019",
     "url_source": "https://www.data.gouv.fr/fr/datasets/aife-de-13001977100018/",
-    "format": "xml",
+    "format": "json",
     "cle_api": ["5df410e86f44413a91d34be3"],
     "url": "",
     "validate" : true,
@@ -231,6 +231,18 @@
     "validate" : true,
     "convert_nc": false,
     "encoding": "utf-8-sig"
+  },
+  "medialex_2024":
+  {
+    "code": "medialex_2024",
+    "description": "Données essentielles - medialex.fr ",
+    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-medialex-fr",
+    "format": "xml",
+    "cle_api": ["68d505db4463555f7ed9b8b5"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false,
+    "encoding": "ISO-8859-15"
   },
 
   
