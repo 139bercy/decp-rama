@@ -125,7 +125,7 @@ class DbDecp:
 
         return source_id
 
-    def find_or_add_file(self, file_name:str, source_id:int, nb_marches, nb_concessions):
+    def find_or_add_file(self, file_name:str, file_date:str, source_id:int, nb_marches, nb_concessions):
         """
         Recherche un fichier par son nom et sa source puis l'ajoute s'il n'existe pas.
         :param source_id: INT8, identifiant de la source
@@ -136,14 +136,40 @@ class DbDecp:
         try:
             cursor = self.connection.cursor()
             
-            cursor.execute("SELECT file_id FROM decp.file WHERE nom = %s and source_id = %s", (file_name,source_id,))
+            cursor.execute("SELECT file_id FROM decp.file WHERE nom = %s and source_id = %s and file_date = %s", (file_name,source_id,file_date))
             result = cursor.fetchone()
 
             if result:
                 file_id = result[0]
             else:
-                cursor.execute("INSERT INTO decp.file (file_id, nom, source_id, nb_marches, nb_concessions, date_creation) VALUES (nextval('decp.s_file'), %s, %s, %s, %s, NOW()) RETURNING file_id", (file_name, source_id, nb_marches, nb_concessions))
+                cursor.execute("INSERT INTO decp.file (file_id, nom, source_id, nb_marches, nb_concessions, file_date, date_creation) VALUES (nextval('decp.s_file'), %s, %s, %s, %s, %s, NOW()) RETURNING file_id", (file_name, source_id, nb_marches, nb_concessions,file_date))
                 file_id = cursor.fetchone()[0]
+
+            self.connection.commit()
+
+        except Exception as e:
+            logging.error(self.ERROR_MESSAGE_FILE, e)
+        finally:
+            # Fermeture systématique du curseur après utilisation
+            cursor.close()
+
+        return file_id
+
+
+    def add_file(self, file_name:str, source_id:int, nb_marches, nb_concessions):
+        """
+        Ajoute les information sur un fichier source.
+        :file_name: str, nom du fichier
+        :param source_id: INT8, identifiant de la source
+        :param nb: INT8, Nombre d'enregistrement dans la source
+        :return: file_id id de l'enregistrement trouvé ou ajouté
+        """
+        file_id = None
+        try:
+            cursor = self.connection.cursor()
+            
+            cursor.execute("INSERT INTO decp.file (file_id, nom, source_id, nb_marches, nb_concessions, date_creation) VALUES (nextval('decp.s_file'), %s, %s, %s, %s, NOW()) RETURNING file_id", (file_name, source_id, nb_marches, nb_concessions))
+            file_id = cursor.fetchone()[0]
 
             self.connection.commit()
 
@@ -361,7 +387,7 @@ class DbDecp:
             self.connection.commit()
 
         except Exception as e:
-            print(f"Erreur lors de l'ajout du marché en base: {e} ")
+            logging.error(f"Erreur lors de l'ajout du marché en base: {e} ")
             # Annuler la transaction en cas d'erreur
             self.connection.rollback()
 
@@ -539,7 +565,7 @@ class DbDecp:
             self.connection.commit()
 
         except Exception as e:
-            print(f"Erreur lors de l'ajout de la concession en base: {e} ")
+            logging.error(f"Erreur lors de l'ajout de la concession en base: {e} ")
             # Annuler la transaction en cas d'erreur
             self.connection.rollback()
 
@@ -563,51 +589,41 @@ class DbDecp:
         try:
             utilsJson = UtilsJson()
 
-            # Connect to the PostgreSQL database
-            cursor = self.connection.cursor()
-
-            # Query to select the JSON data from the 'marche' table
-            query = f"SELECT data_out FROM decp.marche WHERE data_out is not null {sub_query}" # AND est_retenu is TRUE"
-
-            # Execute the query
-            cursor.execute(query)
-
-            # Fetch all results
-            json_marche = cursor.fetchall()
-
-            # Query to select the JSON data from the 'marche' table
-            query = f"SELECT data_out FROM decp.concession WHERE data_out is not null {sub_query}" # and concession_id =0"
-
-            # Execute the query
-            cursor.execute(query)
-
-            # Fetch all results
-            json_concession = cursor.fetchall()
-
-            # Write to file
+            # Write incrementally to avoid loading hundreds of thousands of rows in RAM
             with open(file_path, 'w') as outfile:
                 outfile.write('{\n  "marches": {\n    "marche": [')
-                i = 0
-                for row in json_marche:
-                    outfile.write((',' if i > 0 else '') + '\n')
-                    json.dump(utilsJson.format_json(row[0], keep_db_id), outfile)
-                    i += 1
+
+                # Stream marches
+                with self.connection.cursor(name="marche_cursor") as marche_cur:
+                    marche_cur.itersize = 10000  # fetch in chunks from server
+                    query = f"SELECT data_out FROM decp.marche WHERE data_out is not null {sub_query}"
+                    marche_cur.execute(query)
+
+                    first = True
+                    for row in marche_cur:
+                        outfile.write('\n' if first else ',\n')
+                        outfile.write(json.dumps(utilsJson.format_json(row[0], keep_db_id)))
+                        first = False
 
                 if ref_date is None:
-                    outfile.write('\n    ],\n "contrat-concession": [\n')
-                    i=0
+                    outfile.write('\n    ],\n "contrat-concession": [')
                     
-                for row in json_concession:
-                    outfile.write((',' if i > 0 else '') + '\n')
-                    json.dump(utilsJson.format_json(row[0], keep_db_id), outfile)
-                    i += 1
+                # Stream concessions (same parent node as marches)
+                with self.connection.cursor(name="concession_cursor") as concession_cur:
+                    concession_cur.itersize = 10000
+                    query = f"SELECT data_out FROM decp.concession WHERE data_out is not null {sub_query}"
+                    concession_cur.execute(query)
+
+                    first = True
+                    for row in concession_cur:
+                        outfile.write('\n' if first else ',\n')
+                        outfile.write(json.dumps(utilsJson.format_json(row[0], keep_db_id)))
+                        first = False
+
                 outfile.write('\n    ]\n  }\n}')
-                
+
         except Exception as e:
-            print(f"Error: {e}")
-        finally:
-            # Close the database connection
-            cursor.close()
+            logging.error(f"Erreur lors de l'exttaction : {e} ")
         logging.info (f"{file_path} created")
         
     def extract_json_to_file(self,file_path:str,generate_month=True):
