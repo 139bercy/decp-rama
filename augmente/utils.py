@@ -49,7 +49,8 @@ def parse_args():
     parser.add_argument("-b", dest='rebuild', type=str, help="Rebuild a given year")
     return parser.parse_args()
 
-args = parse_args()
+# Ne pas parser les arguments au niveau module pour éviter les conflits avec uvicorn
+# args = parse_args()
 
 logger.info(f"Le nom du Bucket utilisé est : {BUCKET_NAME}")
 
@@ -126,7 +127,7 @@ def export_all_csv(ref_date,data_format:str = '2022', local:bool=True):
     maintenant = datetime.now()
     date = maintenant.strftime("%Y-%m-%d")
     
-    if not args.local:
+    if not local:
         files_to_upload = [(f"marches-valides/marche-2022-{ref_date}.csv","decp/2022/"),
                            (f"concessions-valides/concession-2022-{ref_date}.csv","decp/2022/"),
                            (f"marches-invalides/marche-exclu-2022-{ref_date}.csv","decp/2022/"),

@@ -3,7 +3,7 @@ from general_process.ProcessFactory import ProcessFactory
 from general_process.GlobalProcess import GlobalProcess
 from reporting.Report import Report
 import logging
-from datetime import date
+from datetime import date,datetime
 from utils.StepMngmt import StepMngmt
 from utils.Step import Step
 import augmente.data_management
@@ -13,13 +13,13 @@ import os
 import traceback
 
 
-args = augmente.utils.parse_args()
-
 step = StepMngmt()
     
 def main(report,data_format:str = "2022"):
     """La fonction main() appelle tour à tour les processus spécifiques (ProcessFactory.py/SourceProcess.py) et les
     étapes du Global Process (GlobalProcess.py)."""
+    
+    args = augmente.utils.parse_args()
 
     # Init reporting
     # Init resume
@@ -27,7 +27,7 @@ def main(report,data_format:str = "2022"):
     if not step.bypass("ALL",Step.FIX_ALL):
         if args.process:
             p = ProcessFactory(args.process,data_format,report)
-            p.run_process(args)
+            p.run_processes(args)
         else:
             p = ProcessFactory(None,data_format,report)
             p.run_processes(args)
@@ -55,12 +55,17 @@ def main(report,data_format:str = "2022"):
 
 def main_augmente(session_id:str,data_format:str = '2022'):
     
+    args = augmente.utils.parse_args()
+    
     logger.info("Téléchargement des fichiers de données")
     augmente.data_management.main()
     logger.info("Fichiers mis à jour dans le dossier data")
 
     logger.info(f"Application règles métier format {data_format}")
     start_year, start_month = 2024, 1
+    ############### Temp ##################
+    start_year, start_month = 2026, 8 #######################################
+    ############### Temp ##################
     today = date.today()  
     end_year, end_month = today.year, today.month
 
@@ -84,8 +89,13 @@ def main_augmente(session_id:str,data_format:str = '2022'):
 
 if __name__ == "__main__":
     """Lorsqu'on appelle la fonction main (courante), on définit le niveau de logging et le format d'affichage."""
+    
+    args = augmente.utils.parse_args()
+    
     os.makedirs("logs", exist_ok=True)
-    file_handler = logging.FileHandler(filename="logs/app.log", mode='a', encoding='utf-8')
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_filename = f"logs/app_{timestamp}.log"
+    file_handler = logging.FileHandler(filename=log_filename, mode='a', encoding='utf-8')
     file_handler.setLevel(logging.INFO)
 
     # Création du StreamHandler pour afficher les logs dans la console
@@ -115,6 +125,7 @@ if __name__ == "__main__":
     logging.info("(-t) Option exécution en mode test " + ("activée" if args.test else "désactivée"))
     logging.info("(-r) Option reprise à la dernière étape exécutée " + ("desactivée" if args.reset else "activée"))
     logging.info("(-b) Option reconstruction globale " + ("activée pour " if args.rebuild else "désactivée") + (args.rebuild if args.rebuild else ""))
+    logging.info("(-P) Option process spécifique " + ("activée pour " if args.process else "désactivée") + (args.process if args.process else ""))
 
     # On ne reprend pas l'exécution à la dernière étape du précédent lancement de l'application, on supprime le cache d'exécution
     if args.reset:
