@@ -69,6 +69,7 @@ class SourceProcess:
             
         self.validate = self.metadata[self.key]["validate"]
         self.convert_nc = self.metadata[self.key]["convert_nc"]
+        self.spread_over_time = self.metadata[self.key]["spread_over_time"] if 'spread_over_time' in self.metadata[self.key] else False
         self.df = pd.DataFrame()
         self.url = []
         self.title = []
@@ -91,9 +92,10 @@ class SourceProcess:
         #self.start_date = pd.to_datetime(f"2026-04-03 03:39:00")
         #self.end_date = pd.to_datetime(f"{self.rebuild_year}-12-31 23:59:59")
         #self.end_date = pd.to_datetime(f"{self.rebuild_year}-03-10 00:00:00")
-        self.rebuild_year = "2026"
-        self.start_date = pd.to_datetime(f"2026-04-03 03:39:00")
-        self.end_date = pd.to_datetime(f"2026-04-11 00:00:00")
+        #self.rebuild_year = "2026"
+        if self.key == 'aife_2024' and self.rebuild_year == '2026':
+            self.start_date = pd.to_datetime(f"2026-04-03 03:39:00")
+            self.end_date = pd.to_datetime(f"2026-04-28 00:00:00")
         # End test demo.data.gouv
 
         # Lavage des dossiers de la source
@@ -184,8 +186,8 @@ class SourceProcess:
             ressources = ref_json["resources"]
 
             #Creation de la deuxième variable json pour la comparaison si le fichier old_metadata existe
-            if os.path.exists(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json"):
-                with open(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json", 'r+') as fl:
+            if os.path.exists(f"old_metadata/{self.source}/metadata_{self.key}_{i}.json"):
+                with open(f"old_metadata/{self.source}/metadata_{self.key}_{i}.json", 'r+') as fl:
                     refjson = json.load(fl)
                 old_ressources = refjson["resources"]
             else:
@@ -210,14 +212,14 @@ class SourceProcess:
             
             if self.rebuild_year is None or self.save_metadata:
                 #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
-                if os.path.exists(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json"):
+                if os.path.exists(f"old_metadata/{self.source}/metadata_{self.key}_{i}.json"):
                     with open(f"metadata/{self.source}/metadata_{self.key}_{i}.json", 'r') as source_file:
                         contenu = source_file.read()
-                    with open(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json", 'w') as destination_file:
+                    with open(f"old_metadata/{self.source}/metadata_{self.key}_{i}.json", 'w') as destination_file:
                         destination_file.write(contenu)
                 #Cas où les fichiers old_metadata n'existent pas: on fait une copie
                 else:
-                    shutil.copy(f"metadata/{self.source}/metadata_{self.key}_{i}.json",f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json")
+                    shutil.copy(f"metadata/{self.source}/metadata_{self.key}_{i}.json",f"old_metadata/{self.source}/metadata_{self.key}_{i}.json")
                     logging.info(os.listdir(f"old_metadata/{self.source}"))
 
         # Filter file by date in title, url
@@ -342,6 +344,7 @@ class SourceProcess:
             #    out_file.write(response.read())
 
             self.title = [ file_name ]
+            self.url_date = ['2024-01-01']
             logging.info(f"Titre des fichiers : {self.title}")
 
         #Le dossier est vide car il s'agit du 1er téléchargement. Téléchargement 
@@ -467,6 +470,8 @@ class SourceProcess:
                     self._validation_format(dico['marches'], self.title[i],pd.to_datetime(self.url_date[i]))    #On obtient 2 fichiers qui sont mis jour à chaque tour de boucle
                 except Exception as err:
                     logging.error(f"Exception lors de la validation du format des données dans {self.title[i]} : {err}")
+                    tb = traceback.format_exc()
+                    logging.error(tb)
             else:
                 logging.warning(f"Aucune clé 'marches' trouvée dans {self.title[i]}")
                 
@@ -486,9 +491,10 @@ class SourceProcess:
             file_name : nom du fichier où se trouve le dictionnaire dico
 
         """
-        def complete_util_info(rec,source,file_name,year_month,position,error_message,error_path):
+        def complete_util_info(rec,source,file_name,file_date,year_month,position,error_message,error_path):
             # Adding source and file_name for reporting
             rec['report__file'] = file_name
+            rec['ref__file_date'] = file_date
             if source not in rec:
                 rec['source'] = source
             rec['report__position'] = position
@@ -501,6 +507,7 @@ class SourceProcess:
 
         # Get year-month suffix for this data set for merging data in export
         year_month = file_date.strftime('%Y-%m')
+        year_month_record = year_month
         file_date_str = file_date.strftime('%Y-%m-%d %H:%M:%S')
         file_date_str_short = file_date.strftime('%Y-%m-%d')
 
@@ -519,7 +526,7 @@ class SourceProcess:
         db = DbDecp()
         id_source = db.find_or_add_source(self.source, 0)
         id_file = db.find_or_add_file(file_name, file_date_str, id_source, nb_total_marches, nb_total_concessions)
-        
+
         if 'marche' in dico and isinstance(dico['marche'],list):
             while n < len(dico['marche']) :
                 if dico['marche'][n] is not None:
@@ -531,20 +538,28 @@ class SourceProcess:
                     # Check data for json validity
                     valid,error_message,error_path = self.check_json_batch(dico_test,draft_validator)
 
+                    if local_source=='AIFE_test':
+                        valid = False
+                        error_message = 'Enregistrement de test non autorisé'
+
+                    if local_source=='AIFE_ATEXO':
+                        local_source = 'AIFE_PLACE'
+
                     if (self.validate and not valid):
-                        dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,year_month,n,error_message,error_path))
+                        dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,file_date_str,year_month,n,error_message,error_path))
                     if (not self.validate or valid):
                         # Get max date and year_month prefix for category
                         max_date = self._get_max_date(dico['marche'][n],file_date_str_short)
-                        year_month_record=max_date[0:7] if max_date>'2024-01-01' and max_date<'2026-05-01' else year_month
+                        if self.spread_over_time:
+                            year_month_record=max_date[0:7] if max_date>='2024-01-01' and max_date<=file_date_str_short else year_month
                         dico['marche'][n]['db_id'],dico['marche'][n]['tmp__titulaire'] = self._db_add_marche(db,id_source,id_file,file_date_str,n,dico['marche'][n],max_date)
                         dico['marche'][n]['tmp__max_date'] = max_date
-                        self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source if local_source is None else local_source,file_name,year_month_record,n,error_message,error_path))
+                        self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source if local_source is None else local_source,file_name,file_date_str,year_month_record,n,error_message,error_path))
                         nb_valid_marches+=1
                 n+=1
             self.report.nb_in_bad_marches += len(dico_ignored_marche) if validate else 0
         elif 'marche' in dico:
-            dico_ignored_concession.append(complete_util_info(dico['marche'],self.source,file_name,year_month,0,'Une liste de marchés est attendue',''))
+            dico_ignored_concession.append(complete_util_info(dico['marche'],self.source,file_name,file_date_str,year_month,0,'Une liste de marchés est attendue',''))
         
         # Mise a jour du nombre de marchés ajoutés  
         self.report.nb_in_good_marches += nb_valid_marches
@@ -559,24 +574,34 @@ class SourceProcess:
                     
                     # Check concession for json validity
                     valid,error_message,error_path = self.check_json(dico_test)
-                    
+
+                    if local_source=='AIFE_test':
+                        valid = False
+                        error_message = 'Enregistrement de test non autorisé'
+
+                    if local_source=='AIFE_ATEXO':
+                        local_source = 'AIFE_PLACE'
+
                     if not valid:
-                        dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,year_month,m,error_message,error_path))
+                        dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,file_date_str,year_month,m,error_message,error_path))
                     if (not self.validate or valid):
                         # Get max date and year_month category
                         max_date = self._get_max_date(dico['contrat-concession'][m],file_date_str_short)
-                        year_month_record=max_date[0:7] if max_date>'2024-01-01' and max_date<'2026-05-01' else year_month
+                        if self.spread_over_time:
+                            year_month_record=max_date[0:7] if max_date>='2024-01-01' and max_date<=file_date_str_short else year_month
                         dico['contrat-concession'][m]['db_id'],dico['contrat-concession'][m]['tmp__concessionaire'] = self._db_add_concession(db,id_source,id_file,file_date_str,m,dico['contrat-concession'][m],max_date)
                         dico['contrat-concession'][m]['tmp__max_date'] = max_date
-                        self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source if local_source is None else local_source,file_name,year_month_record,m,error_message,error_path))
+                        self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source if local_source is None else local_source,file_name,file_date_str,year_month_record,m,error_message,error_path))
                         nb_valid_concessions+=1
                 m+=1
             self.report.nb_in_bad_concessions += len(dico_ignored_concession) if validate else 0
         elif 'contrat-concession' in dico:
-            dico_ignored_concession.append(complete_util_info(dico['contrat-concession'],self.source,file_name,year_month,0,'Une liste de concessions est attendue',''))
+            dico_ignored_concession.append(complete_util_info(dico['contrat-concession'],self.source,file_name,file_date_str,year_month,0,'Une liste de concessions est attendue',''))
 
         # Mise a jour du nombre de concessions validés
         self.report.nb_in_good_concessions += nb_valid_concessions
+
+        db.update_file(id_file, nb_valid_marches,nb_valid_concessions)
 
         self.report.inject_db_connection(db)
         if len(dico_ignored_marche)>0:
@@ -591,26 +616,36 @@ class SourceProcess:
 
     def _db_add_marche(self, db:DbDecp,id_source:int,id_file:int,file_date,n:int,marche,max_date) -> tuple[int,str]:
         if marche is not None:
-            id = marche['id']
-            acheteur_id = marche['acheteur']['id']
-            sorted_ids = sorted(item['titulaire']['id'] for item in marche['titulaires'])
-            titulaire = sorted_ids[0]
-            titulaires = ','.join(sorted_ids)
+            id = str(marche['id'])
+            #print(id)
+            acheteur_id = str(marche['acheteur']['id'])
+            if 'titulaires' in marche:
+                sorted_ids = sorted(str(item['titulaire']['id']) for item in marche['titulaires'])
+                titulaire = sorted_ids[0][0:64] if isinstance(sorted_ids,list) else None
+                titulaires = ','.join(sorted_ids)
+            else:
+                titulaire = "0"
+                titulaires = "0"
             date_notification = marche['dateNotification']
-            montant = int(marche['montant'])
+            montant = int(float(marche['montant']))
             objet = marche['objet']
             
             return db.add_marche(id_source,id_file,file_date,n,id,acheteur_id,titulaire,titulaires,date_notification,montant,objet,max_date,marche),titulaire
                 
     def _db_add_concession(self, db:DbDecp,id_source:int,id_file:int,file_date,n:int,concession,max_date) -> tuple[int,str]:
         if concession is not None:
-            id = concession['id']
-            autorite_concedante_id = concession['autoriteConcedante']['id']
-            sorted_ids = sorted(item['concessionnaire']['id'] for item in concession['concessionnaires'])
-            concessionnaire = sorted_ids[0]
-            concessionnaires = ','.join(sorted_ids)
+            id = str(concession['id'])
+            #print(id)
+            autorite_concedante_id = str(concession['autoriteConcedante']['id'])
+            if 'concessionnaires' in concession:
+                sorted_ids = sorted(str(item['concessionnaire']['id']) for item in concession['concessionnaires'])
+                concessionnaire = sorted_ids[0][0:64] if isinstance(sorted_ids,list) else None
+                concessionnaires = ','.join(sorted_ids)
+            else:
+                concessionnaire = "0"
+                concessionnaires = "0"
             date_debut_execution = concession['dateDebutExecution']
-            valeur_globale = concession['valeurGlobale']
+            valeur_globale = float(concession['valeurGlobale'])
             objet = concession['objet']
 
             return db.add_concession(id_source,id_file,file_date,n,id,autorite_concedante_id,concessionnaire,concessionnaires,date_debut_execution,valeur_globale,objet,max_date,concession),concessionnaire
@@ -893,7 +928,7 @@ class SourceProcess:
         df_str = self.df.astype(str)
         
         # For statistics purpose only
-        excluded_columns = ['report__file','report__nbtotal','report__error','report__position','db_id','tmp__max_date','tmp__annee_mois','backup__montant']
+        excluded_columns = ['report__file','ref__file_date','report__nbtotal','report__error','report__position','db_id','tmp__max_date','tmp__annee_mois','backup__montant']
         df_marche = df_str[df_str['_type'].str.contains("Marché")]
         if len(df_marche[df_marche.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])>0:
             nb = len(df_marche[df_marche.duplicated(subset=df_marche.columns.difference(excluded_columns), keep="last")])
