@@ -12,6 +12,7 @@ from .LyonProcess import LyonProcess
 from .MaxiProcess import MaxiProcess
 from .MegaProcess import MegaProcess
 from .Megalis2024Process import Megalis2024Process
+from .Arnia2024Process import Arnia2024Process
 from .PesProcess import PesProcess
 from .Modula2024Process import Modula2024Process
 from .Pes2024Process import Pes2024Process
