@@ -63,9 +63,6 @@ def main_augmente(session_id:str,data_format:str = '2022'):
 
     logger.info(f"Application règles métier format {data_format}")
     start_year, start_month = 2024, 1
-    ############### Temp ##################
-    start_year, start_month = 2026, 8 #######################################
-    ############### Temp ##################
     today = date.today()  
     end_year, end_month = today.year, today.month
 

@@ -27,6 +27,17 @@ CREATE SEQUENCE decp.s_concession_doublon
 	CACHE 1
 	NO CYCLE;
 
+-- decp.s_exclusion_type definition
+
+DROP SEQUENCE IF EXISTS decp.s_exclusion_type;
+
+CREATE SEQUENCE decp.s_exclusion_type
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
 
 -- decp.s_file definition
 
@@ -66,7 +77,6 @@ CREATE SEQUENCE decp.s_marche_doublon
 	CACHE 1
 	NO CYCLE;
 
-
 -- decp.s_source definition
 
 DROP SEQUENCE IF EXISTS decp.s_source;
@@ -92,6 +102,18 @@ CREATE SEQUENCE decp.s_concession
 	CACHE 1
 	NO CYCLE;
 
+-- decp.s_error definition
+
+DROP SEQUENCE IF EXISTS decp.s_error;
+
+CREATE SEQUENCE decp.s_error
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
 -- decp.s_session definition
 
 DROP SEQUENCE IF EXISTS decp.s_session;
@@ -105,34 +127,31 @@ CREATE SEQUENCE decp.s_session
 	NO CYCLE;
 
 
--- decp.concession_doublon definition
+-- decp.s_report definition
 
--- Drop table
+DROP SEQUENCE IF EXISTS decp.s_step;
 
-DROP TABLE IF EXISTS decp.concession_doublon;
+CREATE SEQUENCE decp.s_step
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
 
-CREATE TABLE decp.concession_doublon (
-	concession_doublon_id int4 DEFAULT nextval('decp.s_concession_doublon'::regclass) NOT NULL,
-	concession_id int4 NULL,
-	source_id int4 NOT NULL,
-	file_id int4 NOT NULL,
-	indx int4 NOT NULL,
-	id varchar(255) NULL,
-	autorite_concedante varchar(255) NOT NULL,
-	concessionnaire varchar(64) NOT NULL,
-	concessionnaires varchar(1024) NOT NULL,
-	date_debut_execution date NOT NULL,
-	valeur_globale numeric NOT NULL,
-	max_date varchar(20) NULL,
-	objet varchar(1000) NULL,
-	data_in jsonb NOT NULL,
-	data_out jsonb NULL,
-	data_augmente jsonb NULL,
-	est_retenu bool NULL,
-	date_creation timestamp,
-	CONSTRAINT concession_doublon_pkey PRIMARY KEY (concession_doublon_id)
+
+
+DROP TABLE IF EXISTS decp.session;
+
+CREATE TABLE decp.session (
+   session_id           INT8                 DEFAULT nextval('decp.s_session'::regclass) NOT NULL,
+   name                 VARCHAR(256)         not null,
+   message              VARCHAR(256)         null,
+   begin_date           TIMESTAMP            not null,
+   intermediate_date    TIMESTAMP            null,
+   end_date             TIMESTAMP            null,
+   CONSTRAINT pk_session primary key (session_id)
 );
-
 
 -- decp."source" definition
 
@@ -141,7 +160,7 @@ CREATE TABLE decp.concession_doublon (
 -- DROP TABLE decp."source";
 
 CREATE TABLE decp."source" (
-	source_id int4 DEFAULT nextval('s_source'::regclass) NOT NULL,
+	source_id int4 DEFAULT nextval('decp.s_source'::regclass) NOT NULL,
 	nom varchar(255) NOT NULL,
 	alias varchar(255) NULL,
 	dataset_id int4 NULL,
@@ -152,7 +171,17 @@ CREATE TABLE decp."source" (
 	CONSTRAINT source_pkey PRIMARY KEY (source_id)
 );
 
+-- decp.exclusion_type definition
 
+DROP TABLE IF EXISTS decp.exclusion_type;
+
+CREATE TABLE decp.exclusion_type (
+   exclusion_type_id    INT4 DEFAULT nextval('decp.s_exclusion_type'::regclass) not null,
+   code                 VARCHAR(64)          null,
+   name                 VARCHAR(64)          null,
+   creation_date        TIMESTAMP            null,
+   CONSTRAINT pk_exclusion_type PRIMARY KEY (exclusion_type_id)
+);
 
 -- decp.file definition
 
@@ -164,11 +193,14 @@ CREATE TABLE decp.file (
 	file_id int4 DEFAULT nextval('decp.s_file'::regclass) NOT NULL,
 	source_id int4 NOT NULL,
 	nom varchar(255) NOT NULL,
+	file_date varchar(32) NOT null,
 	nb_marches int4 NULL,
 	nb_concessions int4 NULL,
+	nb_marches_valides int4 NULL,
+	nb_concessions_valides int4 NULL,
 	date_creation timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	CONSTRAINT file_pkey PRIMARY KEY (file_id),
-	CONSTRAINT file_source_id_nom_key UNIQUE (source_id, nom),
+	CONSTRAINT file_source_id_nom_key UNIQUE (source_id, nom, file_date),
 	CONSTRAINT file_source_id_fkey FOREIGN KEY (source_id) REFERENCES decp."source"(source_id) ON DELETE CASCADE
 );
 
@@ -233,6 +265,33 @@ CREATE TABLE decp.marche (
 	CONSTRAINT marche_source_id_fkey FOREIGN KEY (source_id) REFERENCES decp."source"(source_id) ON DELETE CASCADE
 );
 
+-- decp.concession_doublon definition
+
+-- Drop table
+
+DROP TABLE IF EXISTS decp.concession_doublon;
+
+CREATE TABLE decp.concession_doublon (
+	concession_doublon_id int4 DEFAULT nextval('decp.s_concession_doublon'::regclass) NOT NULL,
+	concession_id int4 NULL,
+	source_id int4 NOT NULL,
+	file_id int4 NOT NULL,
+	indx int4 NOT NULL,
+	id varchar(255) NULL,
+	autorite_concedante varchar(255) NOT NULL,
+	concessionnaire varchar(64) NOT NULL,
+	concessionnaires varchar(1024) NOT NULL,
+	date_debut_execution date NOT NULL,
+	valeur_globale numeric NOT NULL,
+	max_date varchar(20) NULL,
+	objet varchar(1000) NULL,
+	data_in jsonb NOT NULL,
+	data_out jsonb NULL,
+	data_augmente jsonb NULL,
+	est_retenu bool NULL,
+	date_creation timestamp,
+	CONSTRAINT concession_doublon_pkey PRIMARY KEY (concession_doublon_id)
+);
 
 -- decp.marche_doublon definition
 
@@ -264,14 +323,62 @@ CREATE TABLE decp.marche_doublon (
 	CONSTRAINT marche_source_id_fkey FOREIGN KEY (source_id) REFERENCES decp."source"(source_id) ON DELETE CASCADE
 );
 
-DROP TABLE IF EXISTS decp.session;
 
-CREATE TABLE decp.session (
-   session_id           INT8                 DEFAULT nextval('decp.s_session'::regclass) NOT NULL,
-   name                 VARCHAR(256)         not null,
-   message              VARCHAR(256)         null,
-   begin_date           TIMESTAMP            not null,
-   intermediate_date    TIMESTAMP            null,
-   end_date             TIMESTAMP            null,
-   CONSTRAINT pk_session primary key (session_id)
+DROP TABLE IF EXISTS decp.error;
+
+CREATE TABLE decp.error (
+   error_id            INT8 DEFAULT nextval('decp.s_error'::regclass) not null,
+   session_id           INT8                 not null,
+   step_id              INT8                 not null,
+   source_id            INT8                 not null,
+   file_id              INT8                 not null,
+   exclusion_type_id    INT8                 not null,
+   position             INT8                 null,
+   message              VARCHAR(256)         not null,
+   error                VARCHAR(2048)        null,
+   path                 VARCHAR(256)         null,
+   content_type_id      INT8                 null,
+   id_content           VARCHAR(64)          null,
+   content              VARCHAR(4096)        null,
+   creation_date        TIMESTAMP            not null,
+   CONSTRAINT pk_error PRIMARY KEY (error_id)
+);
+
+COMMENT ON COLUMN decp.error.error_id IS 'Identifiant interne de l''enregistrement';
+
+COMMENT ON COLUMN decp.error.source_id IS 'Flux d''ou provient l''enregistrement';
+
+COMMENT ON COLUMN decp.error.exclusion_type_id IS 'Type de message ou d''erreur lie a l''enregistrement';
+
+COMMENT ON COLUMN decp.error.file_id IS 'Nom du fichier d''ou provient l''enregistrement';
+
+COMMENT ON COLUMN decp.error.path IS 'Chemin logique du noeud où s''est produit l''erreur';
+
+COMMENT ON COLUMN decp.error.position IS 'Position de l''enregistrement dans fichier';
+
+COMMENT ON COLUMN decp.error.message IS 'Message d''erreur';
+
+COMMENT ON COLUMN decp.error.content IS 'Contenu de l''enregistrement';
+
+COMMENT ON COLUMN decp.error.creation_date IS 'Date de creation de l''enregistrement ';
+
+DROP TABLE IF EXISTS decp.step;
+
+
+CREATE TABLE decp.step (
+   step_id              INT4 DEFAULT nextval('decp.s_step'::regclass) not null,
+   name                 VARCHAR(64)          null,
+   creation_date        TIMESTAMP            null,
+   CONSTRAINT pk_step PRIMARY KEY (step_id)
+);
+
+
+DROP TABLE IF EXISTS decp.exclusion_type;
+
+CREATE TABLE decp.exclusion_type (
+   exclusion_type_id    INT8                 not null,
+   code                 VARCHAR(64)          null,
+   name                 VARCHAR(64)          null,
+   creation_date        TIMESTAMP            null,
+   CONSTRAINT pk_exclusion_type PRIMARY KEY (exclusion_type_id)
 );

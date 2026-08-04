@@ -26,6 +26,7 @@ class DbDecp:
     ERROR_MESSAGE_CONCESSION = "Une erreur s'est produite lors de l' ajout de la concession en base"
     ERROR_MESSAGE_SOURCE = "Une erreur s'est produite lors de la recherche ou de l'ajout de la source"
     ERROR_MESSAGE_FILE = "Une erreur s'est produite lors de la recherche ou de l'ajout du fichier :"
+    ERROR_MESSAGE_SESSION_ERROR = "Une erreur s'est produite lors de la recherche ou de l'ajout d'un élément du rapport':"
  
     # Constructeur
     def __init__(self):
@@ -144,6 +145,30 @@ class DbDecp:
             else:
                 cursor.execute("INSERT INTO decp.file (file_id, nom, source_id, nb_marches, nb_concessions, file_date, date_creation) VALUES (nextval('decp.s_file'), %s, %s, %s, %s, %s, NOW()) RETURNING file_id", (file_name, source_id, nb_marches, nb_concessions,file_date))
                 file_id = cursor.fetchone()[0]
+
+            self.connection.commit()
+
+        except Exception as e:
+            logging.error(self.ERROR_MESSAGE_FILE, e)
+        finally:
+            # Fermeture systématique du curseur après utilisation
+            cursor.close()
+
+        return file_id
+
+
+    def update_file(self, file_id:int, nb_marches_valides:int, nb_concessions_valides:int):
+        """
+        Recherche un fichier par son nom et sa source puis l'ajoute s'il n'existe pas.
+        :param file_id: INT8, identifiant du fichier
+        :param nb: INT8, Nombre d'enregistrement dans la source
+        :return: file_id id de l'enregistrement trouvé ou ajouté
+        """
+        try:
+            cursor = self.connection.cursor()
+            
+
+            cursor.execute("UPDATE decp.file SET nb_marches_valides=%s, nb_concessions_valides=%s WHERE file_id=%s", (nb_marches_valides, nb_concessions_valides, file_id))
 
             self.connection.commit()
 
@@ -572,7 +597,119 @@ class DbDecp:
         finally:
             # Fermeture systématique du curseur après utilisation
             cursor.close()
-    
+
+
+    def find_or_add_step(self, step_name):
+        """
+        Recherche un step par son nom et l'ajoute s'il n'existe pas.
+        :param step_name: Nom de l'étape à rechercher
+        :return: step_id de l'étape
+        """
+        step_id = None
+        try:
+            # Connexion à la base de données
+            cursor = self.connection.cursor()
+
+            # Vérification si l'étape existe déjà
+            cursor.execute("SELECT step_id FROM decp.step WHERE name = %s", (step_name,))
+            result = cursor.fetchone()
+
+            if result:
+                step_id = result[0]  # Récupère le step_id si trouvé
+            else:
+                # Si l'étape n'existe pas, l'ajouter
+                cursor.execute("INSERT INTO decp.step (step_id, name, creation_date) VALUES (nextval('decp.s_step'), %s, NOW()) RETURNING step_id", (step_name,))
+                step_id = cursor.fetchone()[0]  # Récupère le nouveau step_id
+
+            # Commit des changements
+            self.connection.commit()
+
+        except Exception as e:
+            logging.error(self.ERROR_MESSAGE_STEP, e)
+        finally:
+            # Fermeture de la connexion
+            if cursor:
+                cursor.close()
+            #if connection:
+            #    connection.close()
+
+        return step_id
+
+
+    def find_or_add_exclusion_type(self, code):
+        """ Recherche un type d'exclusion par son code ou nom et l'ajoute s'il n'existe pas. """
+        exclusion_type_id = None
+        try:
+            cursor = self.connection.cursor()
+            
+            cursor.execute("SELECT exclusion_type_id FROM decp.exclusion_type WHERE code = %s", (code, ))
+            result = cursor.fetchone()
+
+            if result:
+                exclusion_type_id = result[0]  # Récupère l'id si trouvé
+            else:
+                cursor.execute("INSERT INTO decp.exclusion_type (exclusion_type_id, code, name, creation_date) VALUES (nextval('decp.s_exclusion_type'), %s, %s, NOW()) RETURNING exclusion_type_id", (code, code))
+                exclusion_type_id = cursor.fetchone()[0]  # Récupère le nouvel id
+
+            self.connection.commit()
+
+        except Exception as e:
+            logging.error(self.ERROR_MESSAGE_EXCLUSION, e)
+        finally:
+            if cursor:
+                cursor.close()
+            #if connection:
+            #    connection.close()
+
+        return exclusion_type_id
+
+
+    def add_error(self, session_id:int, step_id:int, source_id:int, file_id:int, exclusion_type_id:int, message, error, path, position:int, id_content:str, content):
+        """
+        Ajoute un enregistrement dans la table decp.error
+        :param session_id: INT8, identifiant de la session
+        :param step_id: INT8, identifiant de l'étape
+        :param source_id: INT8, identifiant de la source
+        :param file_id: INT8, identifiant du fichier
+        :param exclusion_type_id: INT8, identifiant du type d'exclusion
+        :param message: VARCHAR(256), message
+        :param error: VARCHAR(256), message d'erreur
+        :param path: VARCHAR(256), Chemin de l'erreur
+        :param position: VARCHAR(256), position
+        :param id_content: VARCHAR(128), Identifiant de l'enregistrement exclu/invalide (extrait du contenu en erreur "content")
+        :param content: BYTEA, contenu
+        """
+        try:
+            # Connexion à la base de données
+            #connection_params = self.connection_params
+            #connection = psycopg2.connect(**connection_params)
+            cursor = self.connection.cursor()
+
+            # Instruction SQL pour insérer un enregistrement
+            insert_query = """
+                INSERT INTO decp.error (error_id, session_id, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, id_content, content, creation_date)
+                VALUES (nextval('decp.s_error'), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            """
+
+            # Exécution de la requête d'insertion
+            if len(str(content))>4096:
+                content = str(content)[0:4090]+"..." 
+            if len(str(error))>2048:
+                error = str(error)[0:1020]+" (...) "+str(error)[len(str(error))-1020:len(str(error))] 
+            cursor.execute(insert_query, (session_id, step_id, source_id, file_id, exclusion_type_id, message, error, path, position, id_content, str(content)))
+
+            # Commit des changements
+            self.connection.commit()
+
+        except Exception as e:
+            logging.error(self.ERROR_MESSAGE_SESSION_ERROR, e)
+        finally:
+            # Fermeture de la connexion
+            if cursor:
+                cursor.close()
+            #if connection:
+            #    connection.close()
+
     # Methodes utiles
 
     def extract_json_to_file_for_month(self,file_path:str,ref_date: str):
@@ -607,6 +744,7 @@ class DbDecp:
 
                 if ref_date is None:
                     outfile.write('\n    ],\n "contrat-concession": [')
+                    first = True
                     
                 # Stream concessions (same parent node as marches)
                 with self.connection.cursor(name="concession_cursor") as concession_cur:
@@ -614,7 +752,6 @@ class DbDecp:
                     query = f"SELECT data_out FROM decp.concession WHERE data_out is not null {sub_query}"
                     concession_cur.execute(query)
 
-                    first = True
                     for row in concession_cur:
                         outfile.write('\n' if first else ',\n')
                         outfile.write(json.dumps(utilsJson.format_json(row[0], keep_db_id)))
