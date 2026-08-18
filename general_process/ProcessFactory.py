@@ -21,7 +21,7 @@ class ProcessFactory:
         #self.processes = [SampleJsonProcess]
         #self.processes = [SampleXmlProcess]
         self.processes = [Emar2024Process,Pes2024Process,Ppsmj2024Process,Xmarches2024Process,Aws2024Process,Modulademat2024Process,Atexo2024Process,EuroStrasbourgProcess,VilleStrasbourgProcess,Medialex2024Process]
-        self.processes = [Emar2024Process,Pes2024Process,Ppsmj2024Process,Xmarches2024Process,Aws2024Process,Modulademat2024Process,Atexo2024Process,EuroStrasbourgProcess,VilleStrasbourgProcess,Medialex2024Process,Megalis2024Process,Arnia2024Process,Aife2024Process]
+        self.processes = [Emar2024Process,Pes2024Process,Ppsmj2024Process,Xmarches2024Process,Aws2024Process,Modulademat2024Process,Atexo2024Process,EuroStrasbourgProcess,VilleStrasbourgProcess,Medialex2024Process,Megalis2024Process,Arnia2024Process,Aife2024Process,CentralisProcess]
         #self.processes = [Emar2024Process,Pes2024Process,Ppsmj2024Process,Xmarches2024Process,Aws2024Process,Modulademat2024Process,Atexo2024Process]
         #self.processes = [Proxilegales2024Process,Achatspublicscorse2024Process,Marchespublicspro2024Process,Provencecorse2024Process,Antilleslegales2024Process,Marchedemat2024Process]
         #self.processes = [Atexo2024Process,Megalis2024Process,Aws2024Process]
@@ -37,7 +37,7 @@ class ProcessFactory:
         #self.processes = [Modula2024Process]
         #self.processes = [Atexo2024Process]
         # if data_format=='2022':
-        # self.processes = [SampleXmlProcess] # For test ECO
+        #self.processes = [SampleXmlProcess] # For test ECO
         #self.processes = [SampleJsonProcess] # For test ECO
         #self.processes = [DemoApiProcess]
         #self.processes = [EuroStrasbourgProcess,VilleStrasbourgProcess]

@@ -25,6 +25,8 @@ from .Modulademat2024Process import Modulademat2024Process
 from .EuroStrasbourgProcess import EuroStrasbourgProcess
 from .VilleStrasbourgProcess import VilleStrasbourgProcess
 from .Medialex2024Process import Medialex2024Process
+from .CentralisProcess import CentralisProcess
+
 #=
 #from .Proxilegales2024Process import Proxilegales2024Process
 #from .Achatspublicscorse2024Process import Achatspublicscorse2024Process
