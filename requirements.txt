@@ -24,3 +24,8 @@ pytest
 argparse 
 xlrd
 python-stdnum
+
+# FastAPI
+fastapi
+uvicorn
+plotly

@@ -359,6 +359,7 @@ class SourceProcess:
 
             logging.info(os.listdir(f"sources/{self.source}"))
             self.title = [ os.listdir(f"sources/{self.source}")[0] ]
+            self.url_date = ['2024-01-01']
             logging.info(f"Titre des fichiers : {self.title}")
 
 
@@ -893,6 +894,8 @@ class SourceProcess:
             self.enlever_nc_colonne(self.df,'variationPrix')
             self.enlever_nc_colonne_inside(self.df,'dureeMois','actesSousTraitance','acteSousTraitance')
             self.enlever_nc_colonne_inside(self.df,'variationPrix','actesSousTraitance','acteSousTraitance')
+            #self.enlever_nc_liste(self.df,'considerationsSociales','considerationSociale')
+            #self.enlever_nc_liste(self.df,'considerationsEnvironnementales','considerationEnvironnementale')
         else:
             self.simple_backup_colonne(self.df,['offresRecues','marcheInnovant','attributionAvance','sousTraitanceDeclaree','dureeMois','variationPrix'])
             self.simple_backup_colonne_inside(self.df,'dureeMois','actesSousTraitance','acteSousTraitance')
@@ -1003,6 +1006,25 @@ class SourceProcess:
         if nom_noeud in df.columns:
             #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
             df[nom_noeud] = df[nom_noeud].apply(replace_nc,noeud=nom_noeud,sous_element=nom_element,colonne=nom_colonne)
+        
+        return df
+    
+    def enlever_nc_liste(self,df: pd.DataFrame,nom_noeud:str,nom_element:str) -> pd.DataFrame:
+        def replace_nc (content,noeud:str,sous_element:str):
+            if sous_element in content and isinstance(content[sous_element],list):
+                new_list = []
+                for element in content[sous_element]:
+                    if element == "NC":
+                        new_list.append(None)
+                    else:
+                        new_list.append(element)
+            content["backuo_"+sous_element] = content[sous_element]
+            content[sous_element] = new_list
+            return content
+        
+        if nom_noeud in df.columns:
+            #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
+            df[nom_noeud] = df[nom_noeud].apply(replace_nc,noeud=nom_noeud,sous_element=nom_element)
         
         return df
 

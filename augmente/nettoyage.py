@@ -127,6 +127,8 @@ def modifier_source(valeur):
         return 'MEDIALEX'
     elif valeur == 'arnia':
         return 'ATEXO'
+    elif valeur == 'centralis':
+        return 'CENTRALIS'
     return valeur  # Renvoie la valeur d'origine si aucune correspondance n'est trouvée
 
 
@@ -1794,6 +1796,19 @@ def _evaluate_field_value(value,pattern:str):
             value = "INX "+value
     return value
 
+def _evaluate_field_value_or_nc(value,pattern:str):
+    if isinstance(value,list):
+        new_values = []
+        for num, val in enumerate(value, start=0):
+            if not re.match(pattern, val, re.IGNORECASE) and not re.match(r'^(?:MQ|CDL|INX)',val, re.IGNORECASE):
+                val = "INX "+val if val != 'NC' else 'MQ NC'
+            new_values.append(val)
+        value = new_values
+    else:
+        if not re.match(pattern, value, re.IGNORECASE) and not re.match(r'^(?:MQ|CDL|INX)',value, re.IGNORECASE):
+            value = "INX "+value if value != 'NC' else 'MQ NC'
+    return value
+
 def _has_at_least_one(value:list):
     if isinstance(value,list) and not value:
         value = ['MQ']
@@ -1806,6 +1821,12 @@ def mark_bad_format_multi_field(df: pd.DataFrame,field_name:str,pattern:str) -> 
         #empty_mandatory = pd.notna(df[field_name]) & ~pd.isnull(df[field_name]) & ~df[field_name].apply(_has_at_least_one)
         #if not empty_mandatory.empty:
         #    df.loc[empty_mandatory,field_name] = 'MQ'
+    return df
+
+def mark_bad_format_multi_field_nc(df: pd.DataFrame,field_name:str,pattern:str) -> pd.DataFrame:
+    if field_name in df.columns:
+        df[field_name] = df[field_name].apply(_evaluate_field_value_or_nc,pattern=pattern)
+        df[field_name] = df[field_name].apply(_has_at_least_one)
     return df
 
 def mark_bad_format_int_field(df: pd.DataFrame,field_name:str,pattern:str = r'^[0-9]{1,12}(\.0{1,4})?$') -> pd.DataFrame:
@@ -1957,8 +1978,8 @@ def marche_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
     df = mark_bad_format_field(df,"lieuExecution.typeCode",r'^(Code postal|Code commune|Code arrondissement|Code canton|Code département|Code région|Code pays)$')
     df = mark_bad_format_int_field(df,"dureeMois")
     #df = mark_bad_format_field(df,"dateNotification",PATTERN_DATE)  
-    df = mark_bad_format_multi_field(df,"considerationsSociales",r'^(Clause sociale|Critère social|Marché réservé|Pas de considération sociale)$')
-    df = mark_bad_format_multi_field(df,"considerationsEnvironnementales",r'^(Clause environnementale|Critère environnemental|Pas de considération environnementale)$')
+    df = mark_bad_format_multi_field_nc(df,"considerationsSociales",r'^(Clause sociale|Critère social|Marché réservé|Pas de considération sociale)$')
+    df = mark_bad_format_multi_field_nc(df,"considerationsEnvironnementales",r'^(Clause environnementale|Critère environnemental|Pas de considération environnementale)$')
     df = mark_bad_format_field(df,"marcheInnovant",r'^(True|False|0|1|oui|non)$')
     df = mark_bad_format_float_field(df,"origineUE")
     df = mark_bad_format_float_field(df,"origineFrance")
