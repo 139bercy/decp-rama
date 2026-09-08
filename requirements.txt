@@ -1,7 +1,5 @@
 pandas==2.3.3
 
-datetime
-
 wget
 xmltodict
 regex
@@ -21,9 +19,11 @@ requests
 selenium
 openpyxl
 pytest
-argparse 
 xlrd
 python-stdnum
+SQLAlchemy
+python-dotenv
+python-dateutil
 
 # FastAPI
 fastapi
