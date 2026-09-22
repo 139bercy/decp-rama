@@ -716,9 +716,9 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         if "titulaires" in df.columns:
             df.drop(columns=["titulaires"], inplace=True)
 
-        logging.info("dedoublonnage_marche")
-        logging.info("df_marché avant dédoublonnage : " + str(df.shape))
-        # filtre pour mettre la date de publication la plus récente en premier
+        #logging.info("dedoublonnage_marche")
+        #logging.info("df_marché avant dédoublonnage : " + str(df.shape))
+        ## filtre pour mettre la date de publication la plus récente en premier
         df = df.sort_values(by=["datePublicationDonnees"], ascending=False)
 
         df["acheteur.id"] = df["acheteur.id"].astype(str)
@@ -767,20 +767,20 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
             if 'montantModificationActeSousTraitance' in df.columns:
                 df["montantModificationActeSousTraitance"] = df["montantModificationActeSousTraitance"].astype(str)      
 
-        # Only for reporting
-        index_to_keep = df.drop_duplicates(subset=feature_doublons_marche).index.tolist()
-        # Mémoriser la nombre de marchés avant et après dédoublonnage
-        report.nb_in_good_marches = len(df)
-        report.nb_duplicated_marches = len(df)-len(index_to_keep)
-        # Ajouter au reporting les doublons supprimés
-        report.add('Dédoublonnage marchés','E_DUPLICATE_MARCHE','Marchés en doublon',df[df.duplicated(feature_doublons_marche)])
+        ## Only for reporting
+        #index_to_keep = df.drop_duplicates(subset=feature_doublons_marche).index.tolist()
+        ## Mémoriser la nombre de marchés avant et après dédoublonnage
+        #report.nb_in_good_marches = len(df)
+        #report.nb_duplicated_marches = len(df)-len(index_to_keep)
+        ## Ajouter au reporting les doublons supprimés
+        #report.add('Dédoublonnage marchés','E_DUPLICATE_MARCHE','Marchés en doublon',df[df.duplicated(feature_doublons_marche)])
 
-        # suppression des doublons en gardant la première ligne donc datePublicationDonnees la plus récente
-        dff = df.drop_duplicates(subset=feature_doublons_marche, keep="first")
+        ## suppression des doublons en gardant la première ligne donc datePublicationDonnees la plus récente
+        #dff = df.drop_duplicates(subset=feature_doublons_marche, keep="first")
 
-        logging.info("df_marché après dédoublonnage : " + str(dff.shape))
-        logging.info("% de doublons marché : "+ str((df.shape[0] - dff.shape[0]) / df.shape[0] * 100))
-        return dff
+        #logging.info("df_marché après dédoublonnage : " + str(dff.shape))
+        #logging.info("% de doublons marché : "+ str((df.shape[0] - dff.shape[0]) / df.shape[0] * 100))
+        return df
 
     def marche_check_empty(df: pd.DataFrame, dfb: pd.DataFrame) -> pd.DataFrame:
         col_name = ["id", "acheteur.id", "montant", "titulaire_id_1", "titulaire_typeIdentifiant_1", "dureeMois"]  # titulaire contient un dict avec des valeurs dont id
