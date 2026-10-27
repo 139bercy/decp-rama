@@ -21,7 +21,7 @@ class ProcessFactory:
         #self.processes = [SampleJsonProcess]
         #self.processes = [SampleXmlProcess]
         self.processes = [Emar2024Process,Pes2024Process,Ppsmj2024Process,Xmarches2024Process,Aws2024Process,Modulademat2024Process,Atexo2024Process,EuroStrasbourgProcess,VilleStrasbourgProcess,Medialex2024Process]
-        self.processes = [Emar2024Process,Pes2024Process,Ppsmj2024Process,Xmarches2024Process,Aws2024Process,Modulademat2024Process,Atexo2024Process,EuroStrasbourgProcess,VilleStrasbourgProcess,Medialex2024Process,Megalis2024Process,Arnia2024Process,Aife2024Process,CentralisProcess]
+        self.processes = [Emar2024Process,Pes2024Process,Ppsmj2024Process,Xmarches2024Process,Aws2024Process,Modulademat2024Process,Atexo2024Process,EuroStrasbourgProcess,VilleStrasbourgProcess,Medialex2024Process,Megalis2024Process,Arnia2024Process,Aife2024Process,CentralisProcess,EdfProcess,AchatPublic2024Process]
         #self.processes = [Emar2024Process,Pes2024Process,Ppsmj2024Process,Xmarches2024Process,Aws2024Process,Modulademat2024Process,Atexo2024Process]
         #self.processes = [Proxilegales2024Process,Achatspublicscorse2024Process,Marchespublicspro2024Process,Provencecorse2024Process,Antilleslegales2024Process,Marchedemat2024Process]
         #self.processes = [Atexo2024Process,Megalis2024Process,Aws2024Process]
@@ -42,6 +42,7 @@ class ProcessFactory:
         #self.processes = [DemoApiProcess]
         #self.processes = [EuroStrasbourgProcess,VilleStrasbourgProcess]
         #self.processes = [Medialex2024Process]
+        #Ne plus modifier la liste des processus ici. La liste est désormais gérée dans le fichier launch.json (lu par main.py). Il suffit de passer en argument le nom du processus à lancer.
         self.dataframes = []
         self.data_format = data_format
         self.report = report

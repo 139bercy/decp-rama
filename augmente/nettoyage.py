@@ -129,6 +129,8 @@ def modifier_source(valeur):
         return 'ATEXO'
     elif valeur == 'centralis':
         return 'CENTRALIS'
+    elif valeur == 'achatpublic_2024':
+        return 'ACHAT PUBLIC'
     return valeur  # Renvoie la valeur d'origine si aucune correspondance n'est trouvée
 
 

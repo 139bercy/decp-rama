@@ -1,3 +1,5 @@
+from .EdfProcess import EdfProcess
+
 from .AifeProcess import AifeProcess
 from .Aife2024Process import Aife2024Process
 from .Atexo2024Process import Atexo2024Process
@@ -26,7 +28,8 @@ from .EuroStrasbourgProcess import EuroStrasbourgProcess
 from .VilleStrasbourgProcess import VilleStrasbourgProcess
 from .Medialex2024Process import Medialex2024Process
 from .CentralisProcess import CentralisProcess
-
+from .AchatPublic2024Process import AchatPublic2024Process
+from .RteProcess import RteProcess
 #=
 #from .Proxilegales2024Process import Proxilegales2024Process
 #from .Achatspublicscorse2024Process import Achatspublicscorse2024Process
