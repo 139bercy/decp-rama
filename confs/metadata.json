@@ -244,7 +244,37 @@
     "convert_nc": false,
     "encoding": "ISO-8859-15"
   },
-
+  "centralis":
+  {
+    "code": "centralis",
+    "description": "Données essentielles des marchés publics - Centralis",
+    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-de-la-commande-publique-centralis",
+    "format": "json",
+    "cle_api": ["6848898096ddb23dae3a0fbe"],
+    "validate" : true,
+    "convert_nc": false
+  },
+    "edf":
+  {
+    "code": "edf",
+    "description": "Données essentielles des marchés publics - EDF",
+    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-de-la-commande-publique-decp-dedf-sa/informations",
+    "format": "json",
+    "cle_api": ["66ebd483ed5f9344a0c1a4af"],
+    "validate" : true,
+    "convert_nc": false
+  },
+  "achatpublic_2024":
+  {
+    "code": "achatpublic_2024",
+    "description": "Données Essentielles du Profil acheteur achatpublic.com",
+    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-du-profil-acheteur-achatpublic-com/informations",
+    "format": "json",
+    "cle_api": ["697cccbfe6cfee833a09eafd"],
+    "validate" : true,
+    "convert_nc": false
+  },
+  
   
   "demo_api":
   {
