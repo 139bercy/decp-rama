@@ -1,7 +1,7 @@
 import json
 
 # Ouvrir le fichier JSON
-with open("results/decp-2025.json", "r", encoding="utf-8") as f:
+with open("data/data_gouv/decp-2025.json", "r", encoding="utf-8") as f:
     data = json.load(f)
 
 # Vérifier que la clé 'marches' existe

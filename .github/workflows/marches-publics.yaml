@@ -40,7 +40,7 @@ jobs:
         id: cache-in
         with:
           path: |
-            sources/
+            data/sources/
           key: ${{ steps.prepare.outputs.cachekey }}
       
       - name: Vérification des données en cache
@@ -54,8 +54,8 @@ jobs:
           dateDebut: ${{ steps.prepare.outputs.dateDebut }}
           dateFin: ${{ steps.prepare.outputs.dateFin }}
         run: |
-          mkdir -p sources/aws-marchespublics
-          cd sources/aws-marchespublics
+          mkdir -p data/sources/aws-marchespublics
+          cd data/sources/aws-marchespublics
           ../../decp-aws/get-marches-public.info.sh
           
       - name: Mise en cache de données
@@ -63,7 +63,7 @@ jobs:
         uses: actions/cache@v3.0.0
         with:
           path: |
-            sources/
+            data/sources/
           key: ${{ steps.prepare.outputs.cachekey }}
 
   publish:
@@ -84,7 +84,7 @@ jobs:
         id: cache-in
         with:
           path: |
-            sources/
+            data/sources/
           key: ${{ needs.collect.outputs.cache-key }}
 
       - name: Publication des données sur (next.)data.gouv.fr
@@ -93,6 +93,6 @@ jobs:
           dateDebut: ${{ needs.collect.outputs.date-debut }}
           dateFin: ${{ needs.collect.outputs.date-fin }}
         run: |
-          mkdir -p sources/aws-marchespublics
-          cd sources/aws-marchespublics
+          mkdir -p data/sources/aws-marchespublics
+          cd data/sources/aws-marchespublics
           ../../decp-aws/publish-marches-public.info.sh

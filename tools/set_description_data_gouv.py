@@ -7,6 +7,7 @@ import requests
 # Script de mise à jour des descriptions sur data.gouv
 suffixes = ['2024-01','2024-02','2024-03','2024-04','2024-05','2024-06','2024-07','2024-08','2024-09','2024-10','2024-11','2024-12','2025-01','2025-02','2025-03','2025-04','2025-05','2025-06','2025-07','2025-08','2025-09','2025-10','2025-11']
 suffixes = ["global"]
+suffixes = ["2025-12"]
 
 locale.setlocale(locale.LC_TIME,"fr_FR.UTF-8")
 config_file = "config.json"
@@ -40,9 +41,9 @@ def get_ressource_id(suffix:str) -> str:
     return resource_id
 
 def update_description(ressource_id, suffix):
-    #mois_annee = get_mois_annee(suffix)
-    #description = f"Fichier cumulatif des données essentielles de la commande publique pour {mois_annee}"
-    description = "Fichier des données essentielles de la commande publique au format 2022 pour toutes les années après dédoublonnage"
+    mois_annee = get_mois_annee(suffix)
+    description = f"Fichier cumulatif des données essentielles de la commande publique pour {mois_annee}"
+    #description = "Fichier des données essentielles de la commande publique au format 2022 pour toutes les années après dédoublonnage"
     data = {
         "format": "json",
         "title": f"decp-{suffix}.json",

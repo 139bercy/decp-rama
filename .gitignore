@@ -4,7 +4,10 @@ __pycache__/
 *$py.class
 .idea/
 .vscode
-# Results and sources
+# Données générées : tout est sous data/ (voir utils/Paths.py)
+data/*
+!data/.gitignore
+# Anciens répertoires de données (avant regroupement sous data/)
 results
 results_DATA
 sources
@@ -15,11 +18,14 @@ bad_results
 test_schemes
 tools_flux
 resources
+metadata/
+old_metadata/
+processing/
+logs/
 METADATA_FOR_REPLAY
 old_metadata_REF
 config.json
 result.json
-result_trace.txt
 result_list.json
 docs_internal
 

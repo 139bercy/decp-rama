@@ -2,6 +2,7 @@ import requests
 import hashlib
 import json
 import wget
+import os
 
 # Script de test pour downloade les ressources d' un dataset
 
@@ -24,13 +25,14 @@ with open('data/result_ressources.json', 'r', encoding='utf-8') as f:
 
 i=0
 # Extraction des titres, fichiers et IDs
+os.makedirs('data/resources', exist_ok=True)
 for resource in data['resources']:
     print(f"{resource['title']} {resource["url"]}")
     try:
         wget.download(resource["url"],
-            f"resources/{i}-{resource['title']}")
+            f"data/resources/{i}-{resource['title']}")
     except Exception as err:
-        with open(f"resources/{i}-{resource['title']}-ERREUR-{err.code}.txt", 'w') as json_file:
+        with open(f"data/resources/{i}-{resource['title']}-ERREUR-{err.code}.txt", 'w') as json_file:
             json_file.write(str(err))
         print(f"Erreur de téléchargement du fichier {resource['title']} {resource["url"]} {err}")
 

@@ -25,9 +25,9 @@ if response.status_code == 200:
     response_data = response.json()
     
     # Sauvegarder le résultat au format JSON
-    with open('data_gouv_resources_list.json', 'w') as json_file:
+    with open('data/data_gouv_resources_list.json', 'w') as json_file:
         json.dump(response_data["resources"], json_file, indent=4)
     
-    print("Résultat sauvegardé dans 'data_gouv_resources_list.json'")
+    print("Résultat sauvegardé dans 'data/data_gouv_resources_list.json'")
 else:
     print("Erreur lors de la requête :", response.text)

@@ -1,6 +1,6 @@
 {
 	"path_to_project" : "/home/circleci/project/decp-augmente",
-	"path_to_data_dataeco" : "data/results/data_eco",
+	"path_to_data_dataeco" : "data/data_eco",
 	"base_sirene_insee" : "StockEtablissement_utf8.csv",
 	"base_ajout_type_entreprise" : "StockUniteLegale_utf8.csv",
 	"cpv_2008_ver_2013" : "cpv_2008_ver_2013.xlsx",

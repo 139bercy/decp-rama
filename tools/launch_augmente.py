@@ -6,9 +6,9 @@ import subprocess
 
 current_year = 2025
 current_month = 10  # C'est juin 2025
-date_prefix = '2025-12-04'
+date_prefix = '2026-01-12'
 
-RESULT_PATH = "/mnt/c/projets/decp-rama/results/global"
+RESULT_PATH = "/mnt/c/projets/decp-rama/data/global"
 
 data_dir = '/mnt/c/projets/decp-rama/data'  # Remplacez par le chemin correct
 data_dir_dest = f'{data_dir}/GENERATED'  # Remplacez par le chemin correct
@@ -24,7 +24,7 @@ for year in range(2024, current_year + 1):
         new_date_prefix = f'{year}-{month:02}'
 
         source_file = f"{RESULT_PATH}/decp-global-{new_date_prefix}.json" 
-        destination_file = '/mnt/c/projets/decp-rama/results/decp-daily.json'
+        destination_file = '/mnt/c/projets/decp-rama/data/decp-daily.json'
         shutil.copy(source_file, destination_file)
         print(f"Copié {source_file} vers {destination_file}")
 

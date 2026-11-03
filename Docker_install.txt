@@ -56,25 +56,31 @@ docker-decp-rama   latest    afdd983ff2a0   57 seconds ago   1.58GB
 ## Configuration de l'application decp-rama
 L'application étant lancée tout les jours, le mieux est de reprendre les données de la dernière exécution:
 - Le fichier cumulatif du mois en cours le fichier s'appelle decp-2024-12.json)
-	-> ce fichier doit etre copié dans le répertoire /results/data_gouv de l'application
+	-> ce fichier doit etre copié dans le répertoire /data/data_gouv de l'application
 - Le fichier cumulatif de l'année en cours le fichier s'appelle decp-2024.json)
-	-> ce fichier doit etre copié dans le répertoire /results/data_gouv de l'application
+	-> ce fichier doit etre copié dans le répertoire /data/data_gouv de l'application
 - Le fichier de configuration config.json avec les identifiants de ressources sur data gouv pour l'année et le mois en cours des et le numéro de mois et l'année en cours:
 	-> Le fichier doit etre copié à la racine du projet decp-rama
 - Les fichiers sur les sources déjà traitées pour toutes les sources (repertoire <code source>/<code source>_<clé metadata>_0/  )
-	-> Les fichiers doivents être déosé dans le repertoire old_metadata 
+	-> Les fichiers doivent être déposés dans le répertoire data/old_metadata 
 
 ## sudo docker run docker-decp-rama
 
 # Ressources 
 
-L'application decp-rama sauvegarde des informations dans plusieurs répertoires:
- - sources/			pour les sources téléchargées pour les traitements
- - old_metadata/ 	pour la liste des sources traitées 
- - processing/ 		pour l'avancement de l'exécution (fichier run_status.json) ainsi que les données générées à la fin de chaque étape
- - results/			pour les données produite par la première phase de traitement decp-rama destinée à alimenter data.gouv 
-	avec les rapports d'exécution et pour les données produite par la deuxième phase de traitement (decp-augmente) destinée à alimenter dataeco 
-	ainsi que les données de référence nécessaire à la deuxième phase des traitements.
+L'application decp-rama sauvegarde toutes ses données sous le répertoire data/
+(surchargeable par la variable d'environnement DECP_DATA_DIR, voir utils/Paths.py) :
+ - data/sources/		pour les sources téléchargées pour les traitements
+ - data/metadata/		pour les métadonnées data.gouv courantes des sources
+ - data/old_metadata/	pour la liste des sources traitées
+ - data/processing/		pour l'avancement de l'exécution (fichier run_status.json) ainsi que les données générées à la fin de chaque étape
+ - data/data_gouv/		pour les données produites par decp-rama destinées à alimenter data.gouv
+ - data/global/		pour le fichier global servant d'entrée à decp-augmente
+ - data/reports/		pour les rapports d'exécution (errors / statistics)
+ - data/data_eco/		pour les données produites par decp-augmente destinées à alimenter dataeco
+ - data/referentiels/	pour les données de référence (cpv, sirene, insee) nécessaires à decp-augmente
+ - data/logs/			pour les logs d'exécution
+La liste des sources à traiter est dans confs/metadata.json (fichier versionné, non généré).
 et à la fin de chaque mois, le fichier config.json est mis à jour.
  
 	

@@ -24,7 +24,7 @@ jobs:
       - name: Préparation
         id: cache
         run: |
-          KEY_CACHE="$(echo $GITHUB_REF_NAME)-$(date '+%Y%m%d')-${{ hashFiles('sources/metadata.json') }}-data-${{ github.event.inputs.cache-key-suffix }}";
+          KEY_CACHE="$(echo $GITHUB_REF_NAME)-$(date '+%Y%m%d')-${{ hashFiles('confs/metadata.json') }}-data-${{ github.event.inputs.cache-key-suffix }}";
           echo "::set-output name=KEY::$KEY_CACHE"
       
       - name: Test présence de données en cache
@@ -34,7 +34,7 @@ jobs:
           path: |
             json/
             xml/
-            sources/
+            data/sources/
           key: ${{ steps.cache.outputs.KEY }}
       
       - name: Vérification des données en cache
@@ -59,7 +59,7 @@ jobs:
           path: |
             json/
             xml/
-            sources/
+            data/sources/
           key: ${{ steps.cache.outputs.KEY }}
 
   process:
@@ -81,7 +81,7 @@ jobs:
           path: |
             json/
             xml/
-            sources/
+            data/sources/
           key: ${{ needs.collect.outputs.cache-key }}
 
       - name: Préparation
@@ -98,7 +98,9 @@ jobs:
             json/decp.json
             json/decp.ocds.json
             xml/decp.xml
-            results
+            data/data_gouv
+            data/global
+            data/reports
           key: ${{ steps.cache.outputs.KEY }}
       
       - name: Vérification si données déjà traitées
@@ -129,7 +131,9 @@ jobs:
             json/decp.json
             json/decp.ocds.json
             xml/decp.xml
-            results
+            data/data_gouv
+            data/global
+            data/reports
           key: "${{ steps.cache.outputs.KEY }}"
   
   publish:
@@ -153,7 +157,9 @@ jobs:
             json/decp.json
             json/decp.ocds.json
             xml/decp.xml
-            results
+            data/data_gouv
+            data/global
+            data/reports
           key: ${{ needs.process.outputs.cache-key }}
 
       - name: Publication des données sur data.gouv.fr

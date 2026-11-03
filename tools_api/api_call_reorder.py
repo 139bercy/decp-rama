@@ -19,7 +19,7 @@ headers = {
     "X-API-KEY": data_gouv_api_key
 }
 
-with open('data_gouv_resources_list.json', "r") as f:
+with open('data/data_gouv_resources_list.json', "r") as f:
     data = json.load(f)
 
 api_host = "https://www.data.gouv.fr/api/1"

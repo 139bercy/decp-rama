@@ -19,7 +19,7 @@ def modifier_date_fichier(nom_fichier, nouvelle_date):
         print(f"Une erreur est survenue : {e}")
 
 # Spécifiez le chemin de votre fichier
-nom_fichier = 'old_metadata/e-marchespublics/old_metadata_emar_0.json'
+nom_fichier = 'data/old_metadata/e-marchespublics/old_metadata_emar_0.json'
 nouvelle_date = '2024-08-31'
 
 modifier_date_fichier(nom_fichier, nouvelle_date)

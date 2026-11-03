@@ -28,11 +28,13 @@ def index():
   #return send_file('20240704\\AGR_F2_ALPC_3446_2024-06-26T10_27_36.322+00_00.xml')
 
   #return send_file('source_test/index.json')
-  return send_file('json/batch_sortie_avec_balise_source_ok.json')
+  #return send_file('json/batch_sortie_avec_balise_source_ok.json')
+  return send_file('json/2019-converted-to-2022.json')
 
 @app.route('/json/sample.json', methods=['GET'])
 def source_test():
-  return send_file('json/batch_sortie_avec_balise_source_ok.json')
+  #return send_file('json/batch_sortie_avec_balise_source_ok.json')
+  return send_file('json/2019-converted-to-2022.json')
 
 @app.route('/f2', methods=['GET'])
 def dataf2():

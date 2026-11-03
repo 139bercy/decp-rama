@@ -5,11 +5,11 @@ import json
 # Script de test pour créer une nouvelle resource
 
 #resource_id = "a5599c0b-e97e-4cbf-b4e5-8fe246816c59"
-#nom_fichier = "results/decp-2025-09_data_gouv.json"
+#nom_fichier = "data/data_gouv/decp-2025-09_data_gouv.json"
 #renommage_fichier = "decp-2025-09.json"
 
 resource_id = "398e075e-5dc2-4797-86d7-21d04e39111f"
-nom_fichier = "results/decp-2024-11_data_gouv.json"
+nom_fichier = "data/data_gouv/decp-2024-11_data_gouv.json"
 renommage_fichier = "decp-2024-11.json"
 
 api_host = "https://www.data.gouv.fr/api/1"
