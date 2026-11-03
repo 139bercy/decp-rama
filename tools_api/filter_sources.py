@@ -104,7 +104,7 @@ header = first_cols + other_cols_sorted
 
 print(f"Saving ")
 # Ecriture CSV
-with open("results\\data.csv", "w", encoding="utf-8", newline='') as fout:
+with open("data\\data.csv", "w", encoding="utf-8", newline='') as fout:
     writer = csv.DictWriter(fout, fieldnames=header, extrasaction="ignore")
     writer.writeheader()
     for row in selected_data:

@@ -6,6 +6,7 @@ import logging
 from datetime import date,datetime
 from utils.StepMngmt import StepMngmt
 from utils.Step import Step
+from utils import Paths
 import augmente.data_management
 import augmente.nettoyage
 import augmente.utils
@@ -59,7 +60,7 @@ def main_augmente(session_id:str,data_format:str = '2022'):
     
     logger.info("Téléchargement des fichiers de données")
     augmente.data_management.main()
-    logger.info("Fichiers mis à jour dans le dossier data")
+    logger.info(f"Fichiers mis à jour dans le dossier {Paths.REFERENTIELS_DIR}")
 
     logger.info(f"Application règles métier format {data_format}")
     start_year, start_month = 2024, 1
@@ -89,9 +90,9 @@ if __name__ == "__main__":
     
     args = augmente.utils.parse_args()
     
-    os.makedirs("logs", exist_ok=True)
+    os.makedirs(Paths.LOGS_DIR, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_filename = f"logs/app_{timestamp}.log"
+    log_filename = os.path.join(Paths.LOGS_DIR, f"app_{timestamp}.log")
     file_handler = logging.FileHandler(filename=log_filename, mode='a', encoding='utf-8')
     file_handler.setLevel(logging.INFO)
 
@@ -141,7 +142,7 @@ if __name__ == "__main__":
         try:
             # DECP RAMA
             if not args.augmente:
-                main(report,data_format)
+                 main(report,data_format)
 
             # DECP AUGMENTE
             if not args.rama:

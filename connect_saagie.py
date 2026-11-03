@@ -3,6 +3,7 @@ import boto3
 import json
 from zipfile import ZipFile
 from saagieapi import SaagieApi
+from utils import Paths
 
 # Credentials en provenance de la CI
 ACCESS_KEY = os.environ.get("ACCESS_KEY")
@@ -26,7 +27,7 @@ def main():
     for file in os.listdir(general_path):
         files_to_add.append(os.path.join(general_path, file))
     # Puis metadata
-    files_to_add.append("metadata/metadata.json")
+    files_to_add.append(Paths.SOURCES_CONFIG)
     # Puis main.py
     files_to_add.append("main.py")
     # le fichier de config

@@ -4,6 +4,7 @@ import numpy as np
 import json
 import os
 from tqdm import tqdm  # Import tqdm
+from utils import Paths
 
 with open(os.path.join(os.getcwd(),"confs", "var_glob.json")) as f:
     conf_glob = json.load(f)
@@ -185,7 +186,8 @@ def manage_modifications(data: dict,data_format:str) -> pd.DataFrame:
 
     #df = regroupement_marche(df, dict_modification)
     # save df to pickle
-    df.to_pickle(os.path.join("data", "dfafterconvertsmall.pkl"))
+    os.makedirs(Paths.PROCESSING_DIR, exist_ok=True)
+    df.to_pickle(os.path.join(Paths.PROCESSING_DIR, "dfafterconvertsmall.pkl"))
     return df
 
 def complete_data_column(df: pd.DataFrame):

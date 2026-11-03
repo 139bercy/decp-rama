@@ -15,9 +15,9 @@ class MegaProcess(SourceProcess):
         print("Début de la fonction convert de MegaProcess")
         # les fichiers xml de megalis ne sont pas au bon format
         for i in range(len(self.url)):
-            with open(f"sources/{self.source}/{self.title[i]}", 'r', encoding='utf-8') as file:
+            with open(f"{self.source_dir}/{self.title[i]}", 'r', encoding='utf-8') as file:
                 data = file.read().splitlines(True)
-            with open(f"sources/{self.source}/{self.title[i]}", 'w', encoding='utf-8') as file:
+            with open(f"{self.source_dir}/{self.title[i]}", 'w', encoding='utf-8') as file:
                 file.write('<?xml version= "1.0"  encoding= "utf8" ?>\n')
                 file.writelines(data[1:])
         print("Début de la fonction convert de SourceProcess")

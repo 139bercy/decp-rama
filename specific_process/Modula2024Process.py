@@ -14,17 +14,17 @@ class Modula2024Process(SourceProcess):
         """
         Étape de conversion de l'envodage
         """
-        os.makedirs(f"sources/{self.source}", exist_ok=True)
+        os.makedirs(self.source_dir, exist_ok=True)
         if self.cle_api==[]:
             logging.info("Pas de clé api pour encoder les données")
             self._download_without_metadata()
         else:
             # Rencodage du fichier
             for i in range(len(self.url)):                
-                with open(f"sources/{self.source}/{self.title[i]}", encoding='ISO-8859-1') as f:
+                with open(f"{self.source_dir}/{self.title[i]}", encoding='ISO-8859-1') as f:
                     content = f.read()
 
-                #with open(f"sources/{self.source}/{self.title[i]}", 'w', encoding='utf-8') as f:
+                #with open(f"{self.source_dir}/{self.title[i]}", 'w', encoding='utf-8') as f:
                 #    f.write(content)
         logging.info(f"Encodage : {len(self.url)} fichier(s) OK")
 

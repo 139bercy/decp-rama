@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 from reporting.Report import Report
 from utils.UtilsFile import UtilsFile
 from utils.NodeFormat import NodeFormat
+from utils import Paths
 
 pd.options.mode.chained_assignment = None
 pd.set_option('display.max_columns', None)
@@ -57,7 +58,7 @@ class SourceProcess:
         self.report = params.report
         self.test = params.test
         self.data_format = params.data_format
-        with open("metadata/metadata.json", 'r+') as f:
+        with open(Paths.SOURCES_CONFIG, 'r+') as f:
             self.metadata = json.load(f)
         self.source = self.metadata[self.key]["code"]
         self.format = self.metadata[self.key]["format"]
@@ -112,13 +113,28 @@ class SourceProcess:
             json_file.close
 
     
+    @property
+    def source_dir(self) -> str:
+        """Répertoire des fichiers téléchargés pour la source"""
+        return os.path.join(Paths.SOURCES_DIR, self.source)
+
+    @property
+    def metadata_dir(self) -> str:
+        """Répertoire des métadonnées data.gouv courantes de la source"""
+        return os.path.join(Paths.METADATA_DIR, self.source)
+
+    @property
+    def old_metadata_dir(self) -> str:
+        """Répertoire des métadonnées du précédent traitement de la source"""
+        return os.path.join(Paths.OLD_METADATA_DIR, self.source)
+
     def _clean_metadata_folder(self) -> None:
-        """La fonction _clean_metadata_folder permet le nettoyage de /metadata/{self.source}"""
+        """La fonction _clean_metadata_folder permet le nettoyage de {self.metadata_dir}"""
         # Lavage des dossiers dans metadata
-        logging.info(f"Début du nettoyage de metadata/{self.source} dans {os.path.abspath('.')}")
-        if os.path.exists(f"metadata/{self.source}"):
-            shutil.rmtree(f"metadata/{self.source}")
-        logging.info(f"Nettoyage metadata/{self.source} OK")
+        logging.info(f"Début du nettoyage de {self.metadata_dir} dans {os.path.abspath('.')}")
+        if os.path.exists(f"{self.metadata_dir}"):
+            shutil.rmtree(f"{self.metadata_dir}")
+        logging.info(f"Nettoyage {self.metadata_dir} OK")
 
 
     def _url_init(self) -> None:
@@ -126,8 +142,8 @@ class SourceProcess:
         téléchargés pour une source. Ces urls sont conservés dans self.metadata."""
 
         logging.info("Initialisation des urls")
-        os.makedirs(f"metadata/{self.source}", exist_ok=True) 
-        os.makedirs(f"old_metadata/{self.source}", exist_ok=True)
+        os.makedirs(f"{self.metadata_dir}", exist_ok=True) 
+        os.makedirs(f"{self.old_metadata_dir}", exist_ok=True)
         self.cle_api = self.metadata[self.key]["cle_api"]
         #Liste contenant les urls à partir desquels on télécharge les fichiers
         if self.cle_api==[]:
@@ -171,23 +187,23 @@ class SourceProcess:
                 if self.test:
                     url_metadonnees = f"{self.API_DATA_GOUV_TEST}/datasets/{self.cle_api[i]}/"
                 wget.download(url_metadonnees,
-                            f"metadata/{self.source}/metadata_{self.key}_{i}.json")
+                            f"{self.metadata_dir}/metadata_{self.key}_{i}.json")
                 logging.info(f"Chargement des métadonnées depuis {url_metadonnees} OK")
                 #url = f"https://www.data.gouv.fr/api/1/datasets/{self.cle_api[i]}/"
                 #context = ssl.create_default_context(cafile=certifi.where())
-                #with urllib.request.urlopen(url, context=context) as response, open(f"metadata/{self.source}/metadata_{self.key}_{i}.json", 'wb') as out_file:
+                #with urllib.request.urlopen(url, context=context) as response, open(f"{self.metadata_dir}/metadata_{self.key}_{i}.json", 'wb') as out_file:
                 #    out_file.write(response.read())
             except Exception as err:
                 logging.error("Erreur lors du chargement des métadonnées")
                 logging.error(err)
 
-            with open(f"metadata/{self.source}/metadata_{self.key}_{i}.json", 'r+') as f:
+            with open(f"{self.metadata_dir}/metadata_{self.key}_{i}.json", 'r+') as f:
                 ref_json = json.load(f)
             ressources = ref_json["resources"]
 
             #Creation de la deuxième variable json pour la comparaison si le fichier old_metadata existe
-            if os.path.exists(f"old_metadata/{self.source}/metadata_{self.key}_{i}.json"):
-                with open(f"old_metadata/{self.source}/metadata_{self.key}_{i}.json", 'r+') as fl:
+            if os.path.exists(f"{self.old_metadata_dir}/metadata_{self.key}_{i}.json"):
+                with open(f"{self.old_metadata_dir}/metadata_{self.key}_{i}.json", 'r+') as fl:
                     refjson = json.load(fl)
                 old_ressources = refjson["resources"]
             else:
@@ -212,15 +228,15 @@ class SourceProcess:
             
             if self.rebuild_year is None or self.save_metadata:
                 #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
-                if os.path.exists(f"old_metadata/{self.source}/metadata_{self.key}_{i}.json"):
-                    with open(f"metadata/{self.source}/metadata_{self.key}_{i}.json", 'r') as source_file:
+                if os.path.exists(f"{self.old_metadata_dir}/metadata_{self.key}_{i}.json"):
+                    with open(f"{self.metadata_dir}/metadata_{self.key}_{i}.json", 'r') as source_file:
                         contenu = source_file.read()
-                    with open(f"old_metadata/{self.source}/metadata_{self.key}_{i}.json", 'w') as destination_file:
+                    with open(f"{self.old_metadata_dir}/metadata_{self.key}_{i}.json", 'w') as destination_file:
                         destination_file.write(contenu)
                 #Cas où les fichiers old_metadata n'existent pas: on fait une copie
                 else:
-                    shutil.copy(f"metadata/{self.source}/metadata_{self.key}_{i}.json",f"old_metadata/{self.source}/metadata_{self.key}_{i}.json")
-                    logging.info(os.listdir(f"old_metadata/{self.source}"))
+                    shutil.copy(f"{self.metadata_dir}/metadata_{self.key}_{i}.json",f"{self.old_metadata_dir}/metadata_{self.key}_{i}.json")
+                    logging.info(os.listdir(f"{self.old_metadata_dir}"))
 
         # Filter file by date in title, url
         url, title, url_date = self.filter_urls(url, title, url_date)            
@@ -286,13 +302,13 @@ class SourceProcess:
 
     def get(self) -> None:
         """
-        Étape get qui permet le lavage du dossier sources/{self.source} et 
+        Étape get qui permet le lavage du dossier {self.source_dir} et 
         la récupération de l'ensemble des fichiers présents sur chaque url.
         """
         logging.info("--- ÉTAPE GET")
         self._url_init()
         logging.info(f"Début du téléchargement : {len(self.url)} fichier(s)")
-        os.makedirs(f"sources/{self.source}", exist_ok=True)
+        os.makedirs(f"{self.source_dir}", exist_ok=True)
         if self.cle_api==[]:
             logging.info("Pas de clé api pour télécharger les données")
             self._download_without_metadata()
@@ -303,17 +319,17 @@ class SourceProcess:
             for i in range(len(self.url)):
                 try:
                     load = False
-                    if os.path.exists(f"sources/{self.source}/{self.title[i]}"):
-                        if UtilsFile.last_modification(f"sources/{self.source}/{self.title[i]}") < pd.to_datetime(self.url_date[i]).tz_localize(None):
-                            os.remove(f"sources/{self.source}/{self.title[i]}")
+                    if os.path.exists(f"{self.source_dir}/{self.title[i]}"):
+                        if UtilsFile.last_modification(f"{self.source_dir}/{self.title[i]}") < pd.to_datetime(self.url_date[i]).tz_localize(None):
+                            os.remove(f"{self.source_dir}/{self.title[i]}")
                             logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
                             load = True
                     else:
                         load = True
-                    ##wget.download(self.url[i], f"sources/{self.source}/{self.title[i]}")
-                    #if not os.path.exists(f"sources/{self.source}/{self.title[i]}"):
+                    ##wget.download(self.url[i], f"{self.source_dir}/{self.title[i]}")
+                    #if not os.path.exists(f"{self.source_dir}/{self.title[i]}"):
                     if load:
-                        dl.start(url=self.url[i],file_path=f"sources/{self.source}/{self.title[i]}",retries=10,display=False)
+                        dl.start(url=self.url[i],file_path=f"{self.source_dir}/{self.title[i]}",retries=10,display=False)
                         logging.info(f"Fichier : {self.title[i]} téléchargé ")
                 except Exception as err:
                     logging.error(f"Problème de téléchargement du fichier {self.url[i]}")
@@ -326,21 +342,21 @@ class SourceProcess:
         conséquent, le téléchargement s'effectue grâce à l'url dans 
         l'attribut url_source
         """
-        nom_fichiers = os.listdir(f"sources/{self.source}")
+        nom_fichiers = os.listdir(f"{self.source_dir}")
         parsed_url = urlparse(self.url[0])
 
         # Obtenir le chemin de l'URL et extraire le nom du fichier
         file_name = parsed_url.path.split('/')[-1]
 
         if nom_fichiers!=[]:   #Dossier non vide
-            os.remove(f"sources/{self.source}/{nom_fichiers[0]}")
+            os.remove(f"{self.source_dir}/{nom_fichiers[0]}")
             logging.info(f"Le fichier {nom_fichiers[0]} était présent. Il a été supprimé")
             
             # Replaced after certifi can't validate ssl certificat
-            wget.download(self.url[0], f"sources/{self.source}/{file_name}")
+            wget.download(self.url[0], f"{self.source_dir}/{file_name}")
             #url = self.url[0]
             #context = ssl.create_default_context(cafile=certifi.where())
-            #with urllib.request.urlopen(url, context=context) as response, open(f"sources/{self.source}/{file_name}", 'wb') as out_file:
+            #with urllib.request.urlopen(url, context=context) as response, open(f"{self.source_dir}/{file_name}", 'wb') as out_file:
             #    out_file.write(response.read())
 
             self.title = [ file_name ]
@@ -351,14 +367,14 @@ class SourceProcess:
         #dans le dossier puis affectation du nom du fichier à l'attribut titre
         else:
             # Replaced after certifi can't validate ssl certificat
-            wget.download(self.url[0], f"sources/{self.source}/")
+            wget.download(self.url[0], f"{self.source_dir}/")
             #url = self.url[0]
             #context = ssl.create_default_context(cafile=certifi.where())
-            #with urllib.request.urlopen(url, context=context) as response, open(f"sources/{self.source}/", 'wb') as out_file:
+            #with urllib.request.urlopen(url, context=context) as response, open(f"{self.source_dir}/", 'wb') as out_file:
             #    out_file.write(response.read())
 
-            logging.info(os.listdir(f"sources/{self.source}"))
-            self.title = [ os.listdir(f"sources/{self.source}")[0] ]
+            logging.info(os.listdir(f"{self.source_dir}"))
+            self.title = [ os.listdir(f"{self.source_dir}")[0] ]
             self.url_date = ['2024-01-01']
             logging.info(f"Titre des fichiers : {self.title}")
 
@@ -377,8 +393,8 @@ class SourceProcess:
         dico = {}
 
         # Tests AIFE limite url
-        #self.url = [f"sources/{self.source}/decp-13000495500139-2025-05-05-02_.xml"]
-        #self.url += [f"sources/{self.source}/decp-13000495500139-2025-05-05-02_.xml"]
+        #self.url = [f"{self.source_dir}/decp-13000495500139-2025-05-05-02_.xml"]
+        #self.url += [f"{self.source_dir}/decp-13000495500139-2025-05-05-02_.xml"]
         #self.title = ["decp-13000495500139-2025-05-05-02_.xml"]
         #self.title += ["Donnees-Essentielles-Marches13.03.2025.11-50.xml"]
         # Force title force url file list
@@ -389,7 +405,7 @@ class SourceProcess:
 
             if self.format == 'xml':
                 try:
-                    with open(f"sources/{self.source}/{self.title[i]}", encoding=self.encoding if self.encoding else 'utf-8') as xml_file:
+                    with open(f"{self.source_dir}/{self.title[i]}", encoding=self.encoding if self.encoding else 'utf-8') as xml_file:
                         dico = xmltodict.parse(xml_file.read(), dict_constructor=dict, \
                             force_list=('marche','contrat-concession',
                                 'titulaires','donneesExecution','modifications',
@@ -460,7 +476,7 @@ class SourceProcess:
 
             elif self.format == 'json':
                 try:
-                    with open(f"sources/{self.source}/{self.title[i]}", encoding=self.encoding) as json_file1:
+                    with open(f"{self.source_dir}/{self.title[i]}", encoding=self.encoding) as json_file1:
                         dico = json.load(json_file1)
                 except Exception as err:
                     logging.error(f"Exception lors du chargement du fichier json {self.title[i]} : {err}")

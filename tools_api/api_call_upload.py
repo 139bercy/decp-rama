@@ -14,11 +14,11 @@ def calculate_sha1(file_path):
     return sha1.hexdigest()
 
 #resource_id = "4fafdaff-b697-4494-9523-e9f56916fea8"
-#nom_fichier = "results/LAST_REAL_DATA/decp-2024_data_gouv.json"
+#nom_fichier = "data/LAST_REAL_DATA/decp-2024_data_gouv.json"
 #renommage_fichier = "decp-2024.json"
 
 resource_id = "907fd525-a293-418a-b88f-df945236cf90"
-nom_fichier = "results/decp-2025-03_data_gouv.json"
+nom_fichier = "data/data_gouv/decp-2025-03_data_gouv.json"
 renommage_fichier = "decp-2025-03.json"
 
 api_host = "https://www.data.gouv.fr/api/1"

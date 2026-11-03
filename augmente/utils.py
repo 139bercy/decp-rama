@@ -10,6 +10,7 @@ from datetime import datetime
 from ftplib import FTP_TLS
 import augmente.upload_dataeco as up
 import utils
+from utils import Paths
 
 logger = logging.getLogger("main.utils")
 logger.setLevel(logging.DEBUG)
@@ -63,10 +64,9 @@ def save_csv(df: pd.DataFrame, file_name: str):
     df : dataframe à sauvegarder
     file_name : nom du fichier à sauvegarder
     """
-    path = "data_eclatees"
+    path = Paths.DATA_ECLATEES_DIR
 
-    if not (os.path.exists(path)):  # Si le chemin data n'existe pas
-        os.mkdir(path)
+    os.makedirs(path, exist_ok=True)
 
     df.to_csv(os.path.join(path, file_name), index=False, sep=";")
     return None

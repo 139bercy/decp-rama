@@ -32,5 +32,4 @@ CMD [ "python", "main.py" ]
 #  --mount type=bind,source=old_metadata,target=/app/old_metadata \
 #  --mount type=bind,source=source,target=/app/sources \
 #  --mount type=bind,source=processing,target=/app/processing \
-#  --mount type=bind,source=results,target=/app/results \
-#  --mount type=bind,source=data,target=/app/data docker-decp-rama
+#  --mount type=bind,source=results,target=/app/results 

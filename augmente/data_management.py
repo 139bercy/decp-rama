@@ -8,6 +8,7 @@ import logging
 import requests
 from utils.StepMngmt import StepMngmt
 from utils.Step import Step
+from utils import Paths
 
 
 logger = logging.getLogger("main.weekly")
@@ -24,18 +25,16 @@ url_stockUniteLegale = "https://files.data.gouv.fr/insee-sirene/StockUniteLegale
 urls = ["geoflar", "cpv", "departement", "region", "commune", "arrondissement", "stockEtablissement", "stockUniteLegale"]
 titres = ["geoflar.csv", "cpv_2008_fr.xls", "departement2020.csv", "region2020.csv", "commune2021.csv",
            "arrondissement2021.csv", "StockEtablissement_utf8.csv", "StockUniteLegale_utf8.csv"]
-data_path = "data"
+data_path = Paths.REFERENTIELS_DIR
 
 
 def load_files_and_unzip(urls):
     """
     Cette fonction télécharge les fichiers utiles pour l'enrichissement. Puis les unzip.
     """
-    with open("metadata/metadata.json", 'r+',  encoding='utf8') as f:
+    with open(Paths.SOURCES_CONFIG, 'r+',  encoding='utf8') as f:
             metadata = json.load(f)
-    data_exists = os.path.exists(data_path) #Creation du dossier data si inexitant
-    if not data_exists:
-        os.mkdir(data_path)
+    os.makedirs(data_path, exist_ok=True) #Creation du dossier des référentiels si inexistant
     # Téléchargements des fichiers
     cpt = 0
     for url in urls :
@@ -45,7 +44,7 @@ def load_files_and_unzip(urls):
             file=url+".xls"
         else:
             file=url+".zip"
-        if (not os.path.exists(f"data/{titres[cpt]}")) and (not os.path.exists(f"data/{url}.zip")):
+        if (not os.path.exists(os.path.join(data_path, titres[cpt]))) and (not os.path.exists(os.path.join(data_path, f"{url}.zip"))):
             logger.info(f"Téléchargement de {url}")
 
             #wget.download(metadata[url]["url_source"], out=os.path.join(data_path, file))

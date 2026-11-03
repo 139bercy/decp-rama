@@ -3,13 +3,14 @@ import os
 import pandas as pd
 import shutil
 from utils.Step import Step
+from utils import Paths
 import logging
 
 class StepMngmt:
     _instance = None
 
-    BASE_PATH = 'processing/'
-    STATUS_FILEPATH = 'processing/run_status.json'
+    BASE_PATH = os.path.join(Paths.PROCESSING_DIR, '')
+    STATUS_FILEPATH = os.path.join(Paths.PROCESSING_DIR, 'run_status.json')
     
     FORMAT_DICTS = 'dicts'
     FORMAT_DATAFRAME = 'dataframe'
@@ -30,7 +31,7 @@ class StepMngmt:
 
     def load_data(self):
         if not os.path.exists(StepMngmt.BASE_PATH):
-            os.makedirs(StepMngmt.BASE_PATH)
+            os.makedirs(StepMngmt.BASE_PATH, exist_ok=True)
 
         try:
             with open(self.STATUS_FILEPATH, 'r') as json_file:

@@ -25,12 +25,12 @@ class BreProcess(SourceProcess):
         logging.info("  ÉTAPE CONVERT")
         # suppression des '
         count = 0
-        repertoire_source = f"sources/{self.source}"
+        repertoire_source = self.source_dir
         for path in os.listdir(repertoire_source):
             if os.path.isfile(os.path.join(repertoire_source, path)):
                 count += 1
         for i in range(count):
-            file_path = f"sources/{self.source}/{self.file_name[i]}.{self.format}"
+            file_path = f"{self.source_dir}/{self.file_name[i]}.{self.format}"
             with open(file_path) as file:
                 chaine = re.sub("\'", " ", file.read())
             with open(file_path, "w") as file:
@@ -42,7 +42,7 @@ class BreProcess(SourceProcess):
             li = []
             for i in range(count):
                 with open(
-                        f"sources/{self.source}/{self.file_name[i]}.{self.format}", encoding="utf-8") as xml_file:
+                        f"{self.source_dir}/{self.file_name[i]}.{self.format}", encoding="utf-8") as xml_file:
                         dico = xmltodict.parse(xml_file.read(), dict_constructor=dict)
                 if dico['csv'] is not None:
                     df = pd.DataFrame.from_dict(dico['csv']['marche'])

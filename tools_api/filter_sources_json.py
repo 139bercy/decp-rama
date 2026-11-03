@@ -44,5 +44,5 @@ for filename in os.listdir(source_dir):
 
 print(f"Saving result")
 # Sauvegarder en JSON
-with open("results\\data.json", "w", encoding="utf-8") as f:
+with open("data\\data.json", "w", encoding="utf-8") as f:
     json.dump(resultats, f, ensure_ascii=False, indent=2)

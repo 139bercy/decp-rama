@@ -14,6 +14,7 @@ import augmente.convert_json_to_pandas
 from database.DbDecp import DbDecp
 from utils.StepMngmt import StepMngmt
 from utils.Step import Step
+from utils import Paths
 
 from stdnum import luhn
 from stdnum.exceptions import *
@@ -57,7 +58,7 @@ def main(session_id:str,annee_mois:str, data_format:str = '2022'):
     step = StepMngmt()
     if not step.bypass(StepMngmt.SOURCE_ALL,Step.AUGMENTE_CLEAN):
         
-        json_source = f"results/global/decp-global-{annee_mois}.json"
+        json_source = os.path.join(Paths.RESULTS_GLOBAL, f"decp-global-{annee_mois}.json")
 
         logger.info(f"Chargement des données du fichier {json_source} au format {data_format}")
         with open(json_source, 'rb') as f:
@@ -327,12 +328,8 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
         # Mise à jour en base des données retenues 
         update_database_concessions_augmente(df_concession,True)
 
-    if not (os.path.exists(conf_data["path_to_data_dataeco"])):
-        os.mkdir(conf_data["path_to_data_dataeco"])
-        os.mkdir(os.path.join(conf_data["path_to_data_dataeco"], f'marches-valides'))
-        os.mkdir(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-valides'))
-        os.mkdir(os.path.join(conf_data["path_to_data_dataeco"], f'marches-invalides'))
-        os.mkdir(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-invalides'))
+    for sub_dir in ('marches-valides', 'concessions-valides', 'marches-invalides', 'concessions-invalides'):
+        os.makedirs(os.path.join(Paths.RESULTS_DATA_ECO, sub_dir), exist_ok=True)
     if not df_marche.empty:
         format_data_to_dataeco(df_marche, True)
         cols = get_columns('marche_'+data_format,False)
@@ -343,7 +340,7 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
             cols.remove("_type")
         #cols.remove("_type")
         # save data to csv files
-        df_marche.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'marches-valides/marche-{data_format}-{ref_date}.csv'), index=False, header=True, columns=cols, sep=';', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+        df_marche.to_csv(os.path.join(Paths.RESULTS_DATA_ECO, f'marches-valides/marche-{data_format}-{ref_date}.csv'), index=False, header=True, columns=cols, sep=';', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
 
     if not df_concession.empty:
         format_data_to_dataeco(df_concession, False)
@@ -353,7 +350,7 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
         cols.remove("_type")
         #cols.remove("_type")
         # save data to csv files
-        df_concession.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-valides/concession-{data_format}-{ref_date}.csv'), index=False, header=True, columns=cols, sep=';', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+        df_concession.to_csv(os.path.join(Paths.RESULTS_DATA_ECO, f'concessions-valides/concession-{data_format}-{ref_date}.csv'), index=False, header=True, columns=cols, sep=';', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
     
     if not df_marche_badlines.empty:
         format_data_to_dataeco(df_marche_badlines, True)
@@ -363,7 +360,7 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
         if "_type" in cols:
             cols.remove("_type")
         # save data to csv files
-        df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'marches-invalides/marche-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True, columns=cols, sep=';', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+        df_marche_badlines.to_csv(os.path.join(Paths.RESULTS_DATA_ECO, f'marches-invalides/marche-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True, columns=cols, sep=';', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
     
     if not df_concession_badlines.empty:
         format_data_to_dataeco(df_concession_badlines, False)
@@ -375,7 +372,7 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
         #df_concession_badlines.drop(columns=['db_id','_type'],inplace=True)
 
         # save data to csv files
-        df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-invalides/concession-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True, columns=cols, sep=';', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+        df_concession_badlines.to_csv(os.path.join(Paths.RESULTS_DATA_ECO, f'concessions-invalides/concession-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True, columns=cols, sep=';', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
 
 
 def update_database_marches_augmente(df:pd.DataFrame,est_retenu:bool):
@@ -850,7 +847,7 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         L'ordre de vérification est important. 
         Parameters :
             df (pd.DataFrame): dataframe to clean
-            cpv_2008_df: file cpv which is in the folder "data"
+            cpv_2008_df: file cpv which is in the folder Paths.REFERENTIELS_DIR
         Returns :
             df (pd.DataFrame): cleaned dataframe
         """
@@ -1064,7 +1061,7 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
     df_marche_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'IREP')
     df_marche_ = check_siret_ext(df_marche_, df_marche_badlines_, "titulaire",'HORS-UE')
 
-    df_cpv = pd.read_excel("data/cpv_2008_fr.xls", engine="xlrd")  #engine=openpyxl   xlrd
+    df_cpv = pd.read_excel(os.path.join(Paths.REFERENTIELS_DIR, "cpv_2008_fr.xls"), engine="xlrd")  #engine=openpyxl   xlrd
 
     df_marche_ = marche_cpv(df_marche_, df_cpv, data_format)
 
@@ -1698,7 +1695,7 @@ def mark_mixed_field(df:pd.DataFrame, field_name:str) -> pd.DataFrame:
     champs sont obligatoires. Donc ils doivent être tagués par "MQ".    
     """
     # Transformation de la colonne CPV      
-    df_cpv = pd.read_excel("data/cpv_2008_fr.xls", engine="xlrd")
+    df_cpv = pd.read_excel(os.path.join(Paths.REFERENTIELS_DIR, "cpv_2008_fr.xls"), engine="xlrd")
     # Fix FutureWarning df_cpv['CODE'] = df_cpv['CODE'].replace("-", ".")
     with pd.option_context("future.no_silent_downcasting", True):
         df_cpv['CODE'] = df_cpv['CODE'].replace("-", ".").infer_objects(copy=False) #On souhaite  réaliser ue conversion numérique. Donc 

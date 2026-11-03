@@ -2,6 +2,7 @@ from datetime import datetime
 import pandas as pd
 import json
 import os
+from utils import Paths
 
 from database import DbDecp, source
 
@@ -191,7 +192,8 @@ class Report:
             'date': currentday,
             'sources': self.messages
             }
-        with open(f"results/{currentday}-errors.json", 'w+', encoding='utf-8') as f:
+        os.makedirs(Paths.RESULTS_DIR, exist_ok=True)
+        with open(os.path.join(Paths.RESULTS_DIR, f"{currentday}-errors.json"), 'w+', encoding='utf-8') as f:
             json.dump(json_data, f, ensure_ascii=False, indent=4)
 
     # Save in memory current statistics and reinit statistics 
@@ -220,5 +222,6 @@ class Report:
             'date': currentday,
             'sources': self.statistics
             }
-        with open(f"results/{currentday}-statistics.json", 'w', encoding='utf-8') as f:
+        os.makedirs(Paths.RESULTS_DIR, exist_ok=True)
+        with open(os.path.join(Paths.RESULTS_DIR, f"{currentday}-statistics.json"), 'w', encoding='utf-8') as f:
             json.dump(json_data, f, ensure_ascii=False, indent=4)

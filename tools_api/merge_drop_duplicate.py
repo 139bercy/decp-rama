@@ -2,7 +2,7 @@ import io
 import json
 import pandas as pd
 
-path = "results/decp-daily.json"
+path = "data/decp-daily.json"
 with open(path, encoding="utf-8") as f:
     dico1 = json.load(f)
 print(f"dico1 lenght: {len(dico1['marches'])}")

@@ -22,6 +22,7 @@ from utils.NodeFormat import NodeFormat
 from utils.StepMngmt import StepMngmt
 from utils.Step import Step
 from utils.UtilsJson import UtilsJson
+from utils import Paths
 
 with open(os.path.join("confs", "var_glob.json")) as f:
     conf_glob = json.load(f)
@@ -45,7 +46,7 @@ class GlobalProcess:
     feature_doublons_marche_order = ["id", "acheteur", "titulaires", "dateNotification", "montant",'tmp__max_date'] 
     feature_doublons_concession_order = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale",'tmp__max_date']
 
-    RESULTS_DATA_GOUV = 'results/data_gouv'
+    RESULTS_DATA_GOUV = Paths.RESULTS_DATA_GOUV
 
     def __init__(self,data_format="2022", report:Report=None):
         """L'étape __init__ crée les variables associées à la classe GlobalProcess : le DataFrame et
@@ -389,17 +390,16 @@ class GlobalProcess:
         if len(self.df) == 0:
             logging.warning("Le DataFrame global est vide, impossible d'exporter")
             return
-        """Étape exportation des résultats au format json et xml dans le dossier /results"""
+        """Étape exportation des résultats au format json et xml dans le dossier Paths.RESULTS_DIR"""
         logging.info("--- ÉTAPE EXPORTATION")
         logging.info("Début de l'étape Exportation en JSON")
 
-        # Creation du sous répertoire "results"
-        os.makedirs("results", exist_ok=True)
+        # Creation du sous répertoire "data_gouv" dans le répertoire de résultats
         os.makedirs(self.RESULTS_DATA_GOUV, exist_ok=True)
         
         # Sauvegarde des données journalières
         # daily replaced by global
-        #path_result_daily = "results/decp-daily.json"
+        #path_result_daily = "data/data_gouvdecp-daily.json"
         #self.file_dump(path_result_daily,dico)
 
         ## Exportation des données dans des fichiers mensuels 
@@ -491,7 +491,7 @@ class GlobalProcess:
                 self.reorder_resources(headers,api,dataset_id)
         else:
             suffix = "global"
-            file_path = f'results/global/decp-{suffix}.json'
+            file_path = os.path.join(Paths.RESULTS_GLOBAL, f"decp-{suffix}.json")
             logging.info(f"Uploading file {file_path}")
             resource_id = self._get_ressource_id(headers,api,dataset_id,suffix)
             resource_id = self._upload_file(headers,api,dataset_id,resource_id,suffix)
@@ -549,11 +549,10 @@ class GlobalProcess:
    
     def generate_global(self, generate_month=True):
         logging.info("Launching file generation for augmente data treatment")
-        # Creation du sous répertoire "results"
-        os.makedirs("results", exist_ok=True)
-        os.makedirs("results/global", exist_ok=True)
+        # Creation du sous répertoire "data/global"
+        os.makedirs(Paths.RESULTS_GLOBAL, exist_ok=True)
         db = DbDecp()
-        db.extract_json_to_file("results/global/decp-global.json",generate_month)
+        db.extract_json_to_file(os.path.join(Paths.RESULTS_GLOBAL, "decp-global.json"),generate_month)
         db.close()
         logging.info("File generation ok for augmente data treatment")
         
@@ -883,7 +882,8 @@ class GlobalProcess:
             # Récupérer la réponse en JSON
             response_json = response.json()
 
-            with open('result_trace.txt', 'w') as file:
+            os.makedirs(Paths.DATA_DIR, exist_ok=True)
+            with open(Paths.RESULT_TRACE_FILE, 'w') as file:
                 #file.write(response.text)
                 json.dump(response_json, file, indent=4)
             
@@ -902,7 +902,7 @@ class GlobalProcess:
             url = f"{api}/datasets/{dataset_id}/resources/{resource_id}/upload/"
         
         if suffix=="global":
-            file_path = f"results/global/decp-global.json"
+            file_path = os.path.join(Paths.RESULTS_GLOBAL, "decp-global.json")
         else:
             file_path = f"{self.RESULTS_DATA_GOUV}/decp-{suffix}_data_gouv.json"
         try:

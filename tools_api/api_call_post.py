@@ -16,7 +16,7 @@ def calculate_sha1(file_path):
 api_host = "https://www.data.gouv.fr/api/1"
 dataset_id = "5cd57bf68b4c4179299eb0e9"
 url = f"{api_host}/datasets/{dataset_id}/resources/"
-nom_fichier = "results/LAST_REAL_DATA/decp-2024_data_gouv.json"
+nom_fichier = "data/LAST_REAL_DATA/decp-2024_data_gouv.json"
 
 config_file = "config.json"
 # read info from config.son

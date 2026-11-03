@@ -12,7 +12,7 @@ def upload_file(headers,api,dataset_id,resource_id:str,suffix:str) -> str:
     try:
         # On charge le fichier annuel existant
         file = {
-            "file": (f"decp-{suffix}.json", open(f"results/decp-{suffix}.json", "rb"))
+            "file": (f"decp-{suffix}.json", open(f"data/data_gouv/decp-{suffix}.json", "rb"))
         }
     except Exception:
         file = {

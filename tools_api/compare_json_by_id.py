@@ -1,7 +1,7 @@
 import json
 
-file1 = "results\\decp-2024.json"
-file2 = "results\\ref\\decp-2024.json"
+file1 = "data\\data_gouv\\decp-2024.json"
+file2 = "data\\data_gouv\\ref\\decp-2024.json"
 
 # Chargement des fichiers
 with open(file1, "r", encoding="utf-8") as f:

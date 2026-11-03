@@ -19,7 +19,7 @@ headers = {
 }
 
 # Chargement du fichier JSON
-with open('results/result_ressources.json', 'r', encoding='utf-8') as f:
+with open('data/result_ressources.json', 'r', encoding='utf-8') as f:
     data = json.load(f)
 
 i=0

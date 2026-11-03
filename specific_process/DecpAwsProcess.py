@@ -5,19 +5,20 @@ import pandas as pd
 import ast
 import logging
 from general_process.SourceProcess import ProcessParams, SourceProcess
+from utils import Paths
 
 class DecpAwsProcess(SourceProcess):
     def __init__(self,params:ProcessParams):
         self.key = "decp_aws"
         self.report = params.report
         self.data_format = params.data_format
-        with open("metadata/metadata.json", 'r+') as f:
+        with open(Paths.SOURCES_CONFIG, 'r+') as f:
             self.metadata = json.load(f)
         self.source = self.metadata[self.key]["code"]
         self.format = self.metadata[self.key]["format"]
         self.url_source = self.metadata[self.key]["url_source"]
         self.file_name = ["decp_aws.json"]
-        self.local_path = os.path.join("sources", self.source, self.file_name[0])
+        self.local_path = os.path.join(self.source_dir, self.file_name[0])
         self.df = pd.DataFrame()
 
     def _url_init(self):
@@ -27,7 +28,7 @@ class DecpAwsProcess(SourceProcess):
         """ Un peu particulier, on pointe sur data eco puis maj sur databretagne"""
         logging.info("  ÉTAPE GET")
         api_key = str(os.environ.get("API_KEY_Djabril"))  # à quoi sert cette variable ?
-        os.makedirs(f"sources/{self.source}", exist_ok=True)
+        os.makedirs(self.source_dir, exist_ok=True)
         # Replaced after certifi can't validate ssl certificat
         wget.download(self.url_source, self.local_path)
         #url = self.url_source

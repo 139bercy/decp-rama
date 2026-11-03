@@ -24,8 +24,8 @@ def restructure_data(input_file, output_file):
     save_json(new_structure, output_file)
 
 if __name__ == "__main__":
-    input_file_path = 'results/decp-2022__REFERENCE.json'
-    output_file_path = 'results/decp-2022.json'
+    input_file_path = 'data/decp-2022__REFERENCE.json'
+    output_file_path = 'data/decp-2022.json'
 
     restructure_data(input_file_path, output_file_path)
 

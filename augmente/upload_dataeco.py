@@ -5,8 +5,9 @@ import pickle
 import utils
 import subprocess
 import logging
+from utils import Paths
 
-RESULT_PATH_DATAECO='results/data_eco/'
+RESULT_PATH_DATAECO = os.path.join(Paths.RESULTS_DATA_ECO, '')
 
 import ftplib
 def upload_dataeco(file_to_upload : str, remote_path : str) -> None : 

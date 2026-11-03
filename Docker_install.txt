@@ -13,10 +13,10 @@ Pour les copier en local utiliser la commande suivante:
 
 git clone https://github.com/139bercy/decp-rama.git
 
-La branche concernée par cette note est la DECP_schema_2.0.x :
+La branche concernée par cette note est la DECP_2.0.x_path_refactor :
 
 cd decp-rama
-git switch DECP_schema_2.0.x
+git switch DECP_2.0.x_path_refactor
 
 Les sources sont maintenant sur le dicque local dans le répertoire local c:\projets\decp-rama
 Ce répertoire est monté dans wsl dans le répertoire /mnt/c/projets/decp-rama
@@ -56,9 +56,9 @@ docker-decp-rama   latest    afdd983ff2a0   57 seconds ago   1.58GB
 ## Configuration de l'application decp-rama
 L'application étant lancée tout les jours, le mieux est de reprendre les données de la dernière exécution:
 - Le fichier cumulatif du mois en cours le fichier s'appelle decp-2024-12.json)
-	-> ce fichier doit etre copié dans le répertoire /results/ de l'application
+	-> ce fichier doit etre copié dans le répertoire /results/data_gouv de l'application
 - Le fichier cumulatif de l'année en cours le fichier s'appelle decp-2024.json)
-	-> ce fichier doit etre copié dans le répertoire /results/ de l'application
+	-> ce fichier doit etre copié dans le répertoire /results/data_gouv de l'application
 - Le fichier de configuration config.json avec les identifiants de ressources sur data gouv pour l'année et le mois en cours des et le numéro de mois et l'année en cours:
 	-> Le fichier doit etre copié à la racine du projet decp-rama
 - Les fichiers sur les sources déjà traitées pour toutes les sources (repertoire <code source>/<code source>_<clé metadata>_0/  )
@@ -73,9 +73,8 @@ L'application decp-rama sauvegarde des informations dans plusieurs répertoires:
  - old_metadata/ 	pour la liste des sources traitées 
  - processing/ 		pour l'avancement de l'exécution (fichier run_status.json) ainsi que les données générées à la fin de chaque étape
  - results/			pour les données produite par la première phase de traitement decp-rama destinée à alimenter data.gouv 
-	et aussi les rapports d'exécution
- - data/			pour les données produite par la deuxième phase de traitement (decp-augmente) destinée à alimenter dataeco 
+	avec les rapports d'exécution et pour les données produite par la deuxième phase de traitement (decp-augmente) destinée à alimenter dataeco 
 	ainsi que les données de référence nécessaire à la deuxième phase des traitements.
-et à la fin de chaque mois, le fichier confi.json est mis à jour.
+et à la fin de chaque mois, le fichier config.json est mis à jour.
  
 	

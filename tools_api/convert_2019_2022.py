@@ -265,11 +265,11 @@ def convert_concession(marche):
 
 
 # Chargement du fichier JSON
-with open('results/decp-2019.json', 'r', encoding='utf-8') as f:
-#with open('results/samples-2019-marches.json', 'r', encoding='utf-8') as f:
+with open('data/data_gouv/decp-2019.json', 'r', encoding='utf-8') as f:
+#with open('data/samples-2019-marches.json', 'r', encoding='utf-8') as f:
     data = json.load(f)
 
-file_path = 'results/sample-2019-converted-to-2022.json'
+file_path = 'data/sample-2019-converted-to-2022.json'
 with open(file_path, 'w', encoding='utf-8') as file:
     file.write("{ \"marches\": [\n")
 

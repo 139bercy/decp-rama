@@ -21,7 +21,7 @@ config.json
 result.json
 result_trace.txt
 result_list.json
-
+docs_internal
 
 # C extensions
 *.so

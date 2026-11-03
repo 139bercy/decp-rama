@@ -45,7 +45,7 @@ for filename in os.listdir(source_dir):
 
 print(f"Saving result")
 # Sauvegarder le XML concaténé dans <marches>...</marches>
-with open("results\\data.xml", "w", encoding="utf-8") as fout:
+with open("data\\data.xml", "w", encoding="utf-8") as fout:
     fout.write('<marches>\n')
     for marche_xml in selected_marches:
         # Indenter joliment chaque <marche>
