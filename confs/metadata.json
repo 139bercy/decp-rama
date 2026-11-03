@@ -113,7 +113,8 @@
     "cle_api": ["5df410e86f44413a91d34be3"],
     "url": "",
     "validate" : true,
-    "convert_nc": false
+    "convert_nc": false,
+	"spread_over_time": true
   },
   "aws_2024":
   {
@@ -157,7 +158,7 @@
     "url_source" : "https://www.data.gouv.fr/fr/organizations/atexo-decp/",
     "format": "json",
     "cle_api_atexo": ["673f323ec296c295e64c5dc0"],
-    "cle_api": ["672721aaec64ca6d86444166","672720eb3d9ba78898cbb6aa","67272199922b37b9b2f1b654","672720d97c0997c624f8e336","67272093922b37b9b2f1b653","672720b0b8b33f91e6032bfe","672720321f1de4860c84baff","672720fa753525dfd8368aca","6727201449625899ea32c0d4","67271f9e05321453957baec7","672720cb97702d39796f4edc","67272196d3c5ca95c62e7c63","672720b5cc0f6e1e1dba8f00","672721d097702d39796f4edd","672720dbd3c5ca95c62e7c62","67271fa6290200f00fce1fcc","672720e0cdbaec7aa4f43f4f","672720e2753525dfd8368ac8","67271f982276221b3ffd463d","67272125cc0f6e1e1dba8f01","6727211e60854f01267aaf19","672720f0f12888a874bc2861","672720e71f1de4860c84bb01","672720f51f1de4860c84bb02","672721842b370d8b3227704d","67271fda43aad6253355b458","672720bb3b056f39537f239f","672720e451bcff5f90f6f9e4","67271f8e43aad6253355b457","672720ee720fd33a184a47a3","6727210c720fd33a184a47a4","67271fa3f265db6119a6b6b0","6727217e51bcff5f90f6f9e5","67305b223bb03813db8efe33","672720b71f1de4860c84bb00","672720f8753525dfd8368ac9","672720b2acd2250747936742"],
+    "cle_api": ["672721aaec64ca6d86444166","672720eb3d9ba78898cbb6aa","67272199922b37b9b2f1b654","672720d97c0997c624f8e336","67272093922b37b9b2f1b653","672720b0b8b33f91e6032bfe","672720321f1de4860c84baff","672720fa753525dfd8368aca","6727201449625899ea32c0d4","67271f9e05321453957baec7","672720cb97702d39796f4edc","67272196d3c5ca95c62e7c63","672720b5cc0f6e1e1dba8f00","672721d097702d39796f4edd","672720dbd3c5ca95c62e7c62","67271fa6290200f00fce1fcc","672720e0cdbaec7aa4f43f4f","672720e2753525dfd8368ac8","67271f982276221b3ffd463d","67272125cc0f6e1e1dba8f01","6727211e60854f01267aaf19","672720f0f12888a874bc2861","672720e71f1de4860c84bb01","672720f51f1de4860c84bb02","672721842b370d8b3227704d","67271fda43aad6253355b458","672720bb3b056f39537f239f","672720e451bcff5f90f6f9e4","67271f8e43aad6253355b457","672720ee720fd33a184a47a3","6727210c720fd33a184a47a4","67271fa3f265db6119a6b6b0","6727217e51bcff5f90f6f9e5","67305b223bb03813db8efe33","672720b71f1de4860c84bb00","672720f8753525dfd8368ac9","672720b2acd2250747936742","67b4575f32c309fd76327c87"],
     "cle_api_ONE": ["67271f9e05321453957baec7"],
 	  "url": "",
     "validate" : true,
@@ -180,8 +181,20 @@
     "description": "Données essentielles du profil acheteur Mégalis Bretagne - schéma arrêtés 2022",
     "url_source": "https://static.data.gouv.fr/resources/donnees-essentielles-du-profil-acheteur-megalis-bretagne-schema-arretes-2022/20241205-070434/decp-2024.json",
     "format": "json",
-    "cle_api": [],
-    "cle_api_OLD": ["65f18014e9923e9e71f5f258"],
+    "cle_api_TMO": [],
+    "cle_api": ["65f18014e9923e9e71f5f258"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "arnia_2024":
+  {
+    "code": "arnia",
+    "description": "Données essentielles du profil acheteur ARNIA",
+    "url_source": "https://www.data.gouv.fr/datasets/donnees-essentielles-du-profil-acheteur-arnia-1/informations",
+    "format": "json",
+    "cle_api_TMP": [],
+    "cle_api": ["673f078f5c4cba55842cbe57"],
     "url": "",
     "validate" : true,
     "convert_nc": false
