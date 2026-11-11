@@ -1,3 +1,11 @@
+import os
+from utils.cli import parse_args, configure_test_mode
+
+# Le mode test doit être configuré AVANT les imports du projet : plusieurs modules
+# (StepMngmt, GlobalProcess, data_management, upload_dataeco) figent les chemins à l'import.
+if parse_args().test:
+    configure_test_mode()
+
 from database.DbDecp import DbDecp
 from general_process.ProcessFactory import ProcessFactory
 from general_process.GlobalProcess import GlobalProcess
@@ -10,7 +18,6 @@ from utils import Paths
 import augmente.data_management
 import augmente.nettoyage
 import augmente.utils
-import os
 import traceback
 
 
@@ -48,7 +55,8 @@ def main(report,data_format:str = "2022"):
     gp.generate_export(args.local)
     gp.generate_global()
 
-    if not args.local:
+    # Pas de publication sur data.gouv en mode local ou en mode test
+    if not args.local and not args.test:
         # gp.upload_s3()
         suffixes = gp.get_suffixes_exported_files()
         gp.upload_on_datagouv(suffixes)
@@ -121,6 +129,7 @@ if __name__ == "__main__":
     logging.info("(-a) Option exécution de decp-augmente uniquement " + ("activée" if args.augmente else "désactivée"))
     logging.info("(-l) Option exécution locale " + ("activée" if args.local else "désactivée"))
     logging.info("(-t) Option exécution en mode test " + ("activée" if args.test else "désactivée"))
+    logging.info(f"     Répertoire de données : {Paths.DATA_DIR} - Base de données : {DbDecp.db_name()}")
     logging.info("(-r) Option reprise à la dernière étape exécutée " + ("desactivée" if args.reset else "activée"))
     logging.info("(-b) Option reconstruction globale " + ("activée pour " if args.rebuild else "désactivée") + (args.rebuild if args.rebuild else ""))
     logging.info("(-P) Option process spécifique " + ("activée pour " if args.process else "désactivée") + (args.process if args.process else ""))

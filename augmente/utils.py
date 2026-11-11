@@ -37,18 +37,8 @@ s3 = boto3.resource(service_name='s3',
 logger = logging.getLogger("main.utils")
 logger.setLevel(logging.DEBUG)
 
-# Initialize args parser
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-t", dest='test', action='store_true', help="run script in test mode with a small sample of data")
-    parser.add_argument("-l", dest='local', action='store_true', help="run script locally")
-    parser.add_argument("-r", dest='reset', action='store_true', help="run script locally")
-    parser.add_argument('-P', dest='process', type=str, help='run a specific process')
-    parser.add_argument("-m", dest='rama', action='store_true', help="Execute only decp-rama")
-    parser.add_argument("-a", dest='augmente', action='store_true', help="Execute only decp-augmente")
-    #parser.add_argument("-f", dest='format', type=str, help="run script for format 2019")
-    parser.add_argument("-b", dest='rebuild', type=str, help="Rebuild a given year")
-    return parser.parse_args()
+# Parseur d'arguments centralisé dans utils/cli.py (conservé ici pour les appels existants)
+from utils.cli import parse_args  # noqa: F401
 
 # Ne pas parser les arguments au niveau module pour éviter les conflits avec uvicorn
 # args = parse_args()

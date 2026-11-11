@@ -28,6 +28,14 @@ class DbDecp:
     ERROR_MESSAGE_FILE = "Une erreur s'est produite lors de la recherche ou de l'ajout du fichier :"
     ERROR_MESSAGE_SESSION_ERROR = "Une erreur s'est produite lors de la recherche ou de l'ajout d'un élément du rapport':"
  
+    @staticmethod
+    def db_name() -> str:
+        """Nom de la base : base de test si le mode test (-t) est actif, sinon base principale."""
+        load_dotenv()
+        if os.getenv("DECP_TEST_MODE") == "1":
+            return os.getenv("DECP.DB_NAME_TEST", "decp_test")
+        return os.getenv("DECP.DB_NAME")
+
     # Constructeur
     def __init__(self):
         # Chargement des variables d'environnement depuis le fichier .env
@@ -35,7 +43,7 @@ class DbDecp:
 
         # Open database connection
         self.connection = psycopg2.connect(
-            dbname=os.getenv('DECP.DB_NAME'),
+            dbname=DbDecp.db_name(),
             user=os.getenv('DECP.DB_USER'),
             password=os.getenv('DECP.DB_PASSWORD'),
             host=os.getenv('DECP.DB_HOST', 'localhost'),
